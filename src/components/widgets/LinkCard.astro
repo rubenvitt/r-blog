@@ -1,4 +1,7 @@
 ---
+import { getInternalLinkCardMetadata, normalizeInternalPath } from '../../lib/link-card-metadata';
+import { SITE_HOSTNAME, SITE_ORIGIN } from '../../lib/site';
+
 interface Props {
     url: string;
     title?: string;
@@ -7,55 +10,136 @@ interface Props {
 
 const {url, title, description} = Astro.props;
 
+function pickFirstMatch(html: string, patterns: RegExp[]) {
+    for (const pattern of patterns) {
+        const match = html.match(pattern);
+
+        if (match?.[1]) {
+            return match[1].trim();
+        }
+    }
+}
+
+function extractFaviconUrl(html: string, pageUrl: URL) {
+    const iconHref = pickFirstMatch(html, [
+        /<link[^>]*rel=["'][^"']*\b(?:icon|shortcut icon|apple-touch-icon(?:-precomposed)?)\b[^"']*["'][^>]*href=["']([^"']+)["']/i,
+        /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'][^"']*\b(?:icon|shortcut icon|apple-touch-icon(?:-precomposed)?)\b[^"']*["']/i,
+    ]);
+
+    if (!iconHref) {
+        return;
+    }
+
+    try {
+        return new URL(iconHref, pageUrl).toString();
+    } catch {
+        return;
+    }
+}
+
+function getFaviconFallbackLabel(value: string) {
+    const hostnameParts = value
+        .split('.')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .filter((part) => !['www', 'com', 'org', 'net', 'dev', 'app', 'io', 'co', 'de'].includes(part.toLowerCase()));
+    const source = hostnameParts[0] ?? value;
+    const words = source.split(/[^a-z0-9]+/i).filter(Boolean);
+    const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? '').join('');
+
+    return initials || source.slice(0, 1).toUpperCase() || 'L';
+}
+
 let resolvedTitle = title;
-let resolvedDescription = description;
+let resolvedDescription = description ?? '';
 let hostname = '';
+let linkLabel = url;
+let faviconSrc = '/favicon-32.png';
+let faviconFallback = 'L';
+let isExternalLink = false;
 
 try {
-    const urlObj = new URL(url);
-    hostname = urlObj.hostname.replace('www.', '');
+    const siteUrl = new URL(Astro.site ?? SITE_ORIGIN);
+    const urlObj = new URL(url, siteUrl);
+    const isHttpLink = urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    const isInternalLink = url.startsWith('/') || (isHttpLink && urlObj.origin === siteUrl.origin);
+    const normalizedPath = normalizeInternalPath(urlObj.pathname);
 
-    if (!resolvedTitle || !resolvedDescription) {
-        const response = await fetch(url, {
-            headers: {'User-Agent': 'Mozilla/5.0 (compatible; AstroBot/1.0)'},
-            signal: AbortSignal.timeout(5000),
-        });
-        const html = await response.text();
+    hostname = isInternalLink ? SITE_HOSTNAME : urlObj.hostname.replace('www.', '');
+    linkLabel = isInternalLink
+        ? normalizedPath === '/'
+            ? SITE_HOSTNAME
+            : `${SITE_HOSTNAME}${normalizedPath}`
+        : hostname;
+    isExternalLink = isHttpLink && !isInternalLink;
+    faviconSrc = isInternalLink ? '/favicon-32.png' : new URL('/favicon.ico', urlObj.origin).toString();
+    faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
 
-        if (!resolvedTitle) {
-            const ogTitle = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]*)"/) ??
-                html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:title"/);
-            const titleTag = html.match(/<title[^>]*>([^<]*)<\/title>/);
-            resolvedTitle = ogTitle?.[1] ?? titleTag?.[1] ?? hostname;
-        }
+    if (isInternalLink) {
+        const metadata = await getInternalLinkCardMetadata(urlObj.pathname);
 
-        if (!resolvedDescription) {
-            const ogDesc = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]*)"/) ??
-                html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:description"/) ??
-                html.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/) ??
-                html.match(/<meta[^>]*content="([^"]*)"[^>]*name="description"/);
-            resolvedDescription = ogDesc?.[1] ?? '';
+        resolvedTitle = resolvedTitle ?? metadata?.title ?? linkLabel;
+        resolvedDescription = resolvedDescription || metadata?.description || '';
+    }
+
+    if (isExternalLink) {
+        try {
+            const response = await fetch(urlObj.toString(), {
+                headers: {'User-Agent': 'Mozilla/5.0 (compatible; AstroBot/1.0)'},
+                signal: AbortSignal.timeout(5000),
+            });
+            const html = await response.text();
+
+            faviconSrc = extractFaviconUrl(html, urlObj) ?? faviconSrc;
+
+            if (!resolvedTitle) {
+                const ogTitle = pickFirstMatch(html, [
+                    /<meta[^>]*property="og:title"[^>]*content="([^"]*)"/i,
+                    /<meta[^>]*content="([^"]*)"[^>]*property="og:title"/i,
+                    /<title[^>]*>([^<]*)<\/title>/i,
+                ]);
+                resolvedTitle = ogTitle ?? hostname;
+            }
+
+            if (!resolvedDescription) {
+                const ogDesc = pickFirstMatch(html, [
+                    /<meta[^>]*property="og:description"[^>]*content="([^"]*)"/i,
+                    /<meta[^>]*content="([^"]*)"[^>]*property="og:description"/i,
+                    /<meta[^>]*name="description"[^>]*content="([^"]*)"/i,
+                    /<meta[^>]*content="([^"]*)"[^>]*name="description"/i,
+                ]);
+                resolvedDescription = ogDesc ?? resolvedDescription;
+            }
+        } catch {
+            // Keep the hostname-based fallback badge when the site has no icon or blocks fetches.
         }
     }
 } catch {
     resolvedTitle = resolvedTitle ?? url;
 }
+
+resolvedTitle = resolvedTitle ?? linkLabel;
+faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
 ---
 
 <a
         href={url}
-        target="_blank"
-        rel="noopener noreferrer"
+        target={isExternalLink ? '_blank' : undefined}
+        rel={isExternalLink ? 'noopener noreferrer' : undefined}
         class="not-prose group my-4 flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) p-5 transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
 >
-    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-(--color-border)">
+    <div class="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-(--color-border) bg-linear-to-br from-(--color-bg) via-(--color-bg-secondary) to-(--color-border)">
+        <div class="absolute inset-0 flex items-center justify-center text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-(--color-text-secondary)">
+            {faviconFallback}
+        </div>
         <img
-                src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                src={faviconSrc}
                 alt=""
-                width="24"
-                height="24"
+                width="32"
+                height="32"
                 loading="lazy"
-                class="rounded"
+                class="relative z-10 h-8 w-8 rounded-lg bg-(--color-bg-secondary) p-1 object-contain shadow-sm ring-1 ring-black/5"
+                onerror="this.remove()"
         />
     </div>
     <div class="min-w-0 flex-1">
@@ -67,7 +151,7 @@ try {
                     {resolvedDescription}
                 </div>
         )}
-        <div class="mt-1 text-xs text-(--color-text-muted)">{hostname}</div>
+        <div class="mt-1 text-xs text-(--color-text-muted)">{linkLabel}</div>
     </div>
     <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-accent) transition-colors">&rarr;</span>
 </a>

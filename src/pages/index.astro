@@ -2,12 +2,13 @@
 import {getCollection} from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/ui/PostCard.astro';
+import { HOME_PAGE } from '../lib/site';
 
 const posts = (await getCollection('blog', ({data}) => !data.draft))
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 ---
 
-<BaseLayout title="rubeen.dev — Blog">
+<BaseLayout title={HOME_PAGE.title} description={HOME_PAGE.description}>
     <div class="mx-auto max-w-(--content-width) px-6">
         <!-- Hero Intro -->
         <section class="py-16 border-b border-border">

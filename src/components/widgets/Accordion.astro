@@ -1,12 +1,16 @@
 ---
 interface Props {
     title: string;
+    defaultOpen?: boolean;
 }
 
-const {title} = Astro.props;
+const {title, defaultOpen = false} = Astro.props;
 ---
 
-<details class="not-prose group my-4 rounded-xl border border-(--color-border) bg-(--color-bg-secondary) overflow-hidden">
+<details
+        open={defaultOpen}
+        class="not-prose group my-4 rounded-xl border border-(--color-border) bg-(--color-bg-secondary) overflow-hidden"
+>
     <summary class="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-medium text-(--color-text) hover:bg-(--color-border)/50 transition-colors">
         {title}
         <svg
