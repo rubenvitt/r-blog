@@ -1,0 +1,74 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import TagBadge from '../components/ui/TagBadge.astro';
+
+interface Props {
+    title: string;
+    description: string;
+    date: Date;
+    updatedDate?: Date;
+    tags?: string[];
+    image?: ImageMetadata;
+}
+
+const {title, description, date, updatedDate, tags = [], image} = Astro.props;
+
+const formattedDate = date.toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+});
+
+const formattedUpdatedDate = updatedDate?.toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+});
+
+// Rough reading time estimate
+const content = await Astro.slots.render('default');
+const words = content.split(/\s+/).length;
+const readingTime = Math.max(1, Math.ceil(words / 200));
+---
+
+<BaseLayout title={`${title} — rubeen.dev`} description={description}>
+    <!-- Hero Header -->
+    <div class="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 text-white">
+        <div class="mx-auto max-w-(--content-width-wide) px-6 py-16">
+            <div class="max-w-(--content-width)">
+                {tags.length > 0 && (
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            {tags.map((tag) => (
+                                    <TagBadge tag={tag} variant="hero"/>
+                            ))}
+                        </div>
+                )}
+
+                <h1 class="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                    {title}
+                </h1>
+
+                <p class="mt-4 text-slate-300 text-lg leading-relaxed">
+                    {description}
+                </p>
+
+                <div class="mt-6 flex items-center gap-4 text-sm text-slate-400">
+                    <time datetime={date.toISOString()}>{formattedDate}</time>
+                    <span>&middot;</span>
+                    <span>{readingTime} Min. Lesezeit</span>
+                    {formattedUpdatedDate && (
+                            <>
+                                <span>&middot;</span>
+                                <span>Aktualisiert: {formattedUpdatedDate}</span>
+                            </>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Post Content -->
+    <article class="prose mx-auto max-w-(--content-width) px-6 py-12">
+        <slot/>
+    </article>
+</BaseLayout>

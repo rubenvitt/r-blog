@@ -1,0 +1,42 @@
+---
+interface Props {
+    url: string;
+    title?: string;
+}
+
+const {url, title = 'Embedded content'} = Astro.props;
+
+let embedUrl = url;
+let type: 'youtube' | 'generic' = 'generic';
+
+// YouTube
+const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+if (ytMatch) {
+    embedUrl = `https://www.youtube-nocookie.com/embed/${ytMatch[1]}`;
+    type = 'youtube';
+}
+---
+
+<div class="not-prose my-6">
+    {type === 'youtube' ? (
+            <div class="relative overflow-hidden rounded-xl border border-(--color-border) aspect-video">
+                <iframe
+                        src={embedUrl}
+                        title={title}
+                        class="absolute inset-0 h-full w-full"
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                ></iframe>
+            </div>
+    ) : (
+            <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="block rounded-xl border border-(--color-border) p-4 text-sm text-(--color-accent) hover:underline"
+            >
+                {title}: {url}
+            </a>
+    )}
+</div>

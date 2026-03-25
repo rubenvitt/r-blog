@@ -1,0 +1,96 @@
+---
+---
+
+<div id="search-overlay" class="fixed inset-0 z-[100] hidden">
+  <!-- Backdrop -->
+  <div id="search-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+  <!-- Modal -->
+  <div class="relative mx-auto mt-[15vh] max-w-lg px-4">
+    <div class="overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-bg) shadow-2xl">
+      <div id="search-container" class="p-4"></div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function() {
+    const overlay = document.getElementById('search-overlay');
+    const backdrop = document.getElementById('search-backdrop');
+    const container = document.getElementById('search-container');
+    const trigger = document.getElementById('search-trigger');
+    let pagefindLoaded = false;
+
+    async function openSearch() {
+      overlay?.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+
+      if (!pagefindLoaded && container) {
+        try {
+          const pagefind = await import('/pagefind/pagefind-ui.js');
+          new pagefind.PagefindUI({
+            element: container,
+            showSubResults: true,
+            showImages: false,
+          });
+          pagefindLoaded = true;
+        } catch {
+          container.textContent = 'Suche ist im Dev-Modus nicht verfügbar. Bitte erst builden.';
+        }
+      }
+
+      setTimeout(function() {
+        const input = container?.querySelector('input');
+        if (input) input.focus();
+      }, 100);
+    }
+
+    function closeSearch() {
+      overlay?.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    trigger?.addEventListener('click', openSearch);
+    backdrop?.addEventListener('click', closeSearch);
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (overlay?.classList.contains('hidden')) {
+          openSearch();
+        } else {
+          closeSearch();
+        }
+      }
+      if (e.key === 'Escape') closeSearch();
+    });
+  })();
+</script>
+
+<style>
+  /* Pagefind UI styling overrides */
+  :global(.pagefind-ui__search-input) {
+    background: var(--color-bg-secondary) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+    color: var(--color-text) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 0.9375rem !important;
+  }
+
+  :global(.pagefind-ui__search-input:focus) {
+    outline: none !important;
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  }
+
+  :global(.pagefind-ui__result-link) {
+    color: var(--color-text) !important;
+    font-weight: 500 !important;
+  }
+
+  :global(.pagefind-ui__result-excerpt) {
+    color: var(--color-text-secondary) !important;
+  }
+</style>

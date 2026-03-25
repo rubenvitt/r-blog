@@ -1,17 +1,32 @@
 {
-  "name": "",
-  "type": "module",
+  "name": "r-blog",
   "version": "0.0.1",
-  "engines": {
-    "node": ">=22.12.0"
-  },
+  "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^6.0.8"
+    "@astrojs/mdx": "^5.0.2",
+    "@astrojs/sitemap": "^3.7.1",
+    "@tailwindcss/vite": "^4.2.2",
+    "astro": "^6.0.8",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@astrojs/rss": "^4.0.17",
+    "oxfmt": "^0.42.0",
+    "oxlint": "^1.57.0",
+    "pagefind": "^1.4.0",
+    "sharp": "^0.34.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

@@ -1,0 +1,73 @@
+---
+interface Props {
+    url: string;
+    title?: string;
+    description?: string;
+}
+
+const {url, title, description} = Astro.props;
+
+let resolvedTitle = title;
+let resolvedDescription = description;
+let hostname = '';
+
+try {
+    const urlObj = new URL(url);
+    hostname = urlObj.hostname.replace('www.', '');
+
+    if (!resolvedTitle || !resolvedDescription) {
+        const response = await fetch(url, {
+            headers: {'User-Agent': 'Mozilla/5.0 (compatible; AstroBot/1.0)'},
+            signal: AbortSignal.timeout(5000),
+        });
+        const html = await response.text();
+
+        if (!resolvedTitle) {
+            const ogTitle = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]*)"/) ??
+                html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:title"/);
+            const titleTag = html.match(/<title[^>]*>([^<]*)<\/title>/);
+            resolvedTitle = ogTitle?.[1] ?? titleTag?.[1] ?? hostname;
+        }
+
+        if (!resolvedDescription) {
+            const ogDesc = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]*)"/) ??
+                html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:description"/) ??
+                html.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/) ??
+                html.match(/<meta[^>]*content="([^"]*)"[^>]*name="description"/);
+            resolvedDescription = ogDesc?.[1] ?? '';
+        }
+    }
+} catch {
+    resolvedTitle = resolvedTitle ?? url;
+}
+---
+
+<a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="not-prose group my-4 flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) p-5 transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
+>
+    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-(--color-border)">
+        <img
+                src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                alt=""
+                width="24"
+                height="24"
+                loading="lazy"
+                class="rounded"
+        />
+    </div>
+    <div class="min-w-0 flex-1">
+        <div class="truncate font-medium text-(--color-text) group-hover:text-(--color-accent) transition-colors">
+            {resolvedTitle}
+        </div>
+        {resolvedDescription && (
+                <div class="mt-0.5 truncate text-sm text-(--color-text-secondary)">
+                    {resolvedDescription}
+                </div>
+        )}
+        <div class="mt-1 text-xs text-(--color-text-muted)">{hostname}</div>
+    </div>
+    <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-accent) transition-colors">&rarr;</span>
+</a>

@@ -1,0 +1,42 @@
+---
+import {getCollection, render} from 'astro:content';
+import BlogPost from '../../layouts/BlogPost.astro';
+
+export async function getStaticPaths() {
+    const posts = await getCollection('blog', ({data}) => !data.draft);
+
+    const paths = [];
+    for (const post of posts) {
+        paths.push({
+            params: {slug: post.id},
+            props: {post, redirectTo: null},
+        });
+        for (const alias of post.data.aliases) {
+            paths.push({
+                params: {slug: alias},
+                props: {post, redirectTo: `/blog/${post.id}`},
+            });
+        }
+    }
+    return paths;
+}
+
+const {post, redirectTo} = Astro.props;
+
+if (redirectTo) {
+    return Astro.redirect(redirectTo, 301);
+}
+
+const {Content} = await render(post);
+---
+
+<BlogPost
+        title={post.data.title}
+        description={post.data.description}
+        date={post.data.date}
+        updatedDate={post.data.updatedDate}
+        tags={post.data.tags}
+        image={post.data.image}
+>
+    <Content/>
+</BlogPost>

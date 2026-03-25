@@ -1,0 +1,76 @@
+---
+import '../styles/global.css';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import SearchModal from '../components/ui/SearchModal.astro';
+
+interface Props {
+    title: string;
+    description?: string;
+    image?: string;
+}
+
+const {title, description = 'Ein Blog über Web-Development und Technologie', image} = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="de" class="antialiased">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/>
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png"/>
+    <link rel="icon" href="/favicon.ico" sizes="any"/>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+    <link rel="sitemap" href="/sitemap-index.xml"/>
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml"/>
+    <link rel="canonical" href={canonicalURL}/>
+
+    <title>{title}</title>
+    <meta name="description" content={description}/>
+    <meta name="generator" content={Astro.generator}/>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website"/>
+    <meta property="og:url" content={canonicalURL}/>
+    <meta property="og:title" content={title}/>
+    <meta property="og:description" content={description}/>
+    {image &&
+            <meta property="og:image" content={new URL(image, Astro.site)}/>}
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link
+            href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+    />
+
+    <!-- Dark mode: inline script to prevent flash -->
+    <script is:inline>
+    const theme = localStorage.getItem('theme');
+    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    }
+    </script>
+</head>
+<body class="bg-(--color-bg) text-(--color-text) min-h-screen flex flex-col transition-colors duration-200">
+<Header/>
+<main class="flex-1">
+    <slot/>
+</main>
+<Footer/>
+<SearchModal/>
+
+<!-- External links: open in new tab -->
+<script is:inline>
+document.querySelectorAll('a[href^="http"]').forEach(function (a) {
+    if (a.hostname !== location.hostname) {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+    }
+});
+</script>
+</body>
+</html>

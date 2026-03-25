@@ -1,17 +1,43 @@
 ---
+import {getCollection} from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/ui/PostCard.astro';
 
+const posts = (await getCollection('blog', ({data}) => !data.draft))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="rubeen.dev — Blog">
+    <div class="mx-auto max-w-(--content-width) px-6">
+        <!-- Hero Intro -->
+        <section class="py-16 border-b border-border">
+            <h1 class="text-3xl font-bold tracking-tight">
+                Hey, ich bin Rubeen
+            </h1>
+            <p class="mt-3 text-lg text-text-secondary leading-relaxed max-w-lg">
+                Ich schreibe über Softwareentwicklung, Zusammenarbeit und pragmatische Lösungen in komplexen Kontexten – aus Projekten, dem Consulting und an der Schnittstelle zum Katastrophenschutz.
+            </p>
+        </section>
+
+        <!-- Post List -->
+        <section class="py-8">
+            <h2 class="text-xs font-semibold uppercase tracking-widest text-(--color-text-muted) mb-4">
+                Neueste Posts
+            </h2>
+            <div>
+                {posts.map((post) => (
+                        <PostCard
+                                title={post.data.title}
+                                description={post.data.description}
+                                date={post.data.date}
+                                tags={post.data.tags}
+                                slug={post.id}
+                        />
+                ))}
+            </div>
+            {posts.length === 0 && (
+                    <p class="text-(--color-text-muted) py-8">Noch keine Posts vorhanden.</p>
+            )}
+        </section>
+    </div>
+</BaseLayout>

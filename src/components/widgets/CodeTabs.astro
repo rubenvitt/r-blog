@@ -1,0 +1,76 @@
+---
+interface Props {
+    labels: string[];
+}
+
+const {labels} = Astro.props;
+---
+
+<div class="not-prose my-6 codetabs-wrapper">
+    <div class="flex border-b border-(--color-border) bg-(--color-bg-secondary) rounded-t-xl overflow-hidden">
+        {labels.map((label, i) => (
+                <button
+                        data-tab-index={i}
+                        data-active={i === 0 ? 'true' : undefined}
+                        class="codetab-btn px-4 py-2.5 text-sm font-medium transition-colors"
+                >
+                    {label}
+                </button>
+        ))}
+    </div>
+    <div class="codetab-panels rounded-b-xl overflow-hidden">
+        <slot/>
+    </div>
+</div>
+
+<style>
+.codetab-btn {
+    color: var(--color-text-muted);
+}
+
+.codetab-btn:hover {
+    color: var(--color-text);
+}
+
+.codetab-btn[data-active] {
+    color: var(--color-accent);
+    border-bottom: 2px solid var(--color-accent);
+    background: var(--color-bg);
+}
+
+.codetab-panels > :global(*) {
+    display: none;
+}
+
+.codetab-panels > :global(*:first-child) {
+    display: block;
+}
+
+.codetab-panels :global(pre) {
+    border-radius: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+}
+</style>
+
+<script is:inline>
+document.querySelectorAll('.codetabs-wrapper').forEach(function (wrapper) {
+    var buttons = wrapper.querySelectorAll('.codetab-btn');
+    var panelsContainer = wrapper.querySelector('.codetab-panels');
+    if (!panelsContainer) return;
+    var panels = panelsContainer.children;
+
+    buttons.forEach(function (btn, i) {
+        btn.addEventListener('click', function () {
+            buttons.forEach(function (b) {
+                b.removeAttribute('data-active');
+            });
+            btn.setAttribute('data-active', 'true');
+
+            Array.from(panels).forEach(function (panel, j) {
+                panel.style.display = j === i ? 'block' : 'none';
+            });
+        });
+    });
+});
+</script>
