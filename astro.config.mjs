@@ -11,11 +11,11 @@ export default defineConfig({
   redirects: {
     '/evals-in-die-ci-wann-ai-features-aufhoren-prompts-zu-sein': {
       status: 301,
-      destination: '/blog/evals-in-die-ci-wann-ai-features-aufhoren-prompts-zu-sein',
+      destination: '/blog/ai-evals-ci-pipeline',
     },
     '/ai-fullstack-engineering-beginnt-dort-wo-prompt-engineering-endet': {
       status: 301,
-      destination: '/blog/ai-fullstack-engineering-beginnt-dort-wo-prompt-engineering-endet',
+      destination: '/blog/ai-systems-architecture',
     },
   },
   integrations: [mdx(), sitemap()],

@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # superpowers brainstorm files
 .superpowers/
+
+# link-card build cache
+.link-card-cache.json

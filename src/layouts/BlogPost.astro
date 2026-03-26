@@ -1,4 +1,5 @@
 ---
+import { Image } from 'astro:assets';
 import BaseLayout from './BaseLayout.astro';
 import TagBadge from '../components/ui/TagBadge.astro';
 
@@ -33,39 +34,77 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
 
 <BaseLayout title={`${title} — rubeen.dev`} description={description}>
     <!-- Hero Header -->
-    <div class="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 text-white">
-        <div class="mx-auto max-w-(--content-width-wide) px-6 py-16">
-            <div class="max-w-(--content-width)">
-                {tags.length > 0 && (
+    {image ? (
+        <div class="relative min-h-[50vh] flex items-end text-white overflow-hidden">
+            <Image
+                src={image}
+                alt=""
+                class="absolute inset-0 w-full h-full object-cover brightness-[0.4] saturate-[0.8]"
+                widths={[800, 1200, 1600]}
+                sizes="100vw"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div class="relative z-10 mx-auto w-full max-w-(--content-width-wide) px-6 pb-12 pt-24">
+                <div class="max-w-(--content-width)">
+                    {tags.length > 0 && (
                         <div class="flex flex-wrap gap-2 mb-4">
                             {tags.map((tag) => (
-                                    <TagBadge tag={tag} variant="hero"/>
+                                <TagBadge tag={tag} variant="hero"/>
                             ))}
                         </div>
-                )}
-
-                <h1 class="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-                    {title}
-                </h1>
-
-                <p class="mt-4 text-slate-300 text-lg leading-relaxed">
-                    {description}
-                </p>
-
-                <div class="mt-6 flex items-center gap-4 text-sm text-slate-400">
-                    <time datetime={date.toISOString()}>{formattedDate}</time>
-                    <span>&middot;</span>
-                    <span>{readingTime} Min. Lesezeit</span>
-                    {formattedUpdatedDate && (
+                    )}
+                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                        {title}
+                    </h1>
+                    <p class="mt-4 text-white/70 text-lg leading-relaxed">
+                        {description}
+                    </p>
+                    <div class="mt-6 flex items-center gap-4 text-sm text-white/50">
+                        <time datetime={date.toISOString()}>{formattedDate}</time>
+                        <span>&middot;</span>
+                        <span>{readingTime} Min. Lesezeit</span>
+                        {formattedUpdatedDate && (
                             <>
                                 <span>&middot;</span>
                                 <span>Aktualisiert: {formattedUpdatedDate}</span>
                             </>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    ) : (
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-black dark:to-neutral-950 text-white">
+            <div class="mx-auto max-w-(--content-width-wide) px-6 py-16">
+                <div class="max-w-(--content-width)">
+                    {tags.length > 0 && (
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            {tags.map((tag) => (
+                                <TagBadge tag={tag} variant="hero"/>
+                            ))}
+                        </div>
+                    )}
+                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                        {title}
+                    </h1>
+                    <p class="mt-4 text-slate-300 text-lg leading-relaxed">
+                        {description}
+                    </p>
+                    <div class="mt-6 flex items-center gap-4 text-sm text-slate-400">
+                        <time datetime={date.toISOString()}>{formattedDate}</time>
+                        <span>&middot;</span>
+                        <span>{readingTime} Min. Lesezeit</span>
+                        {formattedUpdatedDate && (
+                            <>
+                                <span>&middot;</span>
+                                <span>Aktualisiert: {formattedUpdatedDate}</span>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    )}
 
     <!-- Post Content -->
     <article class="prose mx-auto max-w-(--content-width) px-6 py-12">
