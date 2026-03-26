@@ -4,6 +4,7 @@ import { ABOUT_PAGE, HOME_PAGE } from './site';
 export interface LinkCardMetadata {
   title: string;
   description: string;
+  image?: ImageMetadata;
 }
 
 const staticPageMetadata = new Map<string, LinkCardMetadata>([
@@ -27,9 +28,10 @@ const blogMetadataPromise = getCollection('blog', ({ data }) => !data.draft).the
   const blogMetadata = new Map<string, LinkCardMetadata>();
 
   for (const post of posts) {
-    const metadata = {
+    const metadata: LinkCardMetadata = {
       title: post.data.title,
       description: post.data.description,
+      image: post.data.image,
     };
 
     blogMetadata.set(normalizeInternalPath(`/blog/${post.id}`), metadata);

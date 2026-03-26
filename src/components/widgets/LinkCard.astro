@@ -1,4 +1,5 @@
 ---
+import { Image } from 'astro:assets';
 import { getInternalLinkCardMetadata, normalizeInternalPath } from '../../lib/link-card-metadata';
 import { fetchExternalMetadata } from '../../lib/link-card-cache';
 import { SITE_HOSTNAME, SITE_ORIGIN } from '../../lib/site';
@@ -31,6 +32,7 @@ let linkLabel = url;
 let faviconSrc = '/favicon-32.png';
 let faviconFallback = 'L';
 let isExternalLink = false;
+let heroImage: ImageMetadata | undefined;
 
 try {
     const siteUrl = new URL(Astro.site ?? SITE_ORIGIN);
@@ -53,6 +55,7 @@ try {
 
         resolvedTitle = resolvedTitle ?? metadata?.title ?? linkLabel;
         resolvedDescription = resolvedDescription || metadata?.description || '';
+        heroImage = metadata?.image;
     }
 
     if (isExternalLink) {
@@ -70,36 +73,65 @@ resolvedTitle = resolvedTitle ?? linkLabel;
 faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
 ---
 
-<a
-        href={url}
-        target={isExternalLink ? '_blank' : undefined}
-        rel={isExternalLink ? 'noopener noreferrer' : undefined}
-        class="not-prose group my-4 flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) p-5 no-underline! hover:no-underline! transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
->
-    <div class="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-(--color-border) bg-linear-to-br from-(--color-bg) via-(--color-bg-secondary) to-(--color-border)">
-        <div class="absolute inset-0 flex items-center justify-center text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-(--color-text-secondary)">
-            {faviconFallback}
-        </div>
-        <img
-                src={faviconSrc}
+{heroImage ? (
+    <a
+            href={url}
+            class="not-prose group my-4 block overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) no-underline! hover:no-underline! transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
+    >
+        <div class="overflow-hidden">
+            <Image
+                src={heroImage}
                 alt=""
-                width="32"
-                height="32"
-                loading="lazy"
-                class="relative z-10 h-8 w-8 rounded-lg bg-(--color-bg-secondary) p-1 object-contain shadow-sm ring-1 ring-black/5"
-                onerror="this.remove()"
-        />
-    </div>
-    <div class="min-w-0 flex-1">
-        <div class="truncate font-medium text-(--color-text) group-hover:text-(--color-text-secondary) transition-colors">
-            {resolvedTitle}
+                widths={[400, 600]}
+                sizes="(max-width: 640px) 100vw, 600px"
+                class="block w-full h-40 object-cover !m-0 !rounded-none transition-transform duration-300 group-hover:scale-[1.03]"
+            />
         </div>
-        {resolvedDescription && (
-                <div class="mt-0.5 truncate text-sm text-(--color-text-secondary)">
-                    {resolvedDescription}
+        <div class="flex items-start gap-4 p-5">
+            <div class="min-w-0 flex-1">
+                <div class="font-medium text-(--color-text) group-hover:text-(--color-accent) transition-colors">
+                    {resolvedTitle}
                 </div>
-        )}
-        <div class="mt-1 text-xs text-(--color-text-muted)">{linkLabel}</div>
-    </div>
-    <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-text-secondary) transition-colors">&rarr;</span>
-</a>
+                {resolvedDescription && (
+                        <div class="mt-1 text-sm text-(--color-text-secondary) line-clamp-2">
+                            {resolvedDescription}
+                        </div>
+                )}
+                <div class="mt-2 text-xs text-(--color-text-muted)">{linkLabel}</div>
+            </div>
+            <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-text-secondary) transition-colors pt-0.5">&rarr;</span>
+        </div>
+    </a>
+) : (
+    <a
+            href={url}
+            target={isExternalLink ? '_blank' : undefined}
+            rel={isExternalLink ? 'noopener noreferrer' : undefined}
+            class="not-prose group my-4 flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) p-5 no-underline! hover:no-underline! transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
+    >
+        <div class="relative flex h-10 w-10 shrink-0 items-center justify-center">
+            <span class="absolute text-sm font-medium text-(--color-text-muted)">{faviconFallback}</span>
+            <img
+                    src={faviconSrc}
+                    alt=""
+                    width="24"
+                    height="24"
+                    loading="lazy"
+                    class="relative h-6 w-6 object-contain"
+                    onerror="this.remove()"
+            />
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="truncate font-medium text-(--color-text) group-hover:text-(--color-text-secondary) transition-colors">
+                {resolvedTitle}
+            </div>
+            {resolvedDescription && (
+                    <div class="mt-0.5 truncate text-sm text-(--color-text-secondary)">
+                        {resolvedDescription}
+                    </div>
+            )}
+            <div class="mt-1 text-xs text-(--color-text-muted)">{linkLabel}</div>
+        </div>
+        <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-text-secondary) transition-colors">&rarr;</span>
+    </a>
+)}
