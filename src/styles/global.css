@@ -184,6 +184,12 @@
   transform: scale(1);
 }
 
+/* Theme toggle icons — driven by data-theme set in inline script */
+#theme-toggle svg { display: none; }
+[data-theme="system"] #theme-toggle .icon-system { display: block; }
+[data-theme="light"] #theme-toggle .icon-light { display: block; }
+[data-theme="dark"] #theme-toggle .icon-dark { display: block; }
+
 /* Shiki dual theme — outside @layer so it beats inline styles */
 .dark pre {
   background-color: #0a0a0a !important;
