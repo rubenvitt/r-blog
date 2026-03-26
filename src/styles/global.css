@@ -12,8 +12,8 @@
   --color-accent-hover: #9a3412;
 
   /* Spacing & Sizing */
-  --content-width: 680px;
-  --content-width-wide: 900px;
+  --content-width: 820px;
+  --content-width-wide: 1100px;
 
   /* Fonts */
   --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
@@ -147,6 +147,41 @@
     border-color: var(--color-border);
     margin-block: 2rem;
   }
+}
+
+/* Image zoom overlay */
+.image-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  cursor: zoom-out;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  transition: background 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.image-zoom-overlay.active {
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.image-zoom-overlay img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.image-zoom-overlay.active img {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* Shiki dual theme — outside @layer so it beats inline styles */

@@ -16,7 +16,8 @@ const {src, alt, caption, width} = Astro.props;
             src={src}
             alt={alt}
             width={width}
-            class="rounded-xl border border-(--color-border) w-full"
+            class="rounded-xl border border-(--color-border) w-full cursor-zoom-in transition-opacity duration-200 hover:opacity-90"
+            data-zoomable
             loading="lazy"
     />
     {caption && (

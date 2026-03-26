@@ -73,5 +73,40 @@ document.querySelectorAll('a[href^="http"]').forEach(function (a) {
     }
 });
 </script>
+
+<!-- Image zoom -->
+<script is:inline>
+document.addEventListener('click', function (e) {
+    var img = e.target.closest('[data-zoomable]');
+    if (!img) return;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'image-zoom-overlay';
+
+    var clone = document.createElement('img');
+    clone.src = img.currentSrc || img.src;
+    clone.alt = img.alt;
+
+    overlay.appendChild(clone);
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () { overlay.classList.add('active'); });
+    });
+
+    function close() {
+        overlay.classList.remove('active');
+        overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
+        document.removeEventListener('keydown', onKey);
+    }
+
+    function onKey(ev) {
+        if (ev.key === 'Escape') close();
+    }
+
+    overlay.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+});
+</script>
 </body>
 </html>
