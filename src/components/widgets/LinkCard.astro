@@ -53,13 +53,12 @@ try {
 
         resolvedTitle = resolvedTitle ?? metadata?.title ?? linkLabel;
         resolvedDescription = resolvedDescription || metadata?.description || '';
-        faviconSrc = '/favicon-32.png';
     }
 
     if (isExternalLink) {
         const metadata = await fetchExternalMetadata(urlObj.toString());
 
-        resolvedTitle = resolvedTitle ?? metadata.title || hostname;
+        resolvedTitle = resolvedTitle ?? (metadata.title || hostname);
         resolvedDescription = resolvedDescription || metadata.description;
         faviconSrc = metadata.faviconDataUri ?? faviconSrc;
     }
