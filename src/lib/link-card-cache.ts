@@ -10,6 +10,7 @@ export interface ExternalLinkCardMetadata {
   description: string;
   faviconDataUri: string | null;
   fetchedAt: string;
+  fetchSucceeded: boolean;
 }
 
 type CacheStore = Record<string, ExternalLinkCardMetadata>;
@@ -46,9 +47,12 @@ function saveCache(cache: Map<string, ExternalLinkCardMetadata>): void {
   }
 }
 
+const CACHE_STALE_TTL_MS = 60 * 60 * 1000; // 1 hour for failed entries
+
 function isFresh(entry: ExternalLinkCardMetadata): boolean {
   const age = Date.now() - new Date(entry.fetchedAt).getTime();
-  return age < CACHE_TTL_MS;
+  const ttl = entry.fetchSucceeded ? CACHE_TTL_MS : CACHE_STALE_TTL_MS;
+  return age < ttl;
 }
 
 function pickFirstMatch(html: string, patterns: RegExp[]): string | undefined {
@@ -127,13 +131,6 @@ export async function fetchExternalMetadata(url: string): Promise<ExternalLinkCa
     return cached;
   }
 
-  const fallback: ExternalLinkCardMetadata = {
-    title: '',
-    description: '',
-    faviconDataUri: null,
-    fetchedAt: new Date().toISOString(),
-  };
-
   try {
     const pageUrl = new URL(url);
     const response = await fetch(url, {
@@ -142,6 +139,13 @@ export async function fetchExternalMetadata(url: string): Promise<ExternalLinkCa
     });
 
     if (!response.ok) {
+      const fallback: ExternalLinkCardMetadata = {
+        title: '',
+        description: '',
+        faviconDataUri: null,
+        fetchedAt: new Date().toISOString(),
+        fetchSucceeded: false,
+      };
       cache.set(url, fallback);
       saveCache(cache);
       return fallback;
@@ -159,6 +163,7 @@ export async function fetchExternalMetadata(url: string): Promise<ExternalLinkCa
       description,
       faviconDataUri,
       fetchedAt: new Date().toISOString(),
+      fetchSucceeded: true,
     };
 
     cache.set(url, entry);
@@ -166,6 +171,13 @@ export async function fetchExternalMetadata(url: string): Promise<ExternalLinkCa
 
     return entry;
   } catch {
+    const fallback: ExternalLinkCardMetadata = {
+      title: '',
+      description: '',
+      faviconDataUri: null,
+      fetchedAt: new Date().toISOString(),
+      fetchSucceeded: false,
+    };
     cache.set(url, fallback);
     saveCache(cache);
 
