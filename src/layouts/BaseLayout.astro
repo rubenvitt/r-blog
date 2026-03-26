@@ -50,10 +50,14 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
     <!-- Dark mode: inline script to prevent flash -->
     <script is:inline>
-    const theme = localStorage.getItem('theme');
-    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-    }
+    (function() {
+        var stored = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', stored || 'system');
+        if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+        }
+    })();
     </script>
 </head>
 <body class="bg-(--color-bg) text-(--color-text) min-h-screen flex flex-col transition-colors duration-200">
