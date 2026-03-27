@@ -9,6 +9,10 @@ image: ./_images/tools-sind-keine-prompts/hero.png
 
 
 import verifyCustomerTool from './_images/tools-sind-keine-prompts/verify_customer-tool.png'
+import authChatExample from './_images/tools-sind-keine-prompts/auth-chat-example.png'
+import approvalFlow from './_images/tools-sind-keine-prompts/approval-flow.png'
+import refundSuccess from './_images/tools-sind-keine-prompts/refund-success.png'
+import traceView from './_images/tools-sind-keine-prompts/trace-view.png'
 import Accordion from '../../components/widgets/Accordion.astro'
 import LinkCard from '../../components/widgets/LinkCard.astro'
 import Figure from '../../components/widgets/Figure.astro'
@@ -155,6 +159,12 @@ Der Nutzer muss sich mindestens einmal gegenüber dem System authentifizieren, b
 
 Wer das `verify_customer`-Ergebnis als Autorisierung behandelt, hat gerade eine natürlichsprachliche Eingabe zur Sicherheitsgrenze erklärt.
 
+<Figure
+    src={authChatExample}
+    alt="Der Refund-Agent verweigert korrekt den Zugriff auf eine fremde Bestellung und das Zurücksetzen eines fremden Passworts - Autorisierung findet im Backend statt, nicht im Chat."
+    caption="Autorisierung im Backend: Der Agent kann nur ausführen, was das System erlaubt - nicht, was der Nutzer fordert."
+/>
+
 ### Klassische API-Risiken treffen Agent-Systeme härter
 Die OWASP API Security Top 10 (2023) sind für klassische APIs geschrieben - aber drei Risiken treffen Agent-Architekturen besonders hart, weil natürlichsprachliche Interfaces die Angriffsvektoren verschleiern.
 
@@ -242,6 +252,257 @@ Gerade bei Agenten ist es deshalb wichtig, die Modellbehauptungen vom bestätigt
 
 Ich möchte nicht nur wissen, dass ein Tool aufgerufen wurde, sondern von wem, in wessen Auftrag mit welchem Freigabekontext und zu welchem Ergebnis.
 
+<Figure
+    src={traceView}
+    alt="Trace-Ansicht des Refund-Agents: chronologische Darstellung aller Einträge von User Message über Route Decision, Tool Calls mit Gate Allow bis zur finalen Agent Response."
+    caption="Trace eines Refund-Requests: Jeder Schritt - vom Routing über Tool-Calls mit Gate-Entscheidungen bis zur Antwort - ist nachvollziehbar."
+/>
+
+<Accordion title="Vollständiger Request-Trace als JSON">
+```json
+{
+  "id": "req_177464138774458839119",
+  "requestId": "req_177464138774458839119",
+  "startedAt": "2026-03-27T19:56:27.744Z",
+  "completedAt": "2026-03-27T19:56:33.339Z",
+  "userMessage": "max@example.com C001",
+  "route": "refund",
+  "entries": [
+    {
+      "id": "1bf8df49-27d3-491a-897d-046888900bcf",
+      "timestamp": "2026-03-27T19:56:27.744Z",
+      "type": "user_message",
+      "data": { "message": "max@example.com C001" }
+    },
+    {
+      "id": "86ab3b56-ef2d-45bc-9673-563349b9539a",
+      "timestamp": "2026-03-27T19:56:27.744Z",
+      "type": "model_call",
+      "data": { "purpose": "orchestrator_routing", "model": "gpt-5.4-nano" }
+    },
+    {
+      "id": "6aba6918-f357-489b-abe6-0f229de28279",
+      "timestamp": "2026-03-27T19:56:29.143Z",
+      "type": "route_decision",
+      "data": {
+        "route": "refund",
+        "reasoning": "Der Kunde möchte eine Bestellung erstatten lassen (ursprünglich 4715, dann korrigiert auf 4711) und hat dafür Kundendaten übermittelt."
+      }
+    },
+    {
+      "id": "b042743c-3607-4949-b00f-3271439fab29",
+      "timestamp": "2026-03-27T19:56:29.143Z",
+      "type": "model_call",
+      "data": {
+        "purpose": "refund_agent",
+        "model": "gpt-5.4-nano",
+        "tools": ["lookup_order", "verify_customer", "refund_order", "faq_search"]
+      }
+    },
+    {
+      "id": "ee8ffbc3-3111-4bf0-bb64-3260e2e8fdf0",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_call",
+      "data": {
+        "toolCallId": "tc_17746413904252f85e7ca",
+        "toolName": "lookup_order",
+        "arguments": { "orderId": "4711" }
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "8a0663fb-56b8-479b-8487-5a81e32780d0",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "gate_allow",
+      "data": {
+        "toolCallId": "tc_17746413904252f85e7ca",
+        "toolName": "lookup_order",
+        "decision": "allow"
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "ba0ec84c-d97b-4402-9885-fe349d22d586",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_result",
+      "data": {
+        "toolCallId": "tc_17746413904252f85e7ca",
+        "toolName": "lookup_order",
+        "result": {
+          "found": true,
+          "order": {
+            "id": "4711",
+            "customerId": "C001",
+            "customerName": "Max Mustermann",
+            "items": [{ "productId": "P001", "name": "USB-C Ladekabel", "quantity": 1, "price": 12.99 }],
+            "total": 12.99,
+            "status": "delivered",
+            "orderDate": "2025-12-01",
+            "deliveryDate": "2025-12-05",
+            "returnDeadline": "2026-06-05",
+            "isRefundable": true,
+            "refundedAt": null
+          }
+        },
+        "sideEffects": []
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "29ae5e1f-0191-480d-861e-858dcbe0bc87",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_call",
+      "data": {
+        "toolCallId": "tc_17746413904254d917aca",
+        "toolName": "verify_customer",
+        "arguments": { "customerId": "C001", "email": "max@example.com" }
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "4c82e285-8fcb-42c3-a407-13dbffd0d22b",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "gate_allow",
+      "data": {
+        "toolCallId": "tc_17746413904254d917aca",
+        "toolName": "verify_customer",
+        "decision": "allow"
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "032cf2c0-c82f-4e94-8e93-5d002d91c839",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_result",
+      "data": {
+        "toolCallId": "tc_17746413904254d917aca",
+        "toolName": "verify_customer",
+        "result": {
+          "verified": true,
+          "message": "Customer Max Mustermann verified successfully.",
+          "customer": { "id": "C001", "name": "Max Mustermann", "email": "max@example.com" }
+        },
+        "sideEffects": []
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "3c41df5a-6de6-4657-97c8-1265db9585f9",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "tool_call",
+      "data": {
+        "toolCallId": "tc_1774641391560e185f156",
+        "toolName": "refund_order",
+        "arguments": { "orderId": "4711", "reason": "Kundenwunsch: Erstattung der Bestellung 4711" }
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "987c4d51-fb88-419e-b9d5-4334f30fd6bc",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "gate_allow",
+      "data": {
+        "toolCallId": "tc_1774641391560e185f156",
+        "toolName": "refund_order",
+        "decision": "require_approval"
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "3617944e-9aa0-4e72-9e14-5843debf2753",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "approval_response",
+      "data": { "toolCallId": "tc_1774641391560e185f156", "approved": true }
+    },
+    {
+      "id": "be7d0276-0f3e-4e92-9c5f-236a1569c2e8",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "tool_result",
+      "data": {
+        "toolCallId": "tc_1774641391560e185f156",
+        "toolName": "refund_order",
+        "result": {
+          "success": true,
+          "message": "Order 4711 has been refunded. Amount: $12.99. Refund ID: fffc4a8c-b5a0-415a-b45d-9710d0e4879f.",
+          "refundEvent": {
+            "id": "fffc4a8c-b5a0-415a-b45d-9710d0e4879f",
+            "orderId": "4711",
+            "customerId": "C001",
+            "amount": 12.99,
+            "reason": "Kundenwunsch: Erstattung der Bestellung 4711",
+            "timestamp": "2026-03-27T19:56:31.560Z",
+            "approvedBy": "auto"
+          }
+        },
+        "sideEffects": ["refund_created", "order_status_updated"]
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "508f8d6a-e1b1-49cd-bb1c-bbaf6656059d",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "state_change",
+      "data": {
+        "toolName": "refund_order",
+        "sideEffects": ["refund_created", "order_status_updated"]
+      }
+    },
+    {
+      "id": "0082aab1-d200-4a6b-89ef-d0848d4cd095",
+      "timestamp": "2026-03-27T19:56:33.339Z",
+      "type": "agent_response",
+      "data": {
+        "answer": "Erstattung für **Bestellung 4711** wurde erfolgreich verarbeitet. ✅ ...",
+        "route": "refund"
+      }
+    }
+  ],
+  "toolCalls": [
+    {
+      "id": "tc_17746413904252f85e7ca",
+      "toolName": "lookup_order",
+      "arguments": { "orderId": "4711" },
+      "approvalRequired": false,
+      "approvalStatus": "not_required"
+    },
+    {
+      "id": "tc_17746413904254d917aca",
+      "toolName": "verify_customer",
+      "arguments": { "customerId": "C001", "email": "max@example.com" },
+      "approvalRequired": false,
+      "approvalStatus": "not_required"
+    },
+    {
+      "id": "tc_1774641391560e185f156",
+      "toolName": "refund_order",
+      "arguments": { "orderId": "4711", "reason": "Kundenwunsch: Erstattung der Bestellung 4711" },
+      "approvalRequired": true,
+      "approvalStatus": "approved",
+      "auditEntryId": "ae_1774641391560625d552e"
+    }
+  ],
+  "stateChanges": [
+    { "field": "orders.4711.status", "before": "delivered", "after": "refunded" },
+    { "field": "orders.4711.refundedAt", "before": null, "after": "2026-03-27T19:56:31.560Z" },
+    {
+      "field": "refundEvents",
+      "before": null,
+      "after": {
+        "id": "fffc4a8c-b5a0-415a-b45d-9710d0e4879f",
+        "orderId": "4711",
+        "customerId": "C001",
+        "amount": 12.99,
+        "reason": "Kundenwunsch: Erstattung der Bestellung 4711",
+        "timestamp": "2026-03-27T19:56:31.560Z",
+        "approvedBy": "auto"
+      }
+    }
+  ],
+  "auditEntryIds": ["ae_1774641391560625d552e"]
+}
+```
+</Accordion>
+
 Die Versionierung des Modells, Prompts und des Toolkatalogs ist dabei kein Nice to have. Wenn ein Modellupdate dazu führt, dass ein Tool aggressiver aufgerufen wird (oder gar nicht mehr), muss das nachvollziehbar sein - und das geht nur, wenn die Versionen im Audit-Eintrag stehen.
 
 ### RequestIDs: nicht optional, sondern die Grundlage
@@ -298,6 +559,18 @@ Das Policy-Gate ist kein einzelnes `if`-Statement, es ist vielmehr eine Prüfsch
 - **Objekt- & Funktionsrechte**: wie im Auth-Teil beschrieben: hat der Nutzer das Recht, diese Aktion auf dieses Objekt auszuführen?
 - **Idempotenz**: Wurde der Call mit diesen (oder ähnlichen) Parametern zuvor bereits ausgeführt?
 - **Domain Invarianten**: Fachliche Business-Rules, die das Modell nicht kennen kann - Dauer von Refunds, der Artikel muss delivered sein, Schwellwerte für Refunds, ...
+
+<Figure
+    src={approvalFlow}
+    alt="Der Refund-Agent durchläuft Identitätsprüfung, Berechtigungsprüfung und Approval-Dialog, bevor die Erstattung ausgelöst wird."
+    caption="Policy Gate in Aktion: Identitätsprüfung, Objektberechtigung und Approval-Dialog - bevor der Tool-Call ausgeführt wird."
+/>
+
+<Figure
+    src={refundSuccess}
+    alt="Erfolgreiche Erstattung mit Refund-ID, Betrag und Grund."
+    caption="Erst nach Approval: Die Erstattung wird mit eindeutiger Refund-ID, Betrag und Grund bestätigt."
+/>
 
 ### Read-Only & Write-Tools sollten getrennt werden
 Read-Only-Tools können in der Regel mit niedrigeren Freigabestufen betrieben werden, da sie keinen Zustand verändern - und ein fehlerhafter Aufruf hat nur begrenzte Auswirkungen.
