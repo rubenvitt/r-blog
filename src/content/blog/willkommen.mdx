@@ -5,11 +5,15 @@ date: 2026-03-25
 tags: ["astro", "blog", "meta"]
 ---
 
+
 import Callout from '../../components/widgets/Callout.astro';
 import LinkCard from '../../components/widgets/LinkCard.astro';
 import CodeTabs from '../../components/widgets/CodeTabs.astro';
 import Accordion from '../../components/widgets/Accordion.astro';
-import Embed from '../../components/widgets/Embed.astro';
+
+<Callout type="info">
+  Transparenzhinweis: Dieser Beitrag wurde ausnahmsweise von einer KI verfasst — als Demo-Content bei der Erstellung des Blogs.
+</Callout>
 
 Dieser Blog ist mein neues Zuhause im Web. Gebaut mit Astro, gestyled mit Tailwind CSS, und gehostet auf Cloudflare Pages. Alles Open Source, alles unter meiner Kontrolle.
 
@@ -27,7 +31,7 @@ Ghost war gut — der Editor ist fantastisch, Slash-Commands machen Spaß. Aber 
 
 Links werden automatisch als hübsche Vorschau-Karten dargestellt:
 
-<LinkCard url="https://astro.build" />
+<LinkCard url="https://astro.build"/>
 
 ### Callouts
 
@@ -48,15 +52,15 @@ Verschiedene Typen für verschiedene Zwecke:
 ### Code mit Tabs
 
 <CodeTabs labels={["npm", "pnpm", "yarn"]}>
-```bash
-npm create astro@latest
-```
-```bash
-pnpm create astro@latest
-```
-```bash
-yarn create astro@latest
-```
+  ```bash
+  npm create astro@latest
+  ```
+  ```bash
+  pnpm create astro@latest
+  ```
+  ```bash
+  yarn create astro@latest
+  ```
 </CodeTabs>
 
 ### Syntax Highlighting

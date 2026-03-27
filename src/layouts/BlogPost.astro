@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import BaseLayout from './BaseLayout.astro';
 import TagBadge from '../components/ui/TagBadge.astro';
+import ReadingProgress from '../components/ui/ReadingProgress.astro';
 
 interface Props {
     title: string;
@@ -33,6 +34,7 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
 ---
 
 <BaseLayout title={`${title} — rubeen.dev`} description={description}>
+    <ReadingProgress readingTime={readingTime} />
     <!-- Hero Header -->
     {image ? (
         <div class="relative min-h-[50vh] flex items-end text-white overflow-hidden">
@@ -110,4 +112,16 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
     <article class="prose mx-auto max-w-(--content-width) px-6 py-12">
         <slot/>
     </article>
+
+    <!-- Heading anchor links -->
+    <script is:inline>
+    document.querySelectorAll('article.prose h2[id], article.prose h3[id]').forEach(function(heading) {
+        var anchor = document.createElement('a');
+        anchor.className = 'heading-anchor';
+        anchor.href = '#' + heading.id;
+        anchor.textContent = '#';
+        anchor.setAttribute('aria-hidden', 'true');
+        heading.prepend(anchor);
+    });
+    </script>
 </BaseLayout>
