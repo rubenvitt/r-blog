@@ -4,7 +4,7 @@ Optionaler Audio-Player für Blogposts mit Wellenform-Visualisierung und Transkr
 
 ## Entscheidungen
 
-- **Audio-Hosting**: Selbst gehostet — MP3-Dateien in `public/audio/`
+- **Audio-Hosting**: Selbst gehostet — MP3-Dateien in `public/audio/`. **Wichtig:** MP3s nach Generierung (z.B. via TTS) immer mit `scripts/fix-podcast-mp3s.sh` re-encoden, da TTS-Tools oft fehlerhafte Xing/Info-Header schreiben (falsche Frame-Counts → Browser zeigt kürzere Dauer an)
 - **Frontmatter**: Minimal — `audioFile` (Pflicht) + `transcript` (optional)
 - **Platzierung**: Fest im Layout zwischen Hero-Header und Artikel-Content
 - **Stil**: Waveform Card — kompakte Karte mit Wellenform-Visualisierung

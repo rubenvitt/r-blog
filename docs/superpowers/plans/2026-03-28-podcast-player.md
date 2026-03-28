@@ -615,3 +615,19 @@ Do NOT commit the test data — only commit if lint/format fixes were needed:
 git add -A
 git commit -m "chore: lint and format fixes"
 ```
+
+---
+
+### Hinweis: MP3-Header-Problem bei TTS-generierten Dateien
+
+TTS-Dienste erzeugen häufig MP3-Dateien mit fehlerhaften Xing/Info-Headern (falsche Frame-Counts). Browser lesen diesen Header und zeigen eine kürzere Dauer an als die tatsächliche Audio-Länge.
+
+**Nach jeder neuen Podcast-Generierung** müssen die MP3s re-encoded werden:
+
+```bash
+./scripts/fix-podcast-mp3s.sh
+# oder einzelne Datei:
+./scripts/fix-podcast-mp3s.sh public/audio/neuer-post.mp3
+```
+
+Das Script re-encoded mit `ffmpeg -c:a libmp3lame -b:a 128k` und schreibt dabei korrekte Xing-Header.
