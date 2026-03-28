@@ -17,6 +17,7 @@ const blog = defineCollection({
         .object({
           audioFile: z.string(),
           transcript: z.string().optional(),
+          duration: z.string().optional(),
         })
         .optional(),
     }),
