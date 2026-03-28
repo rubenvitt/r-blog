@@ -406,12 +406,19 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
         }
     }
 
-    audio.addEventListener('loadedmetadata', function () {
+    function updateDuration() {
+        if (!audio.duration || !isFinite(audio.duration)) return;
         var dur = formatTime(audio.duration);
         durationDisplay.textContent = dur;
-        timeCurrent.textContent = '0:00';
         timeTotal.textContent = dur;
+    }
+
+    audio.addEventListener('loadedmetadata', function () {
+        updateDuration();
+        timeCurrent.textContent = '0:00';
     });
+
+    audio.addEventListener('durationchange', updateDuration);
 
     audio.addEventListener('timeupdate', updateProgress);
 
