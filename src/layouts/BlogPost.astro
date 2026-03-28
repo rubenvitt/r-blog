@@ -112,7 +112,7 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
 
     {podcast && (
         <div class="mx-auto max-w-(--content-width) px-6 pt-8">
-            <PodcastPlayer audioFile={podcast.audioFile} transcript={podcast.transcript} />
+            <PodcastPlayer audioFile={podcast.audioFile} transcript={podcast.transcript} title={title} />
         </div>
     )}
 

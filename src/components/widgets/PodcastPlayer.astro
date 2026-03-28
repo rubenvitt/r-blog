@@ -2,15 +2,16 @@
 interface Props {
     audioFile: string;
     transcript?: string;
+    title?: string;
 }
 
-const {audioFile, transcript} = Astro.props;
+const {audioFile, transcript, title} = Astro.props;
 
 const BAR_COUNT = 36;
 const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.random() * 50));
 ---
 
-<div class="podcast-player not-prose" tabindex="0">
+<div class="podcast-player not-prose" tabindex="0" data-title={title || 'Podcast'}>
     <audio preload="metadata" src={audioFile}></audio>
 
     <div class="podcast-card">
@@ -37,18 +38,42 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
             </div>
 
             <div class="bottom-row">
-                <span class="time-display">0:00 / --:--</span>
-                {transcript && (
-                    <button class="transcript-toggle" type="button">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                        </svg>
-                        Transkript
-                    </button>
-                )}
+                <span class="time-display">
+                    <span class="time-current" title="Klicken um Zeit einzugeben">0:00</span>
+                    <input class="time-input" type="text" inputmode="numeric" placeholder="0:00" style="display:none" />
+                    <span class="time-separator"> / </span>
+                    <span class="time-total">--:--</span>
+                </span>
+                <div class="bottom-controls">
+                    <div class="skip-controls" style="display:none">
+                        <button class="skip-btn skip-back" type="button" aria-label="15 Sekunden zurück" title="15s zurück">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="1 4 1 10 7 10" />
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                            </svg>
+                            <span>15</span>
+                        </button>
+                        <button class="skip-btn skip-forward" type="button" aria-label="15 Sekunden vor" title="15s vor">
+                            <span>15</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10" />
+                                <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="speed-btn" type="button" title="Wiedergabegeschwindigkeit">1x</button>
+                    {transcript && (
+                        <button class="transcript-toggle" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                            Transkript
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     </div>
@@ -150,6 +175,85 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
         font-size: 12px;
         color: var(--color-text-muted);
         font-family: var(--font-mono);
+        display: flex;
+        align-items: center;
+    }
+
+    .time-current {
+        cursor: pointer;
+        border-radius: 3px;
+        padding: 1px 3px;
+        margin: -1px -3px;
+        transition: background 0.15s;
+    }
+
+    .time-current:hover {
+        background: var(--color-border);
+    }
+
+    .time-input {
+        width: 4ch;
+        font-size: 12px;
+        font-family: var(--font-mono);
+        color: var(--color-text);
+        background: var(--color-bg);
+        border: 1px solid var(--color-accent);
+        border-radius: 3px;
+        padding: 1px 3px;
+        outline: none;
+        text-align: center;
+    }
+
+    .bottom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .skip-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .skip-btn {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--color-text-muted);
+        background: transparent;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 3px 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        line-height: 1;
+    }
+
+    .skip-btn:hover {
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+    }
+
+    .speed-btn {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        color: var(--color-text-muted);
+        background: transparent;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 3px 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+        line-height: 1;
+    }
+
+    .speed-btn:hover {
+        border-color: var(--color-accent);
+        color: var(--color-accent);
     }
 
     .transcript-toggle {
@@ -203,6 +307,33 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
     .podcast-player:has(.transcript-accordion.open) .podcast-card {
         border-radius: 12px 12px 0 0;
     }
+
+    @media (max-width: 480px) {
+        .podcast-card {
+            gap: 14px;
+            padding: 16px;
+        }
+
+        .play-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+        }
+
+        .bottom-row {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .bottom-controls {
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .transcript-content {
+            padding: 16px;
+        }
+    }
 </style>
 
 <script is:inline>
@@ -216,15 +347,36 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
     var iconPause = player.querySelector('.icon-pause');
     var waveform = player.querySelector('.waveform');
     var bars = player.querySelectorAll('.bar');
-    var timeDisplay = player.querySelector('.time-display');
+    var timeCurrent = player.querySelector('.time-current');
+    var timeInput = player.querySelector('.time-input');
+    var timeTotal = player.querySelector('.time-total');
     var durationDisplay = player.querySelector('.duration');
+    var skipControls = player.querySelector('.skip-controls');
+    var skipBack = player.querySelector('.skip-back');
+    var skipForward = player.querySelector('.skip-forward');
+    var speedBtn = player.querySelector('.speed-btn');
     var transcriptToggle = player.querySelector('.transcript-toggle');
     var accordion = player.querySelector('.transcript-accordion');
+
+    var speeds = [1, 1.25, 1.5, 2];
+    var speedIndex = 0;
 
     function formatTime(seconds) {
         var m = Math.floor(seconds / 60);
         var s = Math.floor(seconds % 60);
         return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function parseTime(str) {
+        var parts = str.trim().split(':');
+        if (parts.length === 2) {
+            var m = parseInt(parts[0], 10);
+            var s = parseInt(parts[1], 10);
+            if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+        }
+        var num = parseFloat(str);
+        if (!isNaN(num)) return num;
+        return -1;
     }
 
     function updateProgress() {
@@ -238,34 +390,102 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
                 bars[i].classList.remove('played');
             }
         }
-        timeDisplay.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
+        timeCurrent.textContent = formatTime(audio.currentTime);
+        timeTotal.textContent = formatTime(audio.duration);
+    }
+
+    function setPlaying(playing) {
+        if (playing) {
+            iconPlay.style.display = 'none';
+            iconPause.style.display = '';
+            skipControls.style.display = '';
+        } else {
+            iconPlay.style.display = '';
+            iconPause.style.display = 'none';
+            skipControls.style.display = 'none';
+        }
     }
 
     audio.addEventListener('loadedmetadata', function () {
         var dur = formatTime(audio.duration);
         durationDisplay.textContent = dur;
-        timeDisplay.textContent = '0:00 / ' + dur;
+        timeCurrent.textContent = '0:00';
+        timeTotal.textContent = dur;
     });
 
     audio.addEventListener('timeupdate', updateProgress);
 
     audio.addEventListener('ended', function () {
-        iconPlay.style.display = '';
-        iconPause.style.display = 'none';
         audio.currentTime = 0;
+        setPlaying(false);
         updateProgress();
     });
+
+    audio.addEventListener('play', function () { setPlaying(true); });
+    audio.addEventListener('pause', function () { setPlaying(false); });
 
     playBtn.addEventListener('click', function () {
         if (audio.paused) {
             audio.play();
-            iconPlay.style.display = 'none';
-            iconPause.style.display = '';
         } else {
             audio.pause();
-            iconPlay.style.display = '';
-            iconPause.style.display = 'none';
         }
+    });
+
+    // Editable time display
+    timeCurrent.addEventListener('click', function (e) {
+        e.stopPropagation();
+        timeCurrent.style.display = 'none';
+        timeInput.style.display = '';
+        timeInput.value = formatTime(audio.currentTime);
+        timeInput.focus();
+        timeInput.select();
+    });
+
+    function commitTimeInput() {
+        var val = parseTime(timeInput.value);
+        if (val >= 0 && audio.duration) {
+            audio.currentTime = Math.min(val, audio.duration);
+            updateProgress();
+        }
+        timeInput.style.display = 'none';
+        timeCurrent.style.display = '';
+    }
+
+    timeInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commitTimeInput();
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            timeInput.style.display = 'none';
+            timeCurrent.style.display = '';
+        }
+        e.stopPropagation();
+    });
+
+    timeInput.addEventListener('blur', function () {
+        commitTimeInput();
+    });
+
+    // Skip ±15s
+    skipBack.addEventListener('click', function () {
+        audio.currentTime = Math.max(0, audio.currentTime - 15);
+        updateProgress();
+    });
+
+    skipForward.addEventListener('click', function () {
+        if (!audio.duration) return;
+        audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
+        updateProgress();
+    });
+
+    // Playback speed
+    speedBtn.addEventListener('click', function () {
+        speedIndex = (speedIndex + 1) % speeds.length;
+        audio.playbackRate = speeds[speedIndex];
+        speedBtn.textContent = speeds[speedIndex] + 'x';
     });
 
     waveform.addEventListener('click', function (e) {
@@ -277,11 +497,59 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
     });
 
     player.addEventListener('keydown', function (e) {
-        if (e.code === 'Space' && e.target === player) {
+        if (e.target === timeInput) return;
+        if (e.code === 'Space') {
             e.preventDefault();
             playBtn.click();
         }
+        if (e.code === 'ArrowLeft') {
+            e.preventDefault();
+            audio.currentTime = Math.max(0, audio.currentTime - 15);
+            updateProgress();
+        }
+        if (e.code === 'ArrowRight') {
+            e.preventDefault();
+            if (audio.duration) {
+                audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
+                updateProgress();
+            }
+        }
     });
+
+    // Media Session API — Lock-Screen-Controls
+    if ('mediaSession' in navigator) {
+        var podcastTitle = player.getAttribute('data-title') || 'Podcast';
+
+        audio.addEventListener('play', function () {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: podcastTitle,
+                artist: 'rubeen.dev',
+            });
+        });
+
+        navigator.mediaSession.setActionHandler('play', function () {
+            audio.play();
+        });
+        navigator.mediaSession.setActionHandler('pause', function () {
+            audio.pause();
+        });
+        navigator.mediaSession.setActionHandler('seekbackward', function () {
+            audio.currentTime = Math.max(0, audio.currentTime - 15);
+            updateProgress();
+        });
+        navigator.mediaSession.setActionHandler('seekforward', function () {
+            if (audio.duration) {
+                audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
+            }
+            updateProgress();
+        });
+        navigator.mediaSession.setActionHandler('seekto', function (details) {
+            if (details.seekTime != null && audio.duration) {
+                audio.currentTime = Math.min(details.seekTime, audio.duration);
+                updateProgress();
+            }
+        });
+    }
 
     if (transcriptToggle && accordion) {
         var loaded = false;
