@@ -3,6 +3,7 @@ import { Image } from 'astro:assets';
 import BaseLayout from './BaseLayout.astro';
 import TagBadge from '../components/ui/TagBadge.astro';
 import ReadingProgress from '../components/ui/ReadingProgress.astro';
+import PodcastPlayer from '../components/widgets/PodcastPlayer.astro';
 
 interface Props {
     title: string;
@@ -11,9 +12,10 @@ interface Props {
     updatedDate?: Date;
     tags?: string[];
     image?: ImageMetadata;
+    podcast?: {audioFile: string; transcript?: string};
 }
 
-const {title, description, date, updatedDate, tags = [], image} = Astro.props;
+const {title, description, date, updatedDate, tags = [], image, podcast} = Astro.props;
 
 const formattedDate = date.toLocaleDateString('de-DE', {
     year: 'numeric',
@@ -105,6 +107,12 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
                     </div>
                 </div>
             </div>
+        </div>
+    )}
+
+    {podcast && (
+        <div class="mx-auto max-w-(--content-width) px-6 pt-8">
+            <PodcastPlayer audioFile={podcast.audioFile} transcript={podcast.transcript} title={title} />
         </div>
     )}
 
