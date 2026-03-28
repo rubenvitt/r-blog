@@ -62,6 +62,14 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
                         </button>
                     </div>
                     <button class="speed-btn" type="button" title="Wiedergabegeschwindigkeit">1x</button>
+                    <button class="rss-btn" type="button" title="Podcast-Feed-URL kopieren" aria-label="Podcast-Feed-URL kopieren">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 11a9 9 0 0 1 9 9" />
+                            <path d="M4 4a16 16 0 0 1 16 16" />
+                            <circle cx="5" cy="19" r="1" fill="currentColor" />
+                        </svg>
+                        RSS
+                    </button>
                     {transcript && (
                         <button class="transcript-toggle" type="button">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -252,6 +260,32 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
     }
 
     .speed-btn:hover {
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+    }
+
+    .rss-btn {
+        font-size: 12px;
+        color: var(--color-text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--color-border);
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+        position: relative;
+    }
+
+    .rss-btn:hover {
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+    }
+
+    .rss-btn.copied {
         border-color: var(--color-accent);
         color: var(--color-accent);
     }
@@ -555,6 +589,23 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
                 audio.currentTime = Math.min(details.seekTime, audio.duration);
                 updateProgress();
             }
+        });
+    }
+
+    var rssBtn = player.querySelector('.rss-btn');
+    if (rssBtn) {
+        var rssBtnOriginalNodes = Array.from(rssBtn.childNodes).map(function (n) { return n.cloneNode(true); });
+        rssBtn.addEventListener('click', function () {
+            var feedUrl = window.location.origin + '/podcast.xml';
+            navigator.clipboard.writeText(feedUrl).then(function () {
+                rssBtn.textContent = 'Kopiert!';
+                rssBtn.classList.add('copied');
+                setTimeout(function () {
+                    rssBtn.textContent = '';
+                    rssBtnOriginalNodes.forEach(function (n) { rssBtn.appendChild(n.cloneNode(true)); });
+                    rssBtn.classList.remove('copied');
+                }, 2000);
+            });
         });
     }
 
