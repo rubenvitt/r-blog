@@ -13,6 +13,12 @@ const blog = defineCollection({
       aliases: z.array(z.string()).default([]),
       image: image().optional(),
       draft: z.boolean().default(false),
+      podcast: z
+        .object({
+          audioFile: z.string(),
+          transcript: z.string().optional(),
+        })
+        .optional(),
     }),
 });
 
