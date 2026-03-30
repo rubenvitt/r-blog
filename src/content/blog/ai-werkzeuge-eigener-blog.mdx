@@ -1,0 +1,358 @@
+---
+title: "AI-Werkzeuge für den eigenen Blog: Podcast-Pipeline, Lektorat und die Skills dahinter"
+description: "Wie mein Blog die gleichen AI-Prinzipien anwendet, die ich in den letzten drei Posts beschrieben habe - mit automatisierter Podcast-Generierung und AI-gestütztem Lektorat."
+date: 2026-03-29
+tags: ["ai", "blog", "meta", "software-engineering"]
+podcast:
+  audioFile: /audio/ai-werkzeuge-eigener-blog.mp3
+  transcript: /audio/ai-werkzeuge-eigener-blog.txt
+  duration: "17:25"
+---
+
+import Callout from '../../components/widgets/Callout.astro';
+import LinkCard from '../../components/widgets/LinkCard.astro';
+import Accordion from '../../components/widgets/Accordion.astro';
+import CodeTabs from '../../components/widgets/CodeTabs.astro';
+
+Drei Posts lang haben wir über Prinzipien gesprochen. Contracts statt Freitext. Evals statt Hoffnung. Tool-Sicherheit statt "wird schon passen". Alles anhand eines Refund-Agents, der Rückerstattungen verarbeitet - weit weg vom eigenen Schreibtisch.
+
+<LinkCard url="/blog/ai-systems-architecture" />
+
+<LinkCard url="/blog/ai-evals-ci-pipeline" />
+
+<LinkCard url="/blog/tools-sind-keine-prompts" />
+
+Jetzt der Plot-Twist: Die gleichen Prinzipien stecken in diesem Blog.
+
+Dieser Post, den du gerade liest, wurde von einer AI lektoriert - von einem spezialisierten Lektor-Skill mit eigenem Stilprofil und strukturiertem Feedback. Und wenn du lieber zuhörst statt liest: oben ist der Play-Button. Der Podcast wurde vollautomatisch aus dem Artikeltext erzeugt - Dialog-Skript, Stimmen, Audio, Feed.
+
+Mehrere Posts haben mittlerweile Podcasts. Jeder Text durchläuft ein AI-Lektorat. Beides passiert nicht manuell, sondern über domänenspezifische Claude Code Skills - wiederverwendbare, versionierte Werkzeuge mit definiertem Input und Output, aufrufbar als Slash Command direkt in Claude Code.
+
+Ist mein Blog jetzt ein AI-System? Nein. Kein Nutzer sendet Anfragen an ein Modell. Kein Agent trifft Laufzeit-Entscheidungen über Produktlogik. Aber die gleichen Engineering-Prinzipien, die ich für AI-Features in Produktionsanwendungen beschrieben habe, stecken im Workflow dahinter. Ein Stilprofil als Contract. Bewertungskategorien als Rubrics. Eine Pipeline mit externer API, Fehlerbehandlung und definiertem Output-Format.
+
+Im Folgenden schauen wir uns zwei Features an: die **Podcast-Pipeline**, die aus einem MDX-Blogpost über Dialog-Generierung und ElevenLabs einen vollständigen Podcast-Feed erzeugt. Und den **Lektor-Skill**, der Texte gegen ein dokumentiertes Stilprofil prüft, bevor sie veröffentlicht werden. Beide zeigen, wie sich die Prinzipien aus den vorherigen Posts konkret anfühlen, wenn sie nicht in einer Demo-App landen, sondern im eigenen Werkzeugkasten.
+
+## Die Podcast-Pipeline: Vom MDX zum RSS-Feed
+
+Mehrere Posts haben jetzt eine Audio-Version. Kein manuelles Einsprechen, kein Studio, kein Podcast-Hosting. Stattdessen: ein Claude Code Skill, eine API, ein Python-Skript und etwas Astro-Glue-Code. Vom Markdown zum abspielbaren Podcast in unter fünf Minuten.
+
+Aber der Reihe nach.
+
+### Überblick der Pipeline
+
+Der Workflow sieht so aus:
+
+**Blogpost** → **Dialog-Skript** (Claude) → **Audio** (ElevenLabs Text-to-Dialogue) → **MP3 + Transkript** → **Frontmatter** → **RSS-Feed** → **Player**
+
+Jeder Schritt hat einen klaren Input und Output. Das Skript ist eine Textdatei mit Speaker-Turns. Das Audio ist eine MP3. Die Metadaten landen im Frontmatter. Der RSS-Feed wird beim Build generiert. Der Player liest alles aus dem Frontmatter - keine Magie, keine versteckten Abhängigkeiten.
+
+### Dialog-Generierung
+
+Der Blog-Podcast-Skill liest einen Post, extrahiert die Struktur und Kernthesen - und generiert daraus ein deutschsprachiges Zwei-Personen-Gespräch. Die Sprecher heißen Alex und Lara.
+
+Was dabei nicht entstehen soll: ein Interview. Kein "Das ist ein toller Punkt, Alex!" - sondern eine echte Diskussion. Beide bringen Perspektiven ein, hinterfragen, bauen aufeinander auf. Das klingt trivial, macht aber den Unterschied zwischen "AI-generiert" und "ich würde das tatsächlich anhören".
+
+Ein paar Regeln, die im Skill hinterlegt sind:
+
+- **Keine Interview-Struktur** - echte Diskussion, gelegentlicher Widerspruch
+- **Fachbegriffe bleiben englisch** - Contract, Eval, Tool-Call, genau wie im Blog
+- **Emotional Cues sparsam** - `[nachdenklich]`, `[lacht]`, aber maximal 1-2 pro Minute, sonst kippt es ins Theatralische
+- **Feste Struktur**: Intro mit Hook (~10%) → Hauptteil (~70%) → Zusammenfassung (~10%) → Verabschiedung (~10%)
+
+Das Ergebnis ist eine Textdatei mit einfachem Format:
+
+```
+Alex: Dialogzeile hier
+Lara: Dialogzeile hier
+Alex: [nachdenklich] Noch eine Zeile...
+```
+
+Keine komplexe Markup-Sprache, kein JSON. Einfach lesbar, einfach editierbar. Wenn mir eine Formulierung nicht passt, ändere ich die Zeile und generiere das Audio neu.
+
+### Audio via ElevenLabs
+
+Für die Audio-Generierung nutze ich die ElevenLabs Text-to-Dialogue API mit dem Eleven v3 Modell - laut ElevenLabs das expressivste TTS-Modell, 74+ Sprachen, explizit nicht für Echtzeit gedacht, sondern für hochwertige Offline-Generierung. Genau das, was ich brauche.
+
+<LinkCard url="https://elevenlabs.io/docs/overview/capabilities/text-to-dialogue" />
+
+Der API-Call ist überraschend simpel: Ein Array aus `{text, voice_id}`-Objekten rein, MP3 raus. Das Python-Skript parsed die Dialog-Datei, mappt die Sprecher auf Voice-IDs und schickt alles ab.
+
+<Accordion title="ElevenLabs API-Call (generate_audio.py)">
+```python
+import urllib.request
+import json
+
+API_URL = "https://api.elevenlabs.io/v1/text-to-dialogue"
+
+VOICES = {
+    "Alex": "<voiceid 1>",
+    "Lara": "<voiceid 1>",
+}
+
+def send_chunk(chunk, api_key):
+    payload = json.dumps({
+        "inputs": chunk,  # [{text, voice_id}, ...]
+        "model_id": "eleven_v3",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+```
+</Accordion>
+
+Einziger Kniff: die API hat ein Zeichenlimit pro Request. Deshalb wird bei ca. 4500 Zeichen automatisch gechunkt - die resultierenden MP3-Teile werden anschließend zusammengefügt.
+
+Kosten? Rechne ich mit Pay-per-use, läge ich für einen typischen Blogpost-Podcast von 10-20 Minuten Länge bei ca. 3-6 Dollar pro Episode.
+
+<Accordion title="Technischer Stolperstein: MP3-Header-Problem">
+Wenn der Dialog zu lang für einen einzelnen API-Call ist, wird er in Chunks aufgeteilt. Die resultierenden MP3-Teile werden per Byte-Concatenation zusammengefügt - und genau da liegt das Problem: Jeder Chunk hat seine eigenen Xing/Info-Header mit Frame-Counts, die nach dem Zusammenfügen nicht mehr stimmen. Der Browser zeigt eine falsche Duration an, das Seeking funktioniert nicht richtig.
+
+Der Fix ist ein simpler ffmpeg Re-Encode:
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libmp3lame -b:a 128k output.mp3
+```
+
+Das Skript `scripts/fix-podcast-mp3s.sh` macht genau das für alle MP3s im `public/audio/`-Verzeichnis. Einmal ausführen, Problem gelöst.
+</Accordion>
+
+### Astro-Integration
+
+Damit der Blog weiß, dass ein Post einen Podcast hat, braucht es genau ein Feld im Frontmatter:
+
+<CodeTabs labels={["Mit Podcast", "Ohne Podcast"]}>
+```yaml
+---
+title: "Mein Blogpost"
+description: "Beschreibung"
+date: 2026-03-27
+tags: ["ai"]
+podcast:
+  audioFile: /audio/my-post.mp3
+  transcript: /audio/my-post.txt
+  duration: "21:08"
+---
+```
+```yaml
+---
+title: "Mein Blogpost"
+description: "Beschreibung"
+date: 2026-03-27
+tags: ["ai"]
+---
+```
+</CodeTabs>
+
+Das Schema in `content.config.ts` definiert `podcast` als optionales Objekt mit `audioFile`, `transcript` und `duration`. Kein Post muss einen Podcast haben - aber wenn er einen hat, bekommt er automatisch den Player.
+
+Die PodcastPlayer-Komponente bringt einiges mit: eine Waveform-Visualisierung, Speed-Control (1x/1.25x/1.5x/2x), Skip-Buttons (±15s), einen RSS-Button, ein aufklappbares Transkript und Media Session API-Support - also Lock-Screen-Controls auf dem Handy. Das klingt nach viel, war aber nötig, damit sich das Anhören nicht wie ein Kompromiss anfühlt.
+
+Der RSS-Feed unter `/podcast.xml` wird beim Astro-Build generiert, komplett mit iTunes-Tags. Wer will, kann den Feed in jede Podcast-App ziehen - Apple Podcasts, Overcast, Pocket Casts. Ein Blogpost ist ein Contract - wer ihn automatisiert verarbeiten will, braucht ein Schema. Für Audio genauso wie für Evals.
+
+### Alternativen im Vergleich
+
+Warum nicht einfach NotebookLM nehmen? Ist doch kostenlos, generiert Podcasts mit einem Klick und klingt überzeugend.
+
+Weil "überzeugend klingen" und "korrekt sein" zwei verschiedene Dinge sind. Eine Studie der University of Pittsburgh (präsentiert bei der AGU 2025) hat NotebookLM-generierte Podcasts systematisch untersucht - und in jeder getesteten Zusammenfassung Ungenauigkeiten gefunden, mit einer Halluzinationsrate von ~13%. Das Tückische: die Fehler waren für Nicht-Experten kaum erkennbar.
+
+<Callout type="warning">
+Generierte Podcasts klingen oft überzeugend, selbst wenn die Inhalte falsch sind. Das macht sie gefährlicher als offensichtlich fehlerhafte Outputs. Wer generierte Audio-Inhalte veröffentlicht, muss den Inhalt gegen die Quelle prüfen - unabhängig vom Tool.
+</Callout>
+
+Dazu kommt: NotebookLM bietet keine API, keine Kontrolle über Stimmen oder Dialog-Struktur. Es ist eine Blackbox - gut für den schnellen Überblick, unbrauchbar für einen reproduzierbaren Workflow.
+
+<LinkCard url="https://github.com/souzatharsis/podcastfy" />
+
+Auf der anderen Seite steht Podcastfy - ein Open-Source-Python-Projekt mit Support für multiple TTS-Backends (ElevenLabs, Google, Edge, OpenAI). Volle Kontrolle, aber auch volles Setup.
+
+Ich sehe drei Abstufungen:
+
+1. **Zero Control** - NotebookLM, ElevenLabs GenFM: Ein Klick, kein Einfluss. Gut zum Ausprobieren.
+2. **Low Control** - ElevenLabs Create Podcast API: Programmatischer Zugriff, aber die Dialog-Generierung übernimmt ElevenLabs.
+3. **Full Control** - Text-to-Dialogue API + eigenes Skript: Man schreibt den Dialog selbst (oder lässt ihn generieren) und kontrolliert jeden Speaker-Turn, jede Stimme, jede Pause.
+
+Mein Setup fällt in Kategorie 3. Ich kontrolliere das Dialog-Skript, die Stimmen, die Struktur, die Veröffentlichung. Das kostet mehr Aufwand als ein Klick in NotebookLM - aber ich weiß, was rauskommt.
+
+> NotebookLM generiert Podcasts. Mein Skill generiert *meine* Podcasts - mit meinen Stimmen, meinem Format, meiner Pipeline.
+
+Die Pipeline erzeugt den Podcast. Aber wer stellt sicher, dass der Quelltext - der Blogpost selbst - qualitativ stimmt? Genau darum geht es im nächsten Abschnitt.
+
+## Der AI-Lektor: Textqualität sichern, ohne den Stil zu verlieren
+
+Wer schon mal einen Text durch ChatGPT hat "verbessern" lassen, kennt das Ergebnis: grammatisch einwandfrei, stilistisch tot. Die Ecken und Kanten sind weg, der Rhythmus ist weg, übrig bleibt ein Text, der nach nichts klingt. Oder nach allem gleichzeitig.
+
+Das ist kein Zufall. Eine Studie von Cornell und der University of Washington (CHI 2025) hat das experimentell gemessen: Ohne KI-Hilfe konnte ein ML-Klassifikator Texte verschiedener Autoren mit 82,9% Genauigkeit unterscheiden. Sobald die Autoren KI-Schreibvorschläge nutzten, fiel die Genauigkeit auf 60% - ein messbarer Verlust an stilistischer Individualität.
+
+<LinkCard url="https://arxiv.org/abs/2409.11360" />
+
+Unabhängig davon: In einer Umfrage der Society of Authors UK (2024) äußerten 86% der befragten Autoren Sorge, dass ihr Stil von KI nachgeahmt oder verwässert wird. Die Sorge ist berechtigt - aber das Problem ist nicht das Modell. Das Problem ist der fehlende Contract für Qualität.
+
+### Das Stilprofil als Contract
+
+Mein Lektor-Skill kennt meinen Schreibstil. Nicht vage, nicht als Gefühl - sondern als explizites, dokumentiertes Profil. Bewusste Stilmittel werden als solche erkannt, nicht als Fehler markiert.
+
+Das Stilprofil ist der Contract - genauso wie ein JSON-Schema den Output eines LLM definiert, definiert das Stilprofil die Qualitätskriterien des Textes. Ohne diesen Contract optimiert jedes Sprachmodell auf den Durchschnitt. Mit Contract optimiert es auf *meinen* Standard. Die Lösung gegen Stil-Homogenisierung ist kein besseres Modell, sondern ein besserer Contract.
+
+### Die Rubrics: Fünf Kategorien, strukturierte Befunde
+
+Wer den Evals-Post gelesen hat, erkennt das Muster sofort. Dort haben wir Rubrics definiert - Bewertungskategorien mit Scores, um LLM-Output systematisch zu bewerten. Der Lektor macht exakt das Gleiche, nur auf natürlichsprachliche Inhalte:
+
+1. **Sprache & Korrektheit** - Grammatik, Rechtschreibung, Zeichensetzung
+2. **Stil & Ton** - Passt der Text zum definierten Stilprofil?
+3. **Struktur & Aufbau** - Logischer Fluss, Absatzlängen, Überschriften-Hierarchie
+4. **Leserführung** - Übergänge, roter Faden, Aktivierung des Lesers
+5. **Fachliche Konsistenz** - Stimmen Begriffe, Referenzen, technische Aussagen?
+
+Jedes Finding bekommt eine Severity: **kritisch** (muss gefixt werden), **empfohlen** (sollte gefixt werden), **optional** (Geschmackssache). Dazu eine Zeilennummer, ein Zitat aus dem Text und einen konkreten Verbesserungsvorschlag. Die Befund-IDs - F-001, F-002 und so weiter - machen den Report maschinenlesbar. Sie können direkt als Arbeitsanweisung weitergegeben werden.
+
+<Accordion title="Beispiel: Auszug aus einem Lektor-Report">
+
+**F-001** | Severity: kritisch | Zeile 42
+> "Die Evals werden im CI/CD Pipeline ausgeführt."
+
+*Problem:* Falscher Artikel - "Pipeline" ist feminin.
+*Vorschlag:* "Die Evals werden in der CI/CD-Pipeline ausgeführt."
+
+---
+
+**F-002** | Severity: empfohlen | Zeile 78
+> "Das ist ein sehr wichtiger Aspekt, den man beachten sollte."
+
+*Problem:* Passiv, distanziert - passt nicht zum Stilprofil (direkte Ich-Form, kurze Sätze).
+*Vorschlag:* "Genau das macht den Unterschied."
+
+---
+
+**F-003** | Severity: optional | Zeile 115
+> "Der Orchestrator koordiniert die einzelnen Agents."
+
+*Problem:* Inkonsistente Pluralbildung - im Rest des Textes wird "Agents" ohne deutschen Plural verwendet.
+*Vorschlag:* Konsistent bei "Agents" oder "Agenten" bleiben. Der bisherige Text nutzt "Agents".
+
+</Accordion>
+
+Die Parallele zu Evals ist kein Zufall - sie ist Architektur. Die Kategorien *sind* Rubrics. Die Severity-Level *sind* Scores. Der strukturierte Report *ist* ein Eval-Ergebnis. Wer ein Eval-Framework für LLM-Output gebaut hat, hat bereits die Denkweise für ein Lektorat - nur die Domain wechselt.
+
+> Der Lektor ist eine Eval auf natürliche Sprache. Die Rubrics heißen nur anders.
+
+### Was der Lektor nicht tut
+
+Der Lektor korrigiert Fehler, er formt nicht um. "Du bist Lektor, nicht Co-Autor" - das steht so im Skill. Wenn ich einen Satz bewusst kurz und abgehackt formuliere, ist das Stil. Wenn ich mitten im Absatz die Perspektive wechsle, ist das Absicht. Ein guter Lektor erkennt den Unterschied. Ein schlechter macht alles glatt.
+
+Überkorrigieren ist das Gegenteil von Qualitätssicherung. Es ist Stil-Zerstörung mit guten Absichten. Deshalb braucht der Lektor den Contract - damit er weiß, was er *nicht* anfassen soll. Genau das Problem, das die Cornell-Studie beschreibt: Ohne explizites Stilprofil driftet jede KI-Unterstützung Richtung Durchschnitt.
+
+## Skills als Developer-Werkzeuge: Die Architektur dahinter
+
+Der Podcast-Skill generiert Audio aus einem Blogpost. Der Lektor-Skill prüft Sprache und Stil gegen ein dokumentiertes Stilprofil. Beide laufen als Slash Commands direkt in Claude Code - `/blog-podcast`, `/blog-lektorat`. Aber was steckt dahinter? Und warum ist ein Skill mehr als ein aufgeblasener Prompt?
+
+### Was ist ein Skill?
+
+Ein Skill ist eine Markdown-Datei mit YAML-Frontmatter und strukturierten Instruktionen. Sie liegt im Projektverzeichnis unter `.claude/skills/<name>/SKILL.md` und wird zur Laufzeit erkannt - Änderungen wirken sofort, kein Restart, kein Rebuild.
+
+Das Frontmatter definiert den Contract des Skills:
+
+```yaml
+name: blog-podcast
+description: "Erstellt einen Podcast-Dialog aus einem Blogpost..."
+```
+
+Der `name` wird zum Slash Command. Die `description` bestimmt, wann Claude den Skill vorschlägt - sie ist gleichzeitig Trigger und Scope-Definition. Alles, was darunter im Markdown steht, sind die eigentlichen Instruktionen: Workflow-Schritte, Formatvorgaben, Fehlerbehandlung.
+
+Skills können Dateien lesen und schreiben, Bash-Scripte ausführen, externe APIs aufrufen und auf MCP-Tools zugreifen. Sie sind keine passiven Textbausteine - sie orchestrieren echte Prozesse.
+
+Und das Ökosystem wächst: Das [anthropics/skills](https://github.com/anthropics/skills)-Repo auf GitHub hat sich schnell zum zentralen Ort für Community-Skills entwickelt.
+
+<LinkCard url="https://code.claude.com/docs/en/skills" />
+
+### Warum nicht einfach ein Prompt?
+
+Ich könnte den gleichen Text auch als Prompt in den Chat pasten. Funktioniert - einmal. Der Unterschied liegt in allem, was danach kommt:
+
+**Wiederverwendbarkeit.** Ein Skill ist einmal geschrieben, immer aufrufbar. Kein Copy-Paste aus einer Notiz-App, kein "Moment, wie war nochmal der Workflow für den Podcast?".
+
+**Versionierbarkeit.** Ein SKILL.md ist eine Datei - sie *kann* versioniert, gedifft und reviewed werden. Prompts in der Zwischenablage haben keine Änderungshistorie.
+
+**Komposition.** Der Podcast-Skill referenziert ein Python-Script für die Audio-Generierung. Der Lektor-Skill lädt Referenzposts als Stilvergleich. Skills können auf andere Dateien im Repo zugreifen - Templates, Konfigurationen, Hilfsskripte.
+
+**Tool-Zugriff.** Ein Prompt kann Text generieren. Ein Skill kann `bash` ausführen, mit `WebFetch` APIs aufrufen, über MCP-Tools mit externen Systemen interagieren.
+
+**Codiertes Domänenwissen.** Die ElevenLabs Voice-IDs, das Stilprofil des Autors, die fünf Bewertungskategorien des Lektors, das Frontmatter-Schema für Podcast-Metadaten - alles ist im Skill, nicht in meinem Kopf oder in einer Notizenapp.
+
+> Ein Skill ist ein Prompt mit Gedächtnis, Versionierung und Tool-Zugriff. Das macht den Unterschied.
+
+### Anatomie der beiden Skills
+
+Was die beiden Skills besonders gut zeigen: Gleiche Architektur, völlig unterschiedliche Wirkung.
+
+<Accordion title="Blog-Podcast Skill - SKILL.md (Auszug)">
+
+```yaml
+name: blog-podcast
+description: "Erstellt einen Podcast-Dialog aus einem Blogpost
+  auf rubeen.dev. Zwei Sprecher diskutieren die Inhalte des
+  Artikels in einem natuerlichen, deutschsprachigen Gespraech."
+```
+
+**Input:** Ein Blogpost (MDX-Datei)
+
+**Prozess:** Post lesen → Dialog-Skript generieren (Alex/Lara, Speaker-Turns, Emotional Cues) → Python-Script aufrufen → ElevenLabs API → Dateien schreiben → Frontmatter ergänzen
+
+**Output:** MP3-Audiodatei + Transkript-Textdatei + Frontmatter-Update im Post
+
+**Seiteneffekte:** Externe API (ElevenLabs TTS), Dateisystem (fünf Dateien werden geschrieben oder aktualisiert)
+
+</Accordion>
+
+<Accordion title="Blog-Lektorat Skill - SKILL.md (Auszug)">
+
+```yaml
+name: blog-lektorat
+description: "Professionelles Lektorat fuer deutschsprachige
+  Tech-Blogposts auf rubeen.dev. Prueft Sprache, Stil,
+  Struktur, Leserfuehrung und Fachbegriffe gegen den
+  etablierten Autorenstil."
+```
+
+**Input:** Ein Blogpost (MDX-Datei) + 2-3 Referenzposts als Stilvergleich
+
+**Prozess:** Post lesen → Referenzposts lesen → Stilprofil laden → Analyse in fünf Kategorien → Strukturierten Bericht schreiben
+
+**Output:** Markdown-Report mit nummerierten Befunden (`_lektorat-[slug].md`)
+
+**Seiteneffekte:** Nur Dateisystem (eine Datei wird geschrieben)
+
+</Accordion>
+
+Beide Skills folgen demselben Muster: definierter Input, klar beschriebener Prozess, spezifizierter Output. Der Podcast-Skill hat mehr Seiteneffekte - externe API, mehrere Dateien, Frontmatter-Mutation. Der Lektor-Skill ist in sich geschlossen: Er liest, analysiert und schreibt einen Report. Keine externen Abhängigkeiten.
+
+### Der Contract im Skill
+
+Wer die vorherigen Posts dieser Serie gelesen hat, erkennt das Muster: Contracts first.
+
+Das SKILL.md Frontmatter IST der Contract: `name` definiert den Aufruf, `description` den Scope. Der Markdown-Body definiert den Workflow, die Formatvorgaben, die Fehlerbehandlung. Optional können weitere Felder wie `allowed-tools` die Berechtigungen einschränken - Least Privilege, auch für Skills.
+
+Der Podcast-Skill hat einen Dialog-Contract: Alex und Lara als Sprecher, Speaker-Turns als Format, Emotional Cues mit Häufigkeitsbegrenzung, eine Vier-Phasen-Struktur (Intro, Hauptteil, Zusammenfassung, Verabschiedung). Der Lektor-Skill hat einen Report-Contract: fünf Bewertungskategorien, nummerierte Befund-IDs (F-001, F-002...), drei Schweregrade, Pflichtfelder pro Befund (Zeile, Zitat, Problem, Vorschlag).
+
+Das sind keine lockeren Richtlinien. Das sind Spezifikationen, gegen die ich das Ergebnis prüfen kann. JSON-Schema für API-Output, Stilprofil für Textqualität, SKILL.md Frontmatter für Skill-Verhalten - der Mechanismus ist ein anderer, das Prinzip ist dasselbe: Definiere den Contract, bevor du den Output generierst.
+
+## Die Prinzipien gelten überall
+
+Vier Posts lang ging es um Prinzipien für AI-Systeme in Produktion. Contracts definieren die Schnittstelle zwischen deterministischem Code und nichtdeterministischem Modell. Evals machen Qualität messbar, statt sie zu behaupten. Tools brauchen Scope, Idempotenz und Seiteneffekt-Bewusstsein, weil ein falscher Call mehr kaputt macht als eine schlechte Antwort.
+
+Und dann dieser Post: ein statischer Blog, keine Produktionsplattform mit Tausenden Nutzern. Trotzdem folgt die Podcast-Pipeline folgt einem festen Contract - vom Dialog-Schema über die API-Anbindung bis zum RSS-Feed. Der Lektor bewertet gegen Rubrics, nicht nach Bauchgefühl. Die Skills haben einen definierten Scope, klare Inputs und Outputs, und ihre Seiteneffekte sind bekannt.
+
+Das ist kein Zufall. Die Prinzipien tauchen nicht auf, weil der Blog ein AI-System ist - sie tauchen auf, weil sie universell gelten. Contract vor Prompt. Messung vor Meinung. Scope vor Freiheit.
+
+Eingangs hatte ich gefragt: Ist mein Blog ein AI-System? Die Antwort bleibt Nein. Aber die Denkweise dahinter ist dieselbe. Und genau das macht den Unterschied zwischen "ich nutze AI" und "ich setze AI systematisch ein". Die Skills werden mit jedem Post besser, das Stilprofil wächst, die Pipeline wird robuster. Das ist iterative Verbesserung - genau wie bei jedem anderen Engineering-Projekt.
+
+> Wer AI-Features für andere baut, sollte die gleichen Prinzipien auf den eigenen Workflow anwenden. Nicht weil es nötig ist, sondern weil es funktioniert.
