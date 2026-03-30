@@ -46,10 +46,12 @@ export async function GET(context: APIContext) {
         .filter(Boolean)
         .join('\n');
 
+      const postUrl = `${site}/blog/${post.id}/`;
+
       return {
         title: post.data.title,
         pubDate: post.data.date,
-        description: post.data.description,
+        description: `${post.data.description}\n\n🔗 Zum Blogpost: ${postUrl}\n🌐 Blog: ${site}`,
         link: `/blog/${post.id}/`,
         enclosure: {
           url: audioUrl,
