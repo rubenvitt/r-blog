@@ -1,0 +1,263 @@
+---
+title: "Papier fliegt nicht: Wie eine PWA die Drohnen-Checkliste im Katastrophenschutz ablöst"
+description: "Wie ich mit AI eine Offline-PWA für Drohneneinsätze im Bevölkerungsschutz gebaut habe - und warum Domain-Wissen wichtiger ist als Prompts."
+date: 2026-03-31
+tags: ["ai", "software-engineering", "pwa", "katastrophenschutz"]
+---
+
+import Callout from '../../components/widgets/Callout.astro';
+import LinkCard from '../../components/widgets/LinkCard.astro';
+import Figure from '../../components/widgets/Figure.astro';
+import Accordion from '../../components/widgets/Accordion.astro';
+import ProjectCard from '../../components/widgets/ProjectCard.astro';
+
+Der Drohnentrupp steht am Einsatzort, das UAV ist startklar - aber bevor irgendetwas fliegt, muss dokumentiert werden. Und die Dokumentation? Die liegt im Fahrzeug. Auf Papier.
+
+## Papier bleibt im Gerätewagen
+
+Im Katastrophenschutz fliegen Drohnen nicht einfach los. Bevor ein UAV abheben darf, durchläuft der Trupp einen strukturierten Prozess: Einsatzdaten erfassen, Wetterbedingungen bewerten, eine SORA-Risikoeinschätzung durchführen, die Fluganmeldung vorbereiten, Checklisten abarbeiten. Nach dem Flug folgt die Nachbereitung. All das wird bisher auf Papier dokumentiert - im Gerätewagen Aufklärungstrupp Luft, dem GW AufklTruLu.
+
+Das funktioniert. Irgendwie. Aber es hat Grenzen, die im Einsatz spürbar werden.
+
+**Das erste Problem ist der Ort.** Die Papierdokumentation wird im Fahrzeug ausgefüllt. Der Pilot steht aber am UAV - oft dutzende Meter entfernt. Aktuelle Wetterdaten nachschauen? Zurück zum Fahrzeug. Eine Checkliste prüfen? Zurück zum Fahrzeug. Eine Prozedur nachlesen, weil die Situation es erfordert? Zurück zum Fahrzeug. Oder aus dem Kopf. Im Einsatz ist beides nicht ideal.
+
+**Das zweite Problem sind die Prozeduren.** Normal-, Contingency- und Emergency-Verfahren - kodifiziert als N1 bis N6, C0 bis C6 und E1 bis E3 - liegen als separate Dokumente im Fahrzeug. Das sind die Handlungsanweisungen für alles, was schiefgehen kann: vom normalen Betrieb über Störungen bis hin zum vollständigen Kontrollverlust. Im Stress, am UAV, mit Wind und Lärm, hat man diese Dokumente nicht dabei. Man müsste sie auswendig können. Oder eben zurück zum Fahrzeug.
+
+**Das dritte Problem ist die Berechnung.** Papier kann nicht rechnen. Die Windgeschwindigkeit am Boden sagt wenig über die Verhältnisse auf 120 Meter Flughöhe - dafür braucht es eine Interpolation.
+
+<Accordion title="Was ist SORA?">
+SORA (Specific Operations Risk Assessment) ist ein standardisiertes Verfahren zur Risikobewertung von Drohnenflügen. Es kombiniert zwei Dimensionen: das **Ground Risk** (GRC) - wie gefährlich ist ein Absturz für Menschen am Boden? - und das **Air Risk** (ARC) - wie wahrscheinlich ist eine Kollision im Luftraum? Aus beiden ergibt sich das **SAIL** (Specific Assurance and Integrity Level), das bestimmt, welche Sicherheitsmaßnahmen für den Flug erforderlich sind. Die Berechnung ist kein Bauchgefühl, sondern eine definierte Matrix mit konkreten Eingangsgrößen.
+</Accordion>
+
+Die SORA-Bewertung - GRC plus ARC ergibt SAIL - macht man auf Papier händisch, fehleranfällig, und jedes Mal neu.
+
+<Accordion title="Was ist EGRED?">
+EGRED steht für **Empfehlungen für Gemeinsame Regelungen zum Einsatz von Drohnen im Bevölkerungsschutz**. Herausgegeben vom BBK (Bundesamt für Bevölkerungsschutz und Katastrophenhilfe), definiert das Dokument in seiner zweiten Fassung (EGRED 2) unter anderem die Anforderungen an eine strukturierte Einsatzdokumentation für Drohnenflüge im BOS-Kontext.
+</Accordion>
+
+Genau diese strukturierte Dokumentation fordert EGRED 2. Nicht als Empfehlung, sondern als Grundlage für den regelkonformen Betrieb von UAVs im Bevölkerungsschutz. Die Dokumentation soll nachvollziehbar, vollständig und standardisiert sein. Papier kann das leisten - aber es kann nicht unterstützen. Es rechnet nicht, es erinnert nicht, es ist nicht dort, wo der Pilot steht.
+
+Ein Smartphone schon. Es ist am Körper, es funktioniert offline, es kann rechnen. Wetterdaten anzeigen, Checklisten führen, Prozeduren nachschlagen, SORA-Werte berechnen - alles direkt am UAV, nicht im Fahrzeug. Nicht als Ersatz für den Prozess, sondern als Werkzeug, das den Prozess dorthin bringt, wo er gebraucht wird. Eine Progressive Web App (PWA) - also eine Anwendung, die im Browser läuft, sich wie eine normale App anfühlt und auch offline funktioniert.
+
+> Eine Papierdokumentation im Gerätewagen kann keine Windgeschwindigkeit auf 120 Meter Höhe interpolieren.
+
+Was wäre, wenn genau das - Dokumentation, Berechnung, Checklisten, Prozeduren - alles auf dem Smartphone laufen würde? Offline-fähig, direkt am Einsatzort?
+
+## Von der Papierliste zur PWA: Was die App kann
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="Offline-PWA für Drohneneinsätze im Bevölkerungsschutz"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+Die App heißt "UAV Einsatzverwaltung". Keine Tabelle, kein PDF-Formular - eine Progressive Web App, die direkt im Browser läuft und auf jedem Einsatz-Tablet funktioniert.
+
+Der Ablauf orientiert sich an dem, was im Einsatz tatsächlich passiert. Vier Phasen, angelehnt an das EGRED-Schema:
+
+### 1. Einsatzdaten erfassen
+
+Standort per GPS oder manuelle Eingabe. Drohnenauswahl aus vorkonfigurierten Profilen - aktuell DJI Matrice 350 RTK und DJI Matrice 200, jeweils mit ihren spezifischen Grenzwerten. Crew-Stärke, Einsatzauftrag, und eine interaktive Karte mit Zeichenwerkzeugen: Der Standort wird als Kreis-Marker gesetzt, das Suchgebiet per Polygon eingezeichnet.
+
+{/* TODO: Screenshot - Einsatzkarte mit eingezeichnetem Polygon und Markern */}
+
+### 2. Vorflugkontrolle - das Herzstück
+
+Hier passiert das, was auf Papier nie funktioniert hat: automatisierte Umgebungsanalyse in Echtzeit.
+
+**Wetter**: Die App zieht sich aktuelle Daten von Open-Meteo - Wind, Böen, Temperatur, Niederschlag, Sichtweite, Luftfeuchtigkeit, Druck, Taupunkt. Jeder Wert bekommt eine Ampelbewertung: grün, gelb, rot - abgeglichen gegen die spezifischen Grenzwerte der gewählten Drohne. Windgeschwindigkeit wird auf die tatsächliche Flughöhe interpoliert, basierend auf Messdaten bei 10m, 80m, 120m und 180m. Kein Bauchgefühl mehr, ob "der Wind da oben wohl schlimmer ist".
+
+{/* TODO: Screenshot - Wetterbewertung mit Ampelfarben (grün/gelb/rot) für verschiedene Parameter */}
+
+**Geomagnetik**: Der K-Index von NOAA SWPC zeigt, ob geomagnetische Störungen den Kompass der Drohne beeinflussen könnten. Klingt exotisch, ist aber ein reales Risiko - besonders bei der Matrice-Serie.
+
+**Umgebung**: Via OpenStreetMap und Overpass-API prüft die App automatisch, was sich im Einsatzgebiet befindet. Lufträume, Straßen, Bahnlinien, Stromleitungen, Krankenhäuser, Naturschutzgebiete. Alles, was man sonst manuell auf einer Karte suchen müsste.
+
+**SORA-Risikobewertung**: Bodenrisiko (GRC) plus Luftraumrisiko (ARC) ergeben zusammen das SAIL - das Specific Assurance and Integrity Level. Die App berechnet das automatisch aus den erfassten Daten. Was vorher ein Diagramm war, das ich manuell durchgehen musste, ist jetzt ein Klick.
+
+Dazu kommen technische Checklisten für die Drohne selbst. Propeller, Akkus, Firmware, Kamera - Punkt für Punkt.
+
+### 3. Flüge und Nachbereitung
+
+Die letzten beiden Phasen schließen den Kreis: Jeder Flug wird einzeln dokumentiert (Startzeit, Landezeit, Besonderheiten), danach generiert die App einen vollständigen PDF-Bericht - alle Wetterdaten, Checklisten, Flugzeiten, Karten in einem Dokument. Das ist das, was am Ende in der Einsatzakte landet.
+
+{/* TODO: Screenshot - generierter PDF-Bericht (erste Seite) */}
+
+Wichtig für die Praxis: Ein Einsatz kann mehrere Standorte haben. Hochwasserlage mit drei Erkundungspunkten? Ein Einsatz, drei Segmente, jedes mit eigener Vorflugkontrolle und eigenen Flügen.
+
+### Prozeduren direkt in der App
+
+Alle Normal-, Contingency- und Emergency-Verfahren sind in der App hinterlegt. Nicht als PDF-Anhang, sondern als navigierbare Checklisten.
+
+Ein paar Beispiele:
+
+- **N1 "Vor dem Start"**: "Check Controlled Ground hergestellt" - "Call Out: CLEAR PROP!"
+- **C4.2 "Bemanntes Luftfahrzeug"**: "Call Out: UNBEKANNTES LUFTFAHRZEUG!" → Landung einleiten
+- **E1 "Terminierung"**: "Call Out: ABSTURZ! ABSTURZ! ABSTURZ!"
+
+Wer unter Stress die richtige Prozedur finden muss, scrollt nicht durch ein 30-seitiges Handbuch. Die Prozeduren N1 bis N6, C0 bis C6 und E1 bis E3 plus Notfallpläne (ERP) sind alle einen Tap entfernt.
+
+<Callout type="tip">
+  **So installierst du die PWA auf deinem Einsatz-Tablet:** Öffne [uav.iuk-ue.de](https://uav.iuk-ue.de) im Browser, tippe auf das Browser-Menü (drei Punkte oder Teilen-Symbol) und wähle "Zum Startbildschirm hinzufügen". Die App läuft dann wie eine native Anwendung - inklusive Offline-Fähigkeit.
+</Callout>
+
+Soweit die Features aus Nutzersicht. Aber eine App, die Wetterdaten zieht, GPS nutzt und PDFs generiert - braucht die nicht ein fettes Backend? Spoiler: Nein.
+
+## Kein Backend, kein Problem: Local-First als Designentscheidung
+
+Eine BOS-Einheit im Ehrenamt hat kein Budget für Server-Infrastruktur. Keinen Admin, der sich um Datenbanken kümmert. Und keine Lust auf Cookie-Banner, DSGVO-Verfahrensverzeichnisse und Cloud-Subscriptions. Also: kein Backend.
+
+Das klingt nach Einschränkung. Ist es aber nicht - es ist eine Architekturentscheidung.
+
+### Alles lebt im Browser
+
+Sämtliche Einsatzdaten, Formulareingaben und Karten-Overlays werden in localStorage gespeichert. Kein Server, keine Datenbank, keine Accounts. Der Browser ist die Datenbank. Ein Service Worker sorgt dafür, dass die App auch ohne Mobilfunknetz läuft - nach dem ersten Laden funktioniert alles offline.
+
+Für Nicht-Entwickler heißt das: Link öffnen, fertig. Keine Anmeldung, kein "Server nicht erreichbar", kein "bitte aktualisiere die App". Für Entwickler: Die Caching-Architektur ist geschichtet, und jede Schicht hat ihre eigene Strategie.
+
+<Accordion title="Tech Stack im Detail">
+
+| Technologie | Version | Zweck |
+|---|---|---|
+| React | 19 | UI-Framework |
+| TypeScript | 5.9 (strict) | Typsicherheit |
+| Vite | 8 | Build-Tool und Dev-Server |
+| Tailwind CSS | 4 | Utility-First Styling |
+| React Router | 7 | Client-Side Routing |
+| TanStack Query | 5 | Server-State und Caching |
+| React Leaflet | 5 | Kartenintegration |
+| Leaflet Geoman | - | Zeichenwerkzeuge |
+| jsPDF | - | PDF-Generierung |
+| React Compiler | - | Auto-Memoization |
+| vite-plugin-pwa | - | PWA mit Workbox Service Worker |
+| Sentry | - | Error-Tracking |
+
+</Accordion>
+
+### Caching-Schichten
+
+Nicht jede API-Antwort wird gleich behandelt. Wetterdaten veralten in Minuten, Kartenkacheln sind monatelang gültig, Umgebungsdaten ändern sich selten. Die Strategie pro Datentyp:
+
+| Daten | Strategie | Haltbarkeit |
+|---|---|---|
+| Wetter (Open-Meteo) | NetworkFirst | 10 Minuten |
+| K-Index (NOAA) | NetworkFirst | 1 Stunde |
+| Kartenkacheln (OSM) | CacheFirst | 7 Tage |
+| Umgebung (Overpass) | localStorage | 8 Stunden |
+| Einsatzdaten | localStorage | 56h aktiv / 24h abgeschlossen |
+
+TanStack Query übernimmt das State-Management für alle API-Calls und persistiert die Query-Caches nach localStorage - so überleben gecachte Wetterdaten sogar einen Browser-Neustart. Der Service Worker via Workbox fängt Netzwerk-Requests ab und liefert je nach Strategie die gecachte oder die frische Antwort.
+
+### Der bewusste Trade-off
+
+Daten leben nur auf dem Gerät. Kein Sync zwischen Tablet und Smartphone. Aktive Einsätze werden nach 56 Stunden automatisch gelöscht, abgeschlossene nach 24 Stunden. Das ist kein Versehen - ein Einsatz ist ein Einsatz, kein Archiv. Der PDF-Bericht ist das Archiv.
+
+Und die App ist eine PWA: installierbar wie eine native App, aber ohne Store-Abhängigkeit. Ein Link reicht. Kein Apple-Developer-Account, keine Google-Play-Review. Update deployen, und beim nächsten Öffnen hat jeder die neue Version.
+
+Warum nicht einfach eine normale App? Weil jede Alternative Nachteile hat, die im Ehrenamt schwer wiegen:
+
+| | Native App | Cloud-App | PWA Local-First |
+|---|---|---|---|
+| Installation | App Store | Keine | Link / Startbildschirm |
+| Offline | Ja | Nein | Ja (nach erstem Laden) |
+| Server nötig | Nein | Ja | Nein |
+| Updates | Store-Review | Sofort | Sofort |
+| Kosten | Entwicklerlizenz | Server + DB | Hosting (statisch) |
+| Datenschutz | Lokal | Cloud | Lokal |
+
+> Das Ehrenamt braucht keine Cloud-Subscriptions. Es braucht Tools, die funktionieren, wenn das Mobilfunknetz nicht funktioniert.
+
+Aber wie baut man so eine App? Mit React, TypeScript, Service Workern, Karten, PDF-Generierung, Offline-Caching - alles gleichzeitig? Die Antwort: mit AI. Aber nicht so, wie man vielleicht denkt.
+
+## Was die KI gebaut hat - und was nicht
+
+Claude Code war mein Coding-Partner für dieses Projekt. Ich wusste, was am Ende rauskommen soll - die Anforderungen haben wir gemeinsam ausformuliert, aber das Zielbild kam von mir. Die Aufgabenverteilung war klar - und sie war nicht zufällig.
+
+### Was die AI geliefert hat
+
+Die AI konnte in Minuten das technische Gerüst bauen - Oberfläche, Karten, Offline-Fähigkeit, PDF-Generierung. Für jede einzelne dieser Technologien hätte ich Dokumentation lesen, Beispiele suchen und Boilerplate schreiben müssen. Responsive Design? Prompt. Service Worker Registration? Prompt. Offline-fähige Kartenkacheln? Prompt.
+
+Dass die Wetter-API Windwerte auf mehreren Höhen liefert und die AI selbstständig eine Interpolation für die tatsächliche Flughöhe gebaut hat - das musste ich nicht erklären. Das ist der Teil, den AI-Coding-Tools gut können: technische Implementierung mit bekannten Patterns.
+
+<Accordion title="Welche Technologien die AI umgesetzt hat">
+Die technische Breite ist beachtlich: React-Komponenten, Tailwind-Layout, API-Integration mit Open-Meteo und Overpass, Caching über TanStack Query und Service Worker, PWA-Setup mit Workbox, PDF-Generierung mit jsPDF, Kartenintegration mit Leaflet. Das alles gleichzeitig, in einer Codebasis, mit konsistenten TypeScript-Typen.
+</Accordion>
+
+### Was die AI nicht wusste
+
+Und hier wird es interessant. Die AI hatte keine Ahnung von:
+
+- **EGRED-Phasen** und deren Reihenfolge - dass ein Drohneneinsatz von Einsatzdaten über Vorflugkontrolle und Flüge bis zur Nachbereitung einem festen Ablauf folgt
+- **SORA-Methodik** - wie Ground Risk Class, Air Risk Class und SAIL zusammenhängen und berechnet werden
+- **Contingency- und Emergency-Prozeduren** - über 15 Verfahren mit spezifischen Call-Outs, Rollen (RPIC, RP, Bodenpersonal) und Eskalationspfaden
+- **Wetter-Grenzwerte pro Drohnenmodell** - die habe ich über die Bedienungsanleitung der Drohne eingespeist, die AI hat die relevanten Werte selbst extrahiert
+- **Einsatzstruktur** - dass ein Einsatz mehrere Segmente mit unterschiedlichen Standorten haben kann
+- **Fachbegriffe** - "Controlled Ground", "Flight Geography", "Contingency Volume", der Unterschied zwischen RPIC und RP
+
+Kein Prompt der Welt hätte diese Informationen erzeugt. Die stecken in Betriebshandbüchern, SORA-Dokumenten und Einsatzerfahrung. Die AI kann Prozeduren implementieren - aber nicht erfinden.
+
+<Callout type="warning">
+AI-generierter Code ist nur so gut wie die fachlichen Anforderungen, die hineinfließen. Ohne Domain-Wissen fehlt dem Code nicht die Technik, sondern die Substanz.
+</Callout>
+
+### Die echte Aufgabenverteilung
+
+**Mensch**: Domain-Wissen, Architekturentscheidungen (kein Backend, alles offline-fähig), fachliche Anforderungen, Grenzwerte, Prozeduren, Validierung der Ergebnisse.
+
+**AI**: Implementierungsgeschwindigkeit, technische Breite über den gesamten Stack hinweg - React, TypeScript, Tailwind, Service Worker, PDF-Generierung, Kartenintegration - alles parallel, alles konsistent.
+
+Das ist keine Arbeitsteilung zwischen "denken" und "tippen". Beide Seiten liefern Substanz. Aber die AI liefert Substanz nur in dem Bereich, in dem es bekannte Lösungen für bekannte Probleme gibt. Die fachliche Domäne - die spezifischen Regeln, die spezifischen Abläufe, die spezifischen Grenzwerte - die muss ein Mensch mitbringen.
+
+### Kein Vibe Coding
+
+2026 wird viel über Vibe Coding diskutiert. "Bau mir eine Drohnen-App" als Prompt liefert eine hübsche UI mit erfundenen Daten. Keine echten Prozeduren. Keine korrekten Grenzwerte. Keine valide SORA-Berechnung. Nichts, worauf sich jemand in einem realen Einsatz verlassen könnte.
+
+Was funktioniert: "Implementiere diese Contingency-Prozedur. Phase C4.2 bedeutet: Bodenpersonal meldet bemanntes Luftfahrzeug, RPIC initiiert Landung nach N6. Die Eskalation zu E1 erfolgt bei Kontrollverlust." Das ist eine Spezifikation. Und Spezifikationen kann die AI umsetzen.
+
+<LinkCard url="/blog/tools-sind-keine-prompts"/>
+
+Dieselbe Logik wie in den vorherigen Posts: Die AI ist ein mächtiges Werkzeug - aber Werkzeuge ersetzen kein Verständnis. Bei einer Drohnen-App im Katastrophenschutz ist "falsch" keine schlechte UX, sondern ein Sicherheitsrisiko.
+
+> Vibe Coding endet dort, wo Domain-Wissen anfängt. Die AI kann Prozeduren implementieren, aber nicht erfinden.
+
+## Papier ablösen heißt Prozesse verstehen
+
+Diese App ist kein Technologie-Projekt. React, PWA, AI - das sind Werkzeuge. Der eigentliche Aufwand steckt woanders: in den Prozessen, die auf den Papierchecklisten stehen. Die zu verstehen, zu strukturieren und dann digital abzubilden - das ist die Arbeit.
+
+Digitalisierung ohne Prozessverständnis produziert digitales Papier. Eine PDF auf dem Tablet ist keine Verbesserung gegenüber einem Blatt im Gerätewagen. Erst wenn ich verstehe, *warum* ein Schritt existiert, *wer* ihn ausführt und *was* passiert, wenn er fehlschlägt - erst dann kann ich ihn sinnvoll digitalisieren.
+
+Die App wird aktuell von einer echten BOS-Einheit im Bevölkerungsschutz eingesetzt. Das Feedback fließt zurück in die Prozeduren, die Prozeduren fließen zurück in den Code. Und weil andere Einheiten vor denselben Herausforderungen stehen, ist das Projekt Open Source - jeder kann es nutzen, anpassen und eigene Checklisten einbringen.
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="Offline-PWA für Drohneneinsätze im Bevölkerungsschutz - Open Source auf GitHub"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+<LinkCard url="https://www.bbk.bund.de/DE/Themen/Krisenmanagement/Lagebild/Drohnen/drohnen_node.html"/>
+
+### Die Brücke zur Software-Architektur
+
+Wer die vorherigen Posts dieses Blogs kennt, wird jetzt etwas bemerken. In der Software-Welt gibt es Konzepte, die unter anderen Namen exakt dieselben Probleme lösen - und die Parallelen sind frappierend:
+
+**EGRED-Checklisten sind Contracts** - also verbindliche Vereinbarungen, was ein System tun soll und was nicht. Definierte Abläufe mit klaren Bedingungen, Rollen und Eskalationspfaden.
+
+**SORA ist eine Policy Engine** - ein Regelwerk, das automatisch entscheidet. GRC plus ARC ergibt SAIL - Input rein, Risikolevel raus. Kein Ermessensspielraum, kein "wird schon passen".
+
+**Wetterbewertung ist ein Eval** - eine strukturierte Prüfung gegen definierte Kriterien. Messwerte gegen Grenzwerte prüfen, Ampelfarben vergeben, Entscheidungen ableiten.
+
+**Notfallprozeduren sind Eskalationspfade** - gestufte Reaktionspläne mit klaren Triggern. C0 führt zu E1, E1 kann E3 auslösen. Jede Stufe hat eigene Regeln und Verantwortlichkeiten.
+
+Die Konzepte sind dieselben. Die Domain ist eine andere. Und genau das macht sie übertragbar - egal ob im Agent-System oder im Gerätewagen.
+
+<LinkCard url="/blog/ai-systems-architecture"/>
+
+<LinkCard url="/blog/ai-evals-ci-pipeline"/>
+
+<LinkCard url="/blog/tools-sind-keine-prompts"/>
+
+<LinkCard url="/blog/ai-werkzeuge-eigener-blog"/>
+
+> Die besten digitalen Tools entstehen nicht aus Technologie, sondern aus Prozessverständnis - egal ob im Gerätewagen oder im Agent-System.
