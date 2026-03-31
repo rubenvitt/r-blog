@@ -191,6 +191,8 @@
     border-collapse: collapse;
     margin-bottom: 1.5rem;
     font-size: 0.9375rem;
+    display: block;
+    overflow-x: auto;
   }
 
   .prose thead th {
