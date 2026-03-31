@@ -186,6 +186,31 @@
     margin-block: 1.5rem;
   }
 
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .prose thead th {
+    text-align: left;
+    font-weight: 600;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  .prose tbody td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+
+  .prose tbody tr:last-child td {
+    border-bottom: none;
+  }
+
   .prose hr {
     border-color: var(--color-border);
     margin-block: 2rem;

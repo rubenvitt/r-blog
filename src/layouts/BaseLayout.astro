@@ -33,12 +33,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <meta name="generator" content={Astro.generator}/>
 
     <!-- Open Graph -->
-    <meta property="og:type" content="website"/>
+    <meta property="og:type" content={image ? "article" : "website"}/>
     <meta property="og:url" content={canonicalURL}/>
     <meta property="og:title" content={title}/>
     <meta property="og:description" content={description}/>
-    {image &&
-            <meta property="og:image" content={new URL(image, Astro.site)}/>}
+    {image && <meta property="og:image" content={new URL(image, Astro.site)}/>}
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content={image ? "summary_large_image" : "summary"}/>
+    <meta name="twitter:title" content={title}/>
+    <meta name="twitter:description" content={description}/>
+    {image && <meta name="twitter:image" content={new URL(image, Astro.site)}/>}
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com"/>

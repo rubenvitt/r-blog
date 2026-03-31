@@ -3,6 +3,10 @@ title: "Papier fliegt nicht: Wie eine PWA die Drohnen-Checkliste im Katastrophen
 description: "Wie ich mit AI eine Offline-PWA für Drohneneinsätze im Bevölkerungsschutz gebaut habe - und warum Domain-Wissen wichtiger ist als Prompts."
 date: 2026-03-31
 tags: ["ai", "software-engineering", "pwa", "katastrophenschutz"]
+image: ./_images/papier-fliegt-nicht/hero.png
+podcast:
+  audioFile: /audio/papier-fliegt-nicht.mp3
+  transcript: /audio/papier-fliegt-nicht.txt
 ---
 
 import Callout from '../../components/widgets/Callout.astro';
@@ -10,6 +14,10 @@ import LinkCard from '../../components/widgets/LinkCard.astro';
 import Figure from '../../components/widgets/Figure.astro';
 import Accordion from '../../components/widgets/Accordion.astro';
 import ProjectCard from '../../components/widgets/ProjectCard.astro';
+
+import einsatzkarte from './_images/papier-fliegt-nicht/einsatzkarte.png';
+import wetterbewertung from './_images/papier-fliegt-nicht/wetterbewertung.png';
+import pdfBericht from './_images/papier-fliegt-nicht/pdf-bericht.png';
 
 Der Drohnentrupp steht am Einsatzort, das UAV ist startklar - aber bevor irgendetwas fliegt, muss dokumentiert werden. Und die Dokumentation? Die liegt im Fahrzeug. Auf Papier.
 
@@ -27,12 +35,16 @@ Das funktioniert. Irgendwie. Aber es hat Grenzen, die im Einsatz spürbar werden
 
 <Accordion title="Was ist SORA?">
 SORA (Specific Operations Risk Assessment) ist ein standardisiertes Verfahren zur Risikobewertung von Drohnenflügen. Es kombiniert zwei Dimensionen: das **Ground Risk** (GRC) - wie gefährlich ist ein Absturz für Menschen am Boden? - und das **Air Risk** (ARC) - wie wahrscheinlich ist eine Kollision im Luftraum? Aus beiden ergibt sich das **SAIL** (Specific Assurance and Integrity Level), das bestimmt, welche Sicherheitsmaßnahmen für den Flug erforderlich sind. Die Berechnung ist kein Bauchgefühl, sondern eine definierte Matrix mit konkreten Eingangsgrößen.
+
+<LinkCard url="https://www.easa.europa.eu/en/domains/drones-air-mobility/operating-drone/specific-category-civil-drones/specific-operations-risk-assessment-sora"/>
 </Accordion>
 
 Die SORA-Bewertung - GRC plus ARC ergibt SAIL - macht man auf Papier händisch, fehleranfällig, und jedes Mal neu.
 
 <Accordion title="Was ist EGRED?">
 EGRED steht für **Empfehlungen für Gemeinsame Regelungen zum Einsatz von Drohnen im Bevölkerungsschutz**. Herausgegeben vom BBK (Bundesamt für Bevölkerungsschutz und Katastrophenhilfe), definiert das Dokument in seiner zweiten Fassung (EGRED 2) unter anderem die Anforderungen an eine strukturierte Einsatzdokumentation für Drohnenflüge im BOS-Kontext.
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
 </Accordion>
 
 Genau diese strukturierte Dokumentation fordert EGRED 2. Nicht als Empfehlung, sondern als Grundlage für den regelkonformen Betrieb von UAVs im Bevölkerungsschutz. Die Dokumentation soll nachvollziehbar, vollständig und standardisiert sein. Papier kann das leisten - aber es kann nicht unterstützen. Es rechnet nicht, es erinnert nicht, es ist nicht dort, wo der Pilot steht.
@@ -60,7 +72,7 @@ Der Ablauf orientiert sich an dem, was im Einsatz tatsächlich passiert. Vier Ph
 
 Standort per GPS oder manuelle Eingabe. Drohnenauswahl aus vorkonfigurierten Profilen - aktuell DJI Matrice 350 RTK und DJI Matrice 200, jeweils mit ihren spezifischen Grenzwerten. Crew-Stärke, Einsatzauftrag, und eine interaktive Karte mit Zeichenwerkzeugen: Der Standort wird als Kreis-Marker gesetzt, das Suchgebiet per Polygon eingezeichnet.
 
-{/* TODO: Screenshot - Einsatzkarte mit eingezeichnetem Polygon und Markern */}
+<Figure src={einsatzkarte} alt="Einsatzkarte mit eingezeichnetem Suchgebiet (blaues Polygon) und Standort-Marker (rot) in der Weseler Heide" caption="Interaktive Einsatzkarte: Standort und Suchgebiet werden direkt in der App eingezeichnet."/>
 
 ### 2. Vorflugkontrolle - das Herzstück
 
@@ -68,7 +80,7 @@ Hier passiert das, was auf Papier nie funktioniert hat: automatisierte Umgebungs
 
 **Wetter**: Die App zieht sich aktuelle Daten von Open-Meteo - Wind, Böen, Temperatur, Niederschlag, Sichtweite, Luftfeuchtigkeit, Druck, Taupunkt. Jeder Wert bekommt eine Ampelbewertung: grün, gelb, rot - abgeglichen gegen die spezifischen Grenzwerte der gewählten Drohne. Windgeschwindigkeit wird auf die tatsächliche Flughöhe interpoliert, basierend auf Messdaten bei 10m, 80m, 120m und 180m. Kein Bauchgefühl mehr, ob "der Wind da oben wohl schlimmer ist".
 
-{/* TODO: Screenshot - Wetterbewertung mit Ampelfarben (grün/gelb/rot) für verschiedene Parameter */}
+<Figure src={wetterbewertung} alt="Wetterbewertung mit Ampelfarben: Wind und Böen rot, Temperatur gelb, restliche Parameter grün. Darunter METAR-Repräsentativität und Empfehlungen." caption="Automatische Wetterbewertung mit Ampellogik - abgeglichen gegen die Grenzwerte der DJI Matrice 350 RTK."/>
 
 **Geomagnetik**: Der K-Index von NOAA SWPC zeigt, ob geomagnetische Störungen den Kompass der Drohne beeinflussen könnten. Klingt exotisch, ist aber ein reales Risiko - besonders bei der Matrice-Serie.
 
@@ -82,7 +94,7 @@ Dazu kommen technische Checklisten für die Drohne selbst. Propeller, Akkus, Fir
 
 Die letzten beiden Phasen schließen den Kreis: Jeder Flug wird einzeln dokumentiert (Startzeit, Landezeit, Besonderheiten), danach generiert die App einen vollständigen PDF-Bericht - alle Wetterdaten, Checklisten, Flugzeiten, Karten in einem Dokument. Das ist das, was am Ende in der Einsatzakte landet.
 
-{/* TODO: Screenshot - generierter PDF-Bericht (erste Seite) */}
+<Figure src={pdfBericht} alt="Erste Seite des generierten UAV Missionsberichts mit Einsatzname, Standort, Datum und Drohnentyp" caption="Der generierte PDF-Missionsbericht - das digitale Äquivalent zur Papierdokumentation."/>
 
 Wichtig für die Praxis: Ein Einsatz kann mehrere Standorte haben. Hochwasserlage mit drei Erkundungspunkten? Ein Einsatz, drei Segmente, jedes mit eigener Vorflugkontrolle und eigenen Flügen.
 
@@ -120,18 +132,18 @@ Für Nicht-Entwickler heißt das: Link öffnen, fertig. Keine Anmeldung, kein "S
 
 | Technologie | Version | Zweck |
 |---|---|---|
-| React | 19 | UI-Framework |
-| TypeScript | 5.9 (strict) | Typsicherheit |
-| Vite | 8 | Build-Tool und Dev-Server |
-| Tailwind CSS | 4 | Utility-First Styling |
-| React Router | 7 | Client-Side Routing |
-| TanStack Query | 5 | Server-State und Caching |
-| React Leaflet | 5 | Kartenintegration |
-| Leaflet Geoman | - | Zeichenwerkzeuge |
-| jsPDF | - | PDF-Generierung |
-| React Compiler | - | Auto-Memoization |
-| vite-plugin-pwa | - | PWA mit Workbox Service Worker |
-| Sentry | - | Error-Tracking |
+| [React](https://react.dev/) | 19 | UI-Framework |
+| [TypeScript](https://www.typescriptlang.org/) | 5.9 (strict) | Typsicherheit |
+| [Vite](https://vite.dev/) | 8 | Build-Tool und Dev-Server |
+| [Tailwind CSS](https://tailwindcss.com/) | 4 | Utility-First Styling |
+| [React Router](https://reactrouter.com/) | 7 | Client-Side Routing |
+| [TanStack Query](https://tanstack.com/query) | 5 | Server-State und Caching |
+| [React Leaflet](https://react-leaflet.js.org/) | 5 | Kartenintegration |
+| [Leaflet Geoman](https://geoman.io/) | - | Zeichenwerkzeuge |
+| [jsPDF](https://github.com/parallax/jsPDF) | - | PDF-Generierung |
+| [React Compiler](https://react.dev/learn/react-compiler) | - | Auto-Memoization |
+| [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) | - | PWA mit Workbox Service Worker |
+| [Sentry](https://sentry.io/) | - | Error-Tracking |
 
 </Accordion>
 
@@ -236,7 +248,7 @@ Die App wird aktuell von einer echten BOS-Einheit im Bevölkerungsschutz eingese
   githubUrl="https://github.com/rubenvitt/uav-checklists"
 />
 
-<LinkCard url="https://www.bbk.bund.de/DE/Themen/Krisenmanagement/Lagebild/Drohnen/drohnen_node.html"/>
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
 
 ### Die Brücke zur Software-Architektur
 
@@ -251,13 +263,5 @@ Wer die vorherigen Posts dieses Blogs kennt, wird jetzt etwas bemerken. In der S
 **Notfallprozeduren sind Eskalationspfade** - gestufte Reaktionspläne mit klaren Triggern. C0 führt zu E1, E1 kann E3 auslösen. Jede Stufe hat eigene Regeln und Verantwortlichkeiten.
 
 Die Konzepte sind dieselben. Die Domain ist eine andere. Und genau das macht sie übertragbar - egal ob im Agent-System oder im Gerätewagen.
-
-<LinkCard url="/blog/ai-systems-architecture"/>
-
-<LinkCard url="/blog/ai-evals-ci-pipeline"/>
-
-<LinkCard url="/blog/tools-sind-keine-prompts"/>
-
-<LinkCard url="/blog/ai-werkzeuge-eigener-blog"/>
 
 > Die besten digitalen Tools entstehen nicht aus Technologie, sondern aus Prozessverständnis - egal ob im Gerätewagen oder im Agent-System.
