@@ -1,0 +1,78 @@
+Alex: Stell dir vor, du stehst auf einem Feld, Wind pfeift, neben dir eine Drohne auf dem Startpad - und die Checkliste, die du jetzt brauchst, liegt dreißig Meter weiter im Einsatzfahrzeug. Auf Papier.
+Lara: Und dann rennst du hin, blätterst durch, rennst zurück - und hoffst, dass du dir alles gemerkt hast. Das klingt nach einem schlechten Workflow.
+Alex: Das ist kein hypothetisches Szenario. Genau so funktioniert Drohnen-Dokumentation im Bevölkerungsschutz. Und genau darum geht es heute.
+Lara: Willkommen bei unserem Podcast! Ich bin Lara...
+Alex: ...und ich bin Alex. Heute reden wir über einen Blogpost von rubeen.dev, der sich mit der Frage beschäftigt: Wie ersetzt man Papierdokumentation im Katastrophenschutz durch eine App, die offline funktioniert - und was hat AI damit zu tun?
+Lara: Der Titel allein ist schon eine Ansage: "Papier fliegt nicht". Also, fangen wir mal beim Problem an. Warum ist Papier in diesem Kontext so problematisch?
+Alex: Es gibt im Grunde drei Probleme. Erstens der Ort. Die Dokumentation liegt im Gerätewagen - dem GW AufklTruLu, wie das im Fachjargon heißt. Aber der Pilot steht am UAV, oft dutzende Meter entfernt. Jedes Mal, wenn er etwas nachschlagen will, muss er zurücklaufen.
+Lara: Das ist nicht nur nervig, das kostet im Einsatz echte Zeit. Und Zeit ist im Katastrophenschutz keine abstrakte Ressource.
+Alex: Genau. Zweitens die Prozeduren. Es gibt Normal-, Contingency- und Emergency-Verfahren - N1 bis N6, C0 bis C6, E1 bis E3. Das sind die Handlungsanweisungen für alles, was passieren kann. Vom normalen Betrieb bis zum vollständigen Kontrollverlust.
+Lara: Und die liegen auch alle im Fahrzeug?
+Alex: Als separate Dokumente, ja. Im Stress, am UAV, mit Wind und Lärm - da hat man die nicht dabei. Man müsste sie auswendig können.
+Lara: Oder eben zurück zum Fahrzeug. [nachdenklich] Das ist ein systematisches Problem, kein individuelles Versagen.
+Alex: Und drittens: Papier kann nicht rechnen. Die Windgeschwindigkeit am Boden sagt wenig über die Verhältnisse auf 120 Meter Flughöhe. Dafür braucht man eine Interpolation. Die SORA-Risikobewertung - Ground Risk Class plus Air Risk Class ergibt SAIL - macht man auf Papier händisch und fehleranfällig.
+Lara: SORA ist dieses standardisierte Verfahren zur Risikobewertung von Drohnenflügen, richtig? Also kein Bauchgefühl, sondern eine definierte Matrix.
+Alex: Exakt. Und genau das fordert auch EGRED 2 - ein Regelwerk vom Bundesamt für Bevölkerungsschutz und Katastrophenhilfe. Die Dokumentation soll nachvollziehbar, vollständig und standardisiert sein.
+Lara: Papier kann das leisten - aber es kann nicht unterstützen. Es rechnet nicht, es erinnert nicht, und es ist nicht dort, wo der Pilot steht.
+Alex: Ein Smartphone schon.
+Lara: Okay, also die Lösung ist eine App. Aber nicht irgendeine App - eine PWA. Warum genau eine Progressive Web App?
+Alex: Das hat mehrere Gründe, und die hängen alle mit dem Kontext zusammen. Wir reden hier über Ehrenamt. Kein Budget für Server-Infrastruktur. Keinen Admin für Datenbanken. Und keine Lust auf Cookie-Banner und Cloud-Subscriptions.
+Lara: [lacht] Das klingt sehr pragmatisch.
+Alex: Ist es auch. Eine PWA läuft im Browser, fühlt sich wie eine native App an, funktioniert offline nach dem ersten Laden, und braucht keinen App Store. Kein Apple-Developer-Account, keine Google-Play-Review. Ein Link reicht.
+Lara: Und was kann diese App konkret? Beschreib mal den Ablauf.
+Alex: Es gibt vier Phasen, angelehnt an das EGRED-Schema. Erste Phase: Einsatzdaten erfassen. Standort per GPS, Drohnenauswahl aus vorkonfigurierten Profilen - aktuell DJI Matrice 350 RTK und Matrice 200 - mit ihren spezifischen Grenzwerten. Dazu eine interaktive Karte, auf der man Suchgebiete als Polygone einzeichnen kann.
+Lara: Das klingt schon deutlich besser als ein Formular auf Papier. Und Phase zwei?
+Alex: Die Vorflugkontrolle - und das ist das Herzstück. Die App zieht aktuelle Wetterdaten von Open-Meteo. Wind, Böen, Temperatur, Niederschlag, Sichtweite. Jeder Wert bekommt eine Ampelbewertung - grün, gelb, rot - abgeglichen gegen die Grenzwerte der gewählten Drohne.
+Lara: Und die Windgeschwindigkeit wird tatsächlich auf die Flughöhe interpoliert?
+Alex: Ja, basierend auf Messdaten bei 10, 80, 120 und 180 Metern. Kein Bauchgefühl mehr, ob der Wind da oben wohl schlimmer ist.
+Lara: [nachdenklich] Das ist genau die Art von Berechnung, die ein Blatt Papier nie leisten kann. Was gibt es noch in der Vorflugkontrolle?
+Alex: Geomagnetik - der K-Index von NOAA zeigt, ob geomagnetische Störungen den Kompass beeinflussen könnten. Dann Umgebungsanalyse via OpenStreetMap und Overpass-API: Lufträume, Straßen, Bahnlinien, Stromleitungen, Krankenhäuser, Naturschutzgebiete. Und natürlich die automatische SORA-Berechnung.
+Lara: Also all das, was man vorher manuell auf Karten und in Tabellen nachschlagen musste.
+Alex: Genau. Und nach den Flügen generiert die App einen vollständigen PDF-Bericht. Alle Wetterdaten, Checklisten, Flugzeiten, Karten - alles in einem Dokument. Das landet dann in der Einsatzakte.
+Lara: Lass uns über die Architektur reden. Du hast gesagt, kein Backend. Wie funktioniert das technisch?
+Alex: Local-First. Alles lebt im Browser. Sämtliche Einsatzdaten werden in localStorage gespeichert. Ein Service Worker sorgt für Offline-Fähigkeit. Und das Caching ist geschichtet - verschiedene Strategien für verschiedene Datentypen.
+Lara: Wie meinst du das?
+Alex: Wetterdaten veralten in Minuten, die werden NetworkFirst gecacht mit zehn Minuten Haltbarkeit. Kartenkacheln sind monatelang gültig, die werden CacheFirst mit sieben Tagen gespeichert. Umgebungsdaten ändern sich selten - acht Stunden localStorage. Und Einsatzdaten selbst haben 56 Stunden für aktive und 24 Stunden für abgeschlossene Einsätze.
+Lara: 56 Stunden? Das ist ein bewusster Trade-off, oder?
+Alex: Ja. Ein Einsatz ist ein Einsatz, kein Archiv. Der PDF-Bericht ist das Archiv. Daten leben nur auf dem Gerät, kein Sync zwischen Geräten.
+Lara: Das heißt auch: keine Datenschutzprobleme mit Cloud-Speicherung.
+Alex: Kein Server, keine Datenbank, keine Accounts, kein DSGVO-Verfahrensverzeichnis. Für Nicht-Entwickler: Link öffnen, fertig.
+Lara: Da steht ein schöner Satz im Artikel: "Das Ehrenamt braucht keine Cloud-Subscriptions. Es braucht Tools, die funktionieren, wenn das Mobilfunknetz nicht funktioniert."
+Alex: Und genau das liefert die PWA-Architektur.
+Lara: Jetzt kommen wir zum spannendsten Teil für unsere Zuhörer. Der Artikel beschreibt, wie die App mit Claude Code als AI-Coding-Partner gebaut wurde. Was hat die AI geliefert - und was nicht?
+Alex: Die AI konnte in Minuten das technische Gerüst bauen. React-Komponenten, Tailwind-Layout, API-Integration, Service Worker, PDF-Generierung, Kartenintegration. Die technische Breite über den gesamten Stack hinweg.
+Lara: Also die Implementierungsgeschwindigkeit.
+Alex: Ja. Für jede einzelne Technologie hätte man sonst Dokumentation lesen, Beispiele suchen und Boilerplate schreiben müssen. Die AI hat sogar selbstständig eine Windinterpolation für die Flughöhe gebaut.
+Lara: Aber es gibt eine klare Grenze.
+Alex: [nachdenklich] Eine sehr klare Grenze. Die AI hatte keine Ahnung von den EGRED-Phasen. Von der SORA-Methodik. Von den über 15 Contingency- und Emergency-Prozeduren mit spezifischen Call-Outs und Eskalationspfaden. Von den Wetter-Grenzwerten pro Drohnenmodell.
+Lara: Die Wetter-Grenzwerte - wie sind die reingekommen?
+Alex: Über die Bedienungsanleitung der Drohne. Der Autor hat das Handbuch eingespeist, und die AI hat die relevanten Werte selbst extrahiert. Aber die Idee, dass man das braucht, und welches Handbuch relevant ist - das kam vom Menschen.
+Lara: Das ist ein wichtiger Punkt. Die AI kann technische Muster implementieren, aber die fachliche Domäne muss der Mensch mitbringen.
+Alex: Exakt. Und das führt direkt zum Thema Vibe Coding. Der Artikel macht da eine klare Aussage: "Bau mir eine Drohnen-App" als Prompt liefert eine hübsche UI mit erfundenen Daten. Keine echten Prozeduren, keine korrekten Grenzwerte, keine valide SORA-Berechnung.
+Lara: [ueberrascht] Also nichts, worauf sich jemand in einem realen Einsatz verlassen könnte.
+Alex: Genau. Was funktioniert ist eine Spezifikation: "Implementiere Contingency-Prozedur C4.2. Das bedeutet: Bodenpersonal meldet bemanntes Luftfahrzeug, RPIC initiiert Landung nach N6, Eskalation zu E1 bei Kontrollverlust." Das kann die AI umsetzen.
+Lara: Also die Aufgabenverteilung war: Mensch liefert Domain-Wissen und Architekturentscheidungen. AI liefert Implementierungsgeschwindigkeit und technische Breite.
+Alex: Und der Artikel betont: Das ist keine Arbeitsteilung zwischen "denken" und "tippen". Beide Seiten liefern Substanz. Aber die AI liefert nur dort Substanz, wo es bekannte Lösungen für bekannte Probleme gibt.
+Lara: Das erinnert mich an die vorherigen Posts auf dem Blog. Da ging es auch um die Grenzen von AI-Tools und warum Contracts und Evals so wichtig sind.
+Alex: [nachdenklich] Und genau das ist die Brücke, die der Artikel am Ende schlägt. Er zieht Parallelen zwischen Katastrophenschutz-Prozessen und Software-Architektur-Konzepten.
+Lara: Welche Parallelen genau?
+Alex: EGRED-Checklisten sind Contracts - verbindliche Vereinbarungen, was ein System tun soll und was nicht. SORA ist eine Policy Engine - Input rein, Risikolevel raus, kein Ermessensspielraum. Die Wetterbewertung ist ein Eval - Messwerte gegen Grenzwerte prüfen, Ampelfarben vergeben.
+Lara: Und die Notfallprozeduren sind Eskalationspfade.
+Alex: Gestufte Reaktionspläne mit klaren Triggern. C0 führt zu E1, E1 kann E3 auslösen. Jede Stufe hat eigene Regeln und Verantwortlichkeiten. Dieselben Konzepte, andere Domain.
+Lara: Das finde ich die stärkste Erkenntnis des Artikels. Digitalisierung ist kein Technologieprojekt, sondern ein Verständnisprojekt. Wer die Prozesse nicht versteht, produziert nur digitales Papier.
+Alex: Eine PDF auf dem Tablet ist keine Verbesserung gegenüber einem Blatt im Gerätewagen. Erst wenn man versteht, warum ein Schritt existiert, wer ihn ausführt und was passiert, wenn er fehlschlägt - erst dann kann man ihn sinnvoll digitalisieren.
+Lara: Was mich noch beeindruckt: Die App wird tatsächlich von einer echten BOS-Einheit eingesetzt. Das ist kein Hobbyprojekt, das in der Schublade liegt.
+Alex: Und das Feedback fließt zurück in die Prozeduren, die Prozeduren fließen zurück in den Code. Und weil andere Einheiten vor denselben Herausforderungen stehen, ist das Ganze Open Source.
+Lara: Das bringt mich zu einer größeren Frage. Wie viele Prozesse im Ehrenamt, im öffentlichen Dienst, in Organisationen laufen heute noch auf Papier - nicht weil Papier besser ist, sondern weil niemand die Prozesse verstanden und digital abgebildet hat?
+Alex: [nachdenklich] Wahrscheinlich sehr viele. Und der Artikel zeigt: AI-Tools können die Implementierung massiv beschleunigen. Aber sie können den Schritt des Verstehens nicht überspringen.
+Lara: Vibe Coding endet dort, wo Domain-Wissen anfängt. Das ist vielleicht der prägnanteste Satz des ganzen Artikels.
+Alex: Und übertragbar auf so ziemlich jeden Bereich. Ob Katastrophenschutz, Medizin, Recht oder Finanzwesen - die AI kann Prozeduren implementieren, aber nicht erfinden.
+Lara: Was nehmen wir also mit?
+Alex: Drei Dinge. Erstens: Digitalisierung braucht Prozessverständnis, nicht nur Technologie. Zweitens: Local-First und PWA sind eine echte Alternative für Kontexte ohne Server-Budget. Und drittens: AI-Coding-Tools sind mächtig - aber nur in Kombination mit jemandem, der die fachlichen Anforderungen mitbringt.
+Lara: Und vielleicht noch ein viertes: Die Konzepte aus der Software-Architektur - Contracts, Policy Engines, Evals, Eskalationspfade - die tauchen überall auf. In Agent-Systemen genauso wie im Gerätewagen.
+Alex: [lacht] Wer hätte gedacht, dass Drohnen-Checklisten und Agent-Architekturen so viel gemeinsam haben?
+Lara: Wer den vollständigen Artikel lesen will - mit allen technischen Details, der Vergleichstabelle zu PWA versus Native versus Cloud, und dem kompletten SORA-Hintergrund - findet ihn auf rubeen.dev.
+Alex: Und die App selbst ist unter uav.iuk-ue.de erreichbar. Open Source auf GitHub, zum Ausprobieren und Mitentwickeln.
+Lara: Schreibt uns, was ihr davon haltet. Habt ihr ähnliche Erfahrungen mit der Digitalisierung von Papierprozessen gemacht? Welches Thema sollen wir als nächstes besprechen?
+Alex: Bis dahin - danke fürs Zuhören!
+Lara: Tschüss!
