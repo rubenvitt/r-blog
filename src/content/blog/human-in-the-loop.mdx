@@ -10,8 +10,10 @@ draft: true
 import Callout from '../../components/widgets/Callout.astro';
 import LinkCard from '../../components/widgets/LinkCard.astro';
 import Accordion from '../../components/widgets/Accordion.astro';
-import InfoBox from '../../components/widgets/InfoBox.astro';
 import ProjectCard from '../../components/widgets/ProjectCard.astro';
+import Figure from '../../components/widgets/Figure.astro';
+import approvalComparison from './_images/human-in-the-loop/approval-comparison.png';
+import approvalFlow from './_images/human-in-the-loop/approval-flow.png';
 
 > Je autonomer ein Agent wird, desto wichtiger wird die Qualität der menschlichen Eingriffspunkte - nicht deren Abschaffung.
 
@@ -60,6 +62,8 @@ Nicht jede Agent-Aktion braucht einen Menschen. `lookup_order` abzunicken wäre 
 | High-Risk Mutation | `refund_order` | Approval erforderlich |
 | Irreversibel | `delete_account` | Approval + 4-Augen-Prinzip |
 
+**Read-Only** ist unkritisch - der Agent liest Daten, verändert aber keinen Zustand. Hier bremst ein Approval-Gate nur den Flow, ohne Sicherheit zu gewinnen. **Low-Risk Mutations** verändern Zustand, aber die Auswirkung ist begrenzt und umkehrbar. Ein neues Passwort kann der User selbst zurücksetzen. Loggen reicht, damit der Audit-Trail vollständig bleibt. **High-Risk Mutations** bewegen Geld, ändern Verträge oder betreffen sensible Daten - hier muss ein Mensch explizit freigeben, bevor das System ausführt. Und **irreversible Aktionen** wie Account-Löschungen brauchen nicht nur Approval, sondern ein 4-Augen-Prinzip: Eine zweite Person bestätigt, was die erste freigegeben hat.
+
 Die Zuordnung ist keine Wissenschaft - sie ist eine bewusste Produkt-Entscheidung. Im Refund-Agent sieht das konkret so aus:
 
 <Callout type="info">
@@ -91,6 +95,8 @@ Vom Stufenmodell zur Implementierung. Das grundlegende Pattern ist überraschend
 ### Das Pattern
 
 Jeder Approval-Flow folgt demselben Ablauf: Der Agent formuliert einen Tool-Intent. Ein Policy Gate prüft, ob dieser Intent eine Genehmigung erfordert. Falls ja, pausiert die Execution, der Intent landet in einer Approval Queue, ein Mensch entscheidet - und erst dann wird der Tool-Call tatsächlich ausgeführt. Oder eben nicht.
+
+<Figure src={approvalFlow} alt="Approval-Flow: Agent → Intent → Policy Gate → Pause → Mensch → Execute" caption="Der Approval-Flow: Das Policy Gate entscheidet. Bei allow geht es direkt weiter, bei require approval pausiert das System und wartet auf den Menschen."/>
 
 In Code ist das erstaunlich wenig Aufwand. Im Vercel AI SDK reicht ein einziges Flag auf der Tool-Definition:
 
@@ -186,6 +192,8 @@ Die Forschung zeigt aber auch: Rubber-Stamping ist kein Naturgesetz. Es ist ein 
 **Variable Challenge Injection** mischt bekannte gut/schlecht-Items in die Review-Queue - sogenannte Trap Tasks. Wer drei fingierte Fälle hintereinander falsch bewertet, bekommt Feedback. Das hält die Aufmerksamkeit hoch.
 
 **Mandatory Justification** ersetzt den Approve-Button durch ein strukturiertes Begründungsfeld. Nicht "Approve/Reject", sondern "Was genau hast du geprüft, und warum ist das Ergebnis korrekt?"
+
+<Figure src={approvalComparison} alt="Vergleich: Rubber-Stamp Approval (links) vs. Cognitive Forcing Approval (rechts)" caption="Links: Ein Approve-Button mit rohem JSON - ein Klick, keine Reibung. Rechts: Kontext, Risiko-Badge, Betrag manuell eintippen, Pflicht-Begründung. Unbequem - aber wirksam."/>
 
 Ein Systematic Review von 2025 (Springer) destilliert das Kernfinding: AI-Erklärungen allein - also Transparenz darüber, *warum* die AI so entschieden hat - reichen nicht aus. Der effektivste Hebel ist aktives User Engagement. Der Mensch muss arbeiten, nicht nur zuschauen.
 
