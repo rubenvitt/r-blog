@@ -13,6 +13,7 @@ podcast:
 
 import Callout from '../../components/widgets/Callout.astro';
 import InfoBox from '../../components/widgets/InfoBox.astro';
+import ProjectCard from '../../components/widgets/ProjectCard.astro';
 import LinkCard from '../../components/widgets/LinkCard.astro';
 import Accordion from '../../components/widgets/Accordion.astro';
 import Figure from '../../components/widgets/Figure.astro';
@@ -30,10 +31,12 @@ import observabilityTraces from './_images/ai-evals-ci-pipeline/observability-tr
 Prompting im Chat ist perfekt zum Explorieren der Möglichkeiten, sobald es aber in Produktion geht, reichen gute Einzelantworten nicht aus. Wer ohne Evals deployt, der verschiebt das Testen an reale Nutzer.
 Kurz angerissen habe ich diese Thematik schon in meinem vorangegangenen Post, indem dort schnell eine AI-basierte Evaluierung verwendet wurde. Hier möchte ich genau diesen Aspekt detaillierter beleuchten und beschreiben, worauf es in Produktionsanwendungen ankommt.
 
-<InfoBox>
-Repo: [https://github.com/rubenvitt/refund-agent](https://github.com/rubenvitt/refund-agent)<br />
-Fertige Webapp: [https://refund-agent.pages.dev](https://refund-agent.pages.dev/playground)
-</InfoBox>
+<ProjectCard
+  title="Refund-Agent"
+  description="Multi-Agent Support-System mit Evals, Observability und Contracts"
+  appUrl="https://refund-agent.pages.dev"
+  githubUrl="https://github.com/rubenvitt/refund-agent"
+/>
 
 ## Im Chatfenster getestet
 
@@ -450,4 +453,9 @@ Was wir nicht reproduzierbar prüfen können, das lässt sich nicht kontrolliert
 
 Hier noch das Live-Beispiel:
 
-<LinkCard url="https://refund-agent.pages.dev/playground" />
+<ProjectCard
+  title="Refund-Agent"
+  description="Multi-Agent Support-System mit Evals, Observability und Contracts"
+  appUrl="https://refund-agent.pages.dev"
+  githubUrl="https://github.com/rubenvitt/refund-agent"
+/>
