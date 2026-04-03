@@ -1,0 +1,101 @@
+Finn: Okay, Mara - stell dir vor, du baust einen Agent, der Erstattungen bearbeitet. Der prüft die Bestellung, checkt die Berechtigung, alles passt. Und dann... ein Banner. "Warten auf Freigabe." Nichts passiert.
+Mara: Der erste Reflex: Warum kann der das nicht einfach selbst machen? Dafür haben wir ihn doch gebaut.
+Finn: Genau. Und dieser Reflex ist komplett nachvollziehbar. Aber er ist falsch. Darüber reden wir heute - über Human in the Loop. Warum Agent-Systeme wissen müssen, wann sie pausieren. Ich bin Finn.
+Mara: Und ich bin Mara. Und bevor jemand denkt, wir reden hier über irgendein theoretisches Framework - nein. Wir reden über eine architektonische Entscheidung, die darüber entscheidet, ob dein Agent-System in Produktion gehört oder nicht.
+Finn: Ruben hat auf rubeen.dev einen Post veröffentlicht, der das Thema auseinandernimmt. Der Titel: "Approval ist kein UX-Bug - Warum Agent-Systeme wissen müssen, wann sie fragen."
+Mara: Und der zentrale Satz gleich am Anfang: Je autonomer ein Agent wird, desto wichtiger wird die Qualität der menschlichen Eingriffspunkte - nicht deren Abschaffung.
+Finn: Moment - wir bauen ein System, das autonom sein soll, und dann sagen wir ihm: Halt, frag erst einen Menschen? Das klingt nach einem Designfehler.
+Mara: Klingt so, ja. Aber denk mal drüber nach. refund_order bewegt Geld. Echtes Geld. Und ein Agent, der autonom Geld bewegen kann - das ist kein cleveres Feature mehr, das ist ein offenes Tor.
+Finn: Und genau deswegen hat Ruben einen Open-Source Refund-Agent gebaut, an dem er diese Konzepte durchspielt. Jedes Tool, das der Agent nutzen kann, hat dort eine Art Steckbrief - und bei refund_order steht in diesem Steckbrief ein Flag: requiresApproval. Also: Ohne menschliche Freigabe passiert nichts.
+Mara: Das ist keine Krücke, das ist Design.
+Finn: [nachdenklich] In einem früheren Artikel ging es darum, wie man Tools für Agents sauber definiert - mit klaren Regeln, was ein Tool darf und was nicht. Da war dieses Approval-Flag ein Punkt unter vielen. Jetzt wird es zum Hauptthema.
+Mara: Und im Evals-Post stand im Contract sogar explizit drin: Der Workflow sollte pausieren. Das war von Anfang an so designt - keine Notlösung.
+Finn: Okay, aber lass uns eine Unterscheidung klären, die ständig durcheinander geworfen wird.
+Mara: Elicitation und Governance Gates?
+Finn: Genau. Elicitation heißt: Der Agent fragt aktiv nach Informationen. "Welche Bestellnummer meinst du?" Er braucht Input, um weiterzuarbeiten.
+Mara: Ein Governance Gate ist was komplett anderes. Das ist die Stelle im System, die entscheidet: Darf der Agent das alleine machen, oder muss ein Mensch ran? Nicht weil der Agent unsicher ist, sondern weil die Aktion es erfordert.
+Finn: Also Elicitation ist UX. Governance ist Sicherheitsarchitektur.
+Mara: Und wenn du beides in einen Topf wirfst, designst du dein System falsch. Dann behandelst du Sicherheitsfragen wie UX-Probleme und optimierst sie weg.
+Finn: Ruben bringt eine Analogie, die ich ziemlich treffend finde: Pull Request Reviews. Die kosten Zeit, die sind ein Bottleneck. Und trotzdem sind sie in fast jedem professionellen Team Standard.
+Mara: Weil der Schaden durch unkontrollierten Code in Produktion den Overhead überwiegt. Approval-Gates bei Agents sind dasselbe Prinzip. Ein erzwungener Haltepunkt vor einer Zustandsänderung, die sich nicht einfach rückgängig machen lässt.
+Finn: Was mich überrascht hat: Anthropic hat sich Claude Code genauer angeschaut und festgestellt, dass das Modell in über 16 Prozent der komplexen Turns selbstständig pausiert.
+Mara: Warte - das Modell stoppt sich selbst?
+Finn: Ja! Mehr als doppelt so häufig, wie Menschen den Agent unterbrechen. Die liegen bei rund 7 Prozent. Das Modell erkennt seine eigene Unsicherheit und handelt danach.
+Mara: Das ist eigentlich genau das Verhalten, das wir wollen. Ein Agent, der weiß, wann er nicht weiter weiß.
+Finn: Anthropic nennt das Leitprinzip dahinter Least Agency - das ist im Grunde das Least-Privilege-Prinzip aus der IT-Security, aber auf Autonomie übertragen. Gib dem Agent nur so viel Autonomie, wie die Aufgabe tatsächlich erfordert. Nicht mehr.
+Mara: Pause/Resume ist für Agent-Systeme, was Pull Request Reviews für Code sind. Nicht optional, sondern Qualitätssicherung.
+Finn: Okay, aber jetzt die Frage: Wann brauche ich das überhaupt? Nicht jede Aktion braucht einen Menschen.
+Mara: Richtig. lookup_order abzunicken wäre absurd. Aber refund_order ohne Freigabe durchlaufen zu lassen wäre fahrlässig.
+Finn: Und dazwischen gibt es ein Stufenmodell. Vier Stufen.
+Mara: Fangen wir unten an: Read-Only. Also Sachen wie lookup_order oder faq_search - der Agent liest Daten, verändert keinen Zustand. Da bremst ein Approval-Gate nur den Flow, ohne Sicherheit zu gewinnen. Auto-Allow.
+Finn: Eine Stufe drüber haben wir Low-Risk Mutations. Sachen wie reset_password. Das verändert Zustand, aber die Auswirkung ist begrenzt und umkehrbar. Da reicht Logging für den Audit-Trail.
+Mara: Wobei - selbst da ist es nicht so eindeutig. Was, wenn das ein Admin-Account ist? Aber grundsätzlich: begrenzt, umkehrbar, kein Approval nötig.
+Finn: Dann High-Risk Mutations - und da wird es ernst. Geld bewegen, Verträge ändern, sensible Daten anfassen. Da muss ein Mensch explizit freigeben, bevor das System ausführt. refund_order fällt hier rein.
+Mara: Und ganz oben: Irreversible Aktionen. delete_account zum Beispiel. Da reicht nicht mal ein einzelnes Approval - da braucht man ein 4-Augen-Prinzip. Eine zweite Person bestätigt, was die erste freigegeben hat.
+Finn: Also nochmal verdichtet: Lesen ist immer okay, kleine Änderungen loggen wir, bei Geld und sensiblen Daten muss ein Mensch ran, und bei unwiderruflichen Aktionen braucht es sogar zwei Menschen.
+Mara: [nachdenklich] Die Zuordnung klingt erstmal offensichtlich. Aber wo genau die Grenze zwischen Low-Risk und High-Risk liegt - das ist eine bewusste Produkt-Entscheidung. reset_password ist im Refund-Agent als destruktive Aktion markiert, braucht aber trotzdem kein Approval. Eine bewusste Entscheidung - und in der Contracts-UI per Toggle jederzeit änderbar.
+Finn: Und das Ganze wird ab August 2026 auch regulatorisch relevant. EU AI Act, Artikel 14.
+Mara: Genau. Für High-Risk-Systeme schreibt der fünf konkrete Human-Oversight-Fähigkeiten vor. Die wichtigsten für unser Thema: Jede AI-Entscheidung muss umkehrbar oder ignorierbar sein. Es muss immer eine Möglichkeit geben, das System zu stoppen.
+Finn: Und - das finde ich bemerkenswert - der Gesetzgeber adressiert explizit Automation Bias. Also das Über-Vertrauen in AI-Output. Behavioral Science in Hard Law.
+Mara: Bei Verstößen drohen bis zu 15 Millionen Euro oder 3 Prozent des globalen Jahresumsatzes. Das ist kein Optional.
+Finn: Nicht jede Aktion braucht einen Menschen. Aber jede risikoreiche Aktion braucht die Möglichkeit eines Menschen. Und die muss architektonisch vorgesehen sein - nicht nachträglich drangeschraubt.
+Mara: Gut. Wir wissen jetzt, wann wir pausieren müssen. Wie funktioniert das technisch?
+Finn: Das Prinzip ist simpel: Der Agent schlägt vor, der Mensch entscheidet, das System führt aus. Der Agent formuliert einen Tool-Intent. Ein Policy Gate - also die Prüfstelle - checkt, ob dieser Intent eine Genehmigung erfordert. Falls ja, pausiert die Execution, der Intent landet in einer Approval Queue, ein Mensch entscheidet - und dann wird der Tool-Call ausgeführt. Oder eben nicht.
+Mara: Und in Code?
+Finn: Im Vercel AI SDK reicht ein einziges Flag auf der Tool-Definition. needsApproval: true. Das ist alles. Der Server wartet, bis der Client eine Entscheidung sendet. Approved? Tool-Call wird ausgeführt. Denied? Der Agent bekommt die Ablehnung als Kontext und kann reagieren.
+Mara: Okay, ein Flag. Das klingt fast zu einfach.
+Finn: Ist es auch - in der Demo. Die eigentliche Herausforderung liegt woanders. State Persistence. Crash Recovery. Was passiert mit einem Approval, das erst nach drei Stunden kommt?
+Mara: Und da unterscheiden sich die Frameworks fundamental. Es gibt zwei Ansätze: Einfache Flags direkt am Tool - so machen es Vercel und OpenAI. Der schnellste Einstieg. Und dann echte Workflow-Engines wie Temporal, die für Produktions-Szenarien gebaut sind.
+Finn: Was mich bei LangGraph überrascht hat: Die checkpointen zwar automatisch, aber Code vor einem interrupt muss idempotent sein, weil die gesamte Node bei Resume von vorne läuft. Das ist ein subtiler Fallstrick, den man erst in Produktion merkt.
+Mara: Temporal spielt in einer anderen Liga. Praktisch unbegrenzte Wartezeit, vollautomatisches Replay bei Crash. Wenn dein Approval Stunden oder Tage dauern kann, brauchst du so etwas - ein System, das seinen Zustand zuverlässig über lange Zeiträume hält, auch wenn Server neustarten.
+Finn: Gut, technisch funktioniert das. Aber ein Approval-Flow ist nur so gut wie die Information, die der Approver bekommt. Was muss der sehen?
+Mara: Wer will was, auf welchem Objekt, warum, mit welchem Risiko - das muss auf einen Blick erfassbar sein. Nicht der gesamte Chat-Verlauf. Eine komprimierte Entscheidungsgrundlage.
+Finn: Im Refund-Agent sieht das konkret so aus: Ein Approval-Banner zeigt Tool-Name und Argumente. Approve oder Deny. Und jede Entscheidung wird Teil eines strukturierten Audit-Trails - wer hat was entschieden, wann, und mit welcher Version des Systems.
+Mara: Der Approval-Flow ist kein technisches Problem. Er ist ein Produkt-Problem: Was braucht ein Mensch, um in drei Sekunden die richtige Entscheidung zu treffen?
+Finn: Und in Produktion reicht React State nicht. Ein Browser-Tab, der sich schließt, darf keinen genehmigten Refund ins Nirvana schicken.
+Mara: Okay, wir haben jetzt das Approval gebaut. Und dann sitzt da jemand und klickt 50 Mal am Tag Approve. Ohne hinzuschauen.
+Finn: Das Rubber-Stamp-Problem.
+Mara: Die ehrliche Antwort: Genau das passiert. Und zwar systematisch. Das Phänomen heißt Automation Complacency - auf Deutsch könnte man sagen: Automatisierungs-Betriebsblindheit. Je zuverlässiger ein System arbeitet, desto weniger kritisch prüft der Mensch dessen Output.
+Finn: Kennst du das? Wenn der Tempomat läuft, schaust du irgendwann nicht mehr auf den Tacho.
+Mara: Genau das. Und es wird schlimmer, je besser die AI wird. Das ist das Paradox.
+Finn: Die Zahlen sind krass. Klinische Decision-Support-Systeme zeigen Override-Raten von 90 bis 95 Prozent.
+Mara: Neun von zehn Warnungen werden weggeklickt. Ein Teil davon ist rational, weil viele Alerts klinisch irrelevant sind. Aber genau das ist das Problem: Wenn 90 Prozent der Warnungen Rauschen sind, trainiert das System den Menschen, nicht mehr hinzuschauen.
+Finn: Eine JAMA-Studie geht noch weiter. 457 Kliniker. Wenn die AI absichtlich fehlerhafte Empfehlungen gab, sank die diagnostische Accuracy von 73 Prozent auf 61,7 Prozent.
+Mara: [nachdenklich] Lass das mal sacken. Die AI machte die Entscheidungen nicht besser - sie machte die Menschen schlechter. Die Kliniker haben ihr eigenes Urteil aufgegeben zugunsten der Maschine. Und das sind trainierte Mediziner, nicht Laien.
+Finn: Das niederländische Kinderbeihilfe-Beispiel zeigt, was passiert, wenn das auf Verwaltungsebene eskaliert. Technisch war das System HITL - Sachbearbeiter mussten die ML-basierten Betrugsbewertungen prüfen und freigeben.
+Mara: In der Praxis hinterfragte niemand den Output.
+Finn: Tausende Familien wurden fälschlich als Betrüger eingestuft. Die Regierung trat zurück.
+Mara: Das war kein Versagen einzelner Sachbearbeiter. Das war ein Systemversagen. Das System hat die Leute darauf trainiert, nicht hinzuschauen.
+Finn: Und die Justiz hat reagiert. Die SCHUFA - das ist die größte Wirtschaftsauskunftei in Deutschland - hat mit ihrem Scoring-Verfahren ein Urteil am Europäischen Gerichtshof ausgelöst. 2023. Und dieses Urteil hat eine klare Konsequenz: Wenn ein Mensch den AI-Output nur durchwinkt, ohne substanziell zu prüfen, gilt das als rein automatisierte Entscheidung unter der DSGVO.
+Mara: Das heißt: Der betroffene Mensch hat besondere Schutzrechte. Rubber-Stamping ist nicht nur ein UX-Problem - es ist ein juristisches Risiko.
+Finn: Also halten wir fest: Wir haben jetzt drei Beispiele gehört, in denen HITL auf dem Papier existiert hat, aber in der Praxis versagt hat. Die Frage ist: Geht es besser?
+Mara: Ja. Denn Rubber-Stamping ist kein Naturgesetz. Es ist ein Design-Problem. Und es gibt Gegenmaßnahmen.
+Finn: Die stärkste kommt aus der Forschung: Cognitive Forcing Functions. Die Idee ist simpel - du zwingst den Reviewer, ein unabhängiges Urteil zu bilden, bevor die AI-Empfehlung überhaupt sichtbar wird.
+Mara: Das klingt trivial.
+Finn: Ist es konzeptionell auch. Hat aber den stärksten Effekt auf Overreliance. Der Mensch muss erst selber denken, bevor er den Vorschlag sieht.
+Mara: Dann gibt es Variable Challenge Injection. Du mischst bekannte gut-schlecht-Items in die Review-Queue - sogenannte Trap Tasks. Wer drei fingierte Fälle hintereinander falsch bewertet, bekommt Feedback. Das hält die Aufmerksamkeit hoch.
+Finn: Und statt einem simplen Approve-Button: Mandatory Justification. Ein strukturiertes Begründungsfeld. Was genau hast du geprüft, und warum ist das Ergebnis korrekt?
+Mara: Stell dir das mal konkret vor. Zwei Approval-Screens. Der erste: Du siehst rohes JSON und einen großen Approve-Button. Ein Klick, fertig. Der zweite: Du siehst den Kundennamen, den Betrag, ein Risiko-Badge, musst den Betrag manuell eintippen und eine Begründung schreiben, bevor du freigeben kannst.
+Finn: [lacht] Unbequem - aber wirksam.
+Mara: Ein Systematic Review von 2025 bestätigt das: AI-Erklärungen allein - also Transparenz darüber, warum die AI so entschieden hat - reichen nicht aus. Der effektivste Hebel ist aktives User Engagement. Der Mensch muss arbeiten, nicht nur zuschauen.
+Finn: Ruben formuliert das im Post als Warning: Ein Approve-Button ohne Kontext ist kein Sicherheitsfeature, sondern Security Theater.
+Mara: Und jetzt wird es wirklich unbequem. Die Forschung zeigt: Genau die Designs, die Overreliance am stärksten reduzierten, bekamen die schlechtesten subjektiven Bewertungen von Usern.
+Finn: Die Nutzer mochten die Cognitive Forcing Functions nicht.
+Mara: Gutes Approval-Design ist unbequem - by design. Wer den Approval-Prozess so gestaltet, dass er sich gut anfühlt, hat wahrscheinlich das Problem nicht gelöst.
+Finn: Das ist wie die nervige Sicherheitsabfrage, bevor du eine Produktionsdatenbank löschst. Niemand mag die. Aber jeder, der mal ohne geklickt hat, weiß, warum sie da ist.
+Mara: Wer HITL als UX-Bug betrachtet, hat nie einen produktiven Incident Report gelesen.
+Finn: Okay, lass uns das zusammenführen. Die Frage war nie "HITL ja oder nein". Die Frage ist: Wie viel Autonomie verträgt welche Aktion - und wie verändert sich das über die Zeit?
+Mara: Es gibt eine zweite Achse neben dem Risiko-Stufenmodell: Wie viel Oversight braucht das Gesamtsystem zu einem bestimmten Zeitpunkt?
+Finn: Ein neues Tool in einer unerprobten Domain startet im Audit-Modus. Der Mensch reviewed jede Aktion.
+Mara: Mit gemessener Performance - Accuracy, Override-Frequenz, Exception Rates - kann das System graduell in den Assist-Modus wechseln. Die AI agiert, der Mensch monitort.
+Finn: Und irgendwann operiert es nahezu autonom. Aber - und das ist der Schlüssel - die Grenzen bleiben architektonisch erzwungen. Nicht auf Vertrauen gebaut.
+Mara: Und da gibt es noch ein Paradox, das mich nicht loslässt. Jakob Nielsen hat Anfang 2026 beobachtet: AI-Output zu verifizieren ist kognitiv oft schwieriger, als ihn selbst zu produzieren.
+Finn: Aber genau diese Verifikation ist die Rolle, die dem Menschen bleibt.
+Mara: Und sie wird umso wichtiger, je besser die Systeme werden. Das ist das zentrale Paradox.
+Finn: Die Infrastruktur für kontrollierte Autonomie ist da. Die SDKs liefern die Primitives. Die Frage ist nur noch, ob wir sie nutzen.
+Mara: Ein Agent, der nicht weiß, wann er pausieren muss, ist kein autonomer Agent - er ist ein unkontrollierter Prozess.
+Finn: Kontrolle ist kein Rückschritt. Es ist die Voraussetzung dafür, dass Autonomie überhaupt vertrauenswürdig wird.
+Mara: Wenn euch das Thema interessiert, schaut euch den vollständigen Post auf rubeen.dev an. Und den Refund-Agent - Open Source, mit Policy Gate, Approval-Flow und Audit-Trail zum Anfassen.
+Finn: Es lohnt sich auch, die vorherigen Posts zu lesen. Besonders den zu Tool-Contracts und den zu Evals - die bauen aufeinander auf und geben dem Ganzen hier den Kontext.
+Mara: Danke fürs Zuhören. Bis zum nächsten Mal!
+Finn: Bis dann!
