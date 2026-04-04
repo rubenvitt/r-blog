@@ -27,8 +27,12 @@
 
       if (!pagefindLoaded && container) {
         try {
-          const pagefind = await import('/pagefind/pagefind-ui.js');
-          new pagefind.PagefindUI({
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = '/pagefind/pagefind-ui.css';
+          document.head.appendChild(link);
+          await import('/pagefind/pagefind-ui.js');
+          new window.PagefindUI({
             element: container,
             showSubResults: true,
             showImages: false,
