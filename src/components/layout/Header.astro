@@ -1,4 +1,7 @@
 ---
+import { Image } from 'astro:assets';
+import logo from '../../assets/logo.png';
+
 const navLinks = [
     {href: '/', label: 'Blog'},
     {href: '/tags', label: 'Tags'},
@@ -9,7 +12,7 @@ const navLinks = [
 <header class="sticky top-0 z-50 border-b border-(--color-border) bg-(--color-bg)/80 backdrop-blur-lg">
     <nav class="mx-auto flex max-w-(--content-width-wide) items-center justify-between px-6 py-4">
         <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight hover:text-(--color-accent) transition-colors">
-            <img src="/logo.png" alt="rubeen.dev Logo" class="h-8 w-8 rounded-full object-cover"/>
+            <Image src={logo} alt="rubeen.dev Logo" width={32} height={32} class="h-8 w-8 rounded-full object-cover"/>
             rubeen.dev
         </a>
 

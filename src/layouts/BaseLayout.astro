@@ -9,9 +9,11 @@ interface Props {
     title: string;
     description?: string;
     image?: string;
+    imageWidth?: number;
+    imageHeight?: number;
 }
 
-const {title, description = DEFAULT_SITE_DESCRIPTION, image} = Astro.props;
+const {title, description = DEFAULT_SITE_DESCRIPTION, image, imageWidth, imageHeight} = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -38,6 +40,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:title" content={title}/>
     <meta property="og:description" content={description}/>
     {image && <meta property="og:image" content={new URL(image, Astro.site)}/>}
+    {image && imageWidth && <meta property="og:image:width" content={String(imageWidth)}/>}
+    {image && imageHeight && <meta property="og:image:height" content={String(imageHeight)}/>}
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content={image ? "summary_large_image" : "summary"}/>

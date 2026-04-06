@@ -18,6 +18,7 @@ import traceView from './_images/tools-sind-keine-prompts/trace-view.png'
 import Accordion from '../../components/widgets/Accordion.astro'
 import LinkCard from '../../components/widgets/LinkCard.astro'
 import Figure from '../../components/widgets/Figure.astro'
+import ProjectCard from '../../components/widgets/ProjectCard.astro'
 import OpenAiImage from './_images/tools-openai-apps.png'
 
 > Der Agent bestätigt die Rückerstattung. Das Geld kommt nie.
@@ -49,7 +50,13 @@ Um direkt mit bereits eingeführten Konzepten mitzugehen - und weil das Beispiel
 <Accordion title="Kurze Beschreibung des Refund Agents" defaultOpen={true}>
   Der Refund Agent ist Teil eines Multi-Agent Support-Teams, orchestriert von einem Orchestrator - und zuständig für die Abwicklung von Rückgaben sowie deren Statusabfrage.
   Der Support-Agent hat Tools, um unter anderem die Rückgabe anzustoßen.
-  <LinkCard url="https://refund-agent.pages.dev/"/>
+
+  <ProjectCard
+    title="Refund-Agent"
+    description="Multi-Agent Support-System mit Policy Gate, Tool-Sicherheit und Audit-Trail"
+    appUrl="https://refund-agent.pages.dev"
+    githubUrl="https://github.com/rubenvitt/refund-agent"
+  />
 </Accordion>
 
 > Ein Tool-Call ist keine intelligentere Antwort, sondern der Beginn eines Zustandsübergangs.
