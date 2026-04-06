@@ -159,7 +159,7 @@ Im Refund-Agent sieht das so aus: Ein Approval-Banner zeigt Tool-Name und Argume
 
 ### Durable Execution
 
-In der Demo reicht React State. In Produktion braucht ihr Durable Execution - Temporal Signals für Approvals, die Stunden oder Tage dauern können. Ein Browser-Tab, der sich schließt, darf keinen genehmigten Refund ins Nirvana schicken.
+In der Demo reicht Session State. In Produktion nicht. Approvals, die Stunden oder Tage dauern, brauchen Durable Execution. Ein Browser-Tab, der sich schließt, darf keinen genehmigten Refund ins Nirvana schicken.
 
 <ProjectCard
   title="Refund-Agent"

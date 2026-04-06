@@ -35,7 +35,7 @@ const words = content.split(/\s+/).length;
 const readingTime = Math.max(1, Math.ceil(words / 200));
 ---
 
-<BaseLayout title={`${title} — rubeen.dev`} description={description} image={image?.src}>
+<BaseLayout title={`${title} — rubeen.dev`} description={description} image={image?.src} imageWidth={image?.width} imageHeight={image?.height}>
     <ReadingProgress readingTime={readingTime} />
     <!-- Hero Header -->
     {image ? (
