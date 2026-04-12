@@ -20,11 +20,11 @@ Die zwei neuen Tools sind eine andere Geschichte. Kein tiefes Domain-Wissen. Kei
 
 ## Was fehlt - und wem
 
-Knapp 27 Millionen Menschen in Deutschland engagieren sich ehrenamtlich. Sie organisieren sich in über 650.000 Vereinen, Hilfsorganisationen und Initiativen. Beim DRK allein sind es über 400.000 Ehrenamtliche. Was all diese Organisationen gemeinsam haben: Sie arbeiten mit den Tools, die sie sich leisten können. Und das sind selten die richtigen.
+Knapp 27 Millionen Menschen in Deutschland engagieren sich ehrenamtlich. Sie organisieren sich in über 650.000 Vereinen, Hilfsorganisationen und Initiativen. Was all diese Organisationen gemeinsam haben: Sie arbeiten mit den Tools, die sie sich leisten können. Und das sind selten die richtigen.
 
-Ich bin beim DRK aktiv. Zwei Probleme, die ich dort sehe:
+Zwei Probleme, die ich aus dem Ehrenamt kenne:
 
-**Feedback nach Dienstabenden.** Nach einem Übungsabend will die Gruppenleitung wissen, wie es lief. Bisher: mündlich fragen, Zettel einsammeln, oder - am häufigsten - gar nicht. Was es bräuchte: QR-Code scannen, auf einer Schulnoten-Skala bewerten, Freitext-Feedback hinterlassen. Anonym. Die Gruppenleitung sieht Trends über Zeit. Nicht komplizierter als eine Umfrage - aber es gibt kein Tool dafür, das self-hosted läuft und DSGVO-sauber ist.
+**Feedback nach Übungsabenden.** Die Leitung will wissen, wie es lief. Bisher: mündlich fragen, Zettel einsammeln, oder - am häufigsten - gar nicht. Was es bräuchte: QR-Code scannen, bewerten, Freitext hinterlassen. Anonym. Die Leitung sieht Trends über Zeit. Nicht komplizierter als eine Umfrage - aber es gibt kein Tool dafür, das self-hosted läuft und DSGVO-sauber ist.
 
 <ProjectCard
   title="DA-Feedback"
@@ -42,7 +42,7 @@ Ich bin beim DRK aktiv. Zwei Probleme, die ich dort sehe:
 
 Beides ist banal. Feedback-Formulare und Filesharing - das sind keine ungelösten technischen Herausforderungen. Die Lösungen existieren. Aber nicht für Vereine.
 
-Der Grund ist Mathematik. Eine Individuallösung bei einer Agentur kostet schnell fünfstellig. Die Hälfte aller gemeinnützigen Organisationen in Deutschland hat weniger als 10.000 Euro Jahresbudget - insgesamt. Das DRK fördert Digitalisierungsprojekte mit maximal 2.500 Euro. Davon bekommt man nicht mal einen halben Tag Agenturarbeit.
+Der Grund ist Mathematik. Eine Individuallösung bei einer Agentur kostet schnell fünfstellig. Die Hälfte aller gemeinnützigen Organisationen in Deutschland hat weniger als 10.000 Euro Jahresbudget - insgesamt.
 
 > Das Budget reicht für das Problem, aber nicht für die Lösung. Bisher.
 
@@ -72,11 +72,10 @@ Was ich wissen musste - auch wenn ich es nicht selbst implementiert habe:
 
 - Dass ich **Docker** brauche und wie ein Multi-Stage-Build funktioniert
 - Dass **OIDC** existiert und wie ich PocketID als Provider konfiguriere
-- Dass **CI/CD** zu einem fertigen Produkt gehört und wie GitHub Actions aufgesetzt wird
-- Wie **Environment-Variablen** funktionieren und was in ein `.env`-File gehört
-- Was ein **Reverse Proxy** ist und wie Traefik konfiguriert wird
+- Dass **CI/CD** zu einem fertigen Produkt gehört - auch wenn es nur ein Docker-Image-Build ist
+- Wie **Cloudflare Tunnel** funktioniert, um den Service erreichbar zu machen
 - Dass **SQLite** für diese Use Cases reicht
-- Dass **MinIO** S3-kompatibel ist und wie Buckets konfiguriert werden
+- Dass es **Storage-Optionen** gibt und welche Fragen ich der AI stellen muss, um die richtige zu wählen
 
 Kein einziger dieser Punkte ist Code-Wissen. Das ist System-Wissen. Infrastruktur-Wissen. Deployment-Wissen.
 
@@ -84,17 +83,17 @@ Kein einziger dieser Punkte ist Code-Wissen. Das ist System-Wissen. Infrastruktu
 
 Hier liegt der blinde Fleck der Vibe-Coding-Debatte. Karpathy spricht vom Code - "forget that the code even exists." Aber Code ist nicht der Bottleneck. Deployment ist der Bottleneck.
 
-Wer keine Ahnung von Docker hat, bekommt eine App, die lokal läuft. Wer nicht weiß, was OIDC ist, bekommt eine App ohne Auth. Wer CI/CD nicht kennt, bekommt eine App, die nach jedem Update manuell deployed werden muss. Wer nie einen Reverse Proxy konfiguriert hat, bekommt eine App auf Port 3000 - erreichbar für niemanden außer sich selbst.
+Wer keine Ahnung von Docker hat, bekommt eine App, die lokal läuft. Wer nicht weiß, was OIDC ist, bekommt eine App ohne Auth. Wer CI/CD nicht kennt, baut nach jeder Änderung manuell ein neues Image. Wer nicht weiß, wie ein Service öffentlich erreichbar wird, bekommt eine App auf Port 3000 - erreichbar für niemanden außer sich selbst.
 
 | Was AI entschieden hat | Was ich wissen musste |
 |---|---|
 | Go als Sprache, HTMX für Interaktivität | Dass Docker für Deployment nötig ist |
 | SQLite als Datenbank, Goose für Migrationen | Dass SQLite für den Use Case reicht |
 | OIDC-Flow mit PocketID | Wie ich den OIDC-Provider konfiguriere |
-| Next.js mit App Router | Dass CI/CD zum Produkt gehört |
-| MinIO für S3-kompatiblen Storage | Wie S3-Buckets und Credentials funktionieren |
-| Tailwind für Styling | Was ein Reverse Proxy tut |
-| Rate Limiting pro IP | Wie Environment-Variablen ins Deployment kommen |
+| Next.js mit App Router | Dass ein automatischer Image-Build zum Produkt gehört |
+| MinIO für S3-kompatiblen Storage | Welche Storage-Optionen es gibt und welche Fragen ich stellen muss |
+| Tailwind für Styling | Wie Cloudflare Tunnel den Service erreichbar macht |
+| Rate Limiting pro IP | Wie ich das Docker-Image auf meinen Server bekomme |
 
 Die linke Spalte ist austauschbar. Ob Go oder Rust, ob Next.js oder Remix - die AI hätte jeden Stack genommen und es hätte funktioniert. Die rechte Spalte ist nicht austauschbar. Ohne dieses Wissen bleibt die App ein Localhost-Projekt.
 
@@ -106,7 +105,7 @@ Engineering-Wissen macht aus einer Demo ein Produkt. Aber es gibt noch eine zwei
 
 Bei der UAV-App wäre "bau mir eine Drohnen-App" eine Katastrophe gewesen. Die AI hätte SORA-Berechnungen erfunden, Prozeduren halluziniert, Wetter-Grenzwerte geraten. Im besten Fall nutzlos. Im schlimmsten Fall gefährlich - weil jemand sich auf falsche Werte verlässt.
 
-Bei da-feedback und easy-fileshare war "bau mir ein Feedback-Tool mit QR-Codes" eine ausreichende Spezifikation. Nicht, weil die AI schlauer ist, sondern weil die Domain trivial genug ist, dass eine falsche Implementierung keine Konsequenzen hat. Ein Bug im Feedback-Formular ist ein UX-Problem. Ein Bug in der SORA-Berechnung ist ein Sicherheitsrisiko.
+Bei da-feedback und easy-fileshare war die Spezifikation überschaubar - ein paar Absätze, die das Problem und die gewünschten Features beschreiben. Kein Vergleich zu den seitenlangen Prozeduren der UAV-App. Und wenn die AI etwas falsch implementiert hat? Dann war das ein UX-Problem, kein Sicherheitsrisiko.
 
 Wer sich fragt, warum Tool-Aufrufe in Agent-Systemen nicht trivial sind - dasselbe Prinzip gilt hier:
 
