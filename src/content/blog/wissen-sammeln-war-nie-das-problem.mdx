@@ -1,0 +1,223 @@
+---
+title: "Wissen sammeln war nie das Problem: Mycel, Denkwerkzeuge und die neue Arbeitsteilung beim Denken"
+description: "Klassisches PKM scheitert an der Pflege. Ein LLM-gepflegtes Wiki löst das - und macht Denkwerkzeuge vom Buch im Regal zum Skill auf Abruf."
+date: 2026-04-15
+tags: ["ai", "knowledge-management", "thinking-tools"]
+image: ./_images/wissen-sammeln-war-nie-das-problem/hero.png
+---
+
+import Callout from '../../components/widgets/Callout.astro';
+import LinkCard from '../../components/widgets/LinkCard.astro';
+import Accordion from '../../components/widgets/Accordion.astro';
+
+> Wissen sammeln war nie das Problem. Es im richtigen Moment zu aktivieren - das ist es.
+
+Ich habe Jahre damit verbracht, Wissen zu sammeln. Erst Notion mit Second Brain, sauber strukturiert nach PARA und CODE. Dann der Wechsel zu Obsidian - hunderte Markdown-Notizen, Verknüpfungen, Daily Notes, Backlinks. Quick Capture vom Handy funktioniert mittlerweile, der mobile Abruf ist noch ein offenes Konzept.
+
+Die Werkzeuge wurden besser. Die Pflege blieb mein Engpass. Es lag nicht am Tool - es lag daran, dass ich permanent hinterher war: capturen schaffe ich, verdichten, verknüpfen, aussortieren nicht.
+
+Das ist kein persönliches Versagen. Das ist strukturell. Und genau hier verschiebt sich gerade etwas in meinem Setup - nicht weil ich disziplinierter geworden wäre, sondern weil sich die Arbeitsteilung verändert hat.
+
+## Warum klassisches PKM strukturell scheitert
+
+Die Methoden sind nicht falsch. Sie sind nur für eine Welt gebaut, in der Wissen knapp war und Aufmerksamkeit reichlich. Heute ist beides umgekehrt.
+
+### Zettelkasten funktioniert - wenn du Luhmann bist
+
+Niklas Luhmann hinterließ rund 90.000 Zettel, auf denen praktisch seine gesamte Soziologie fußt. Sönke Ahrens hat das System 2017 in "How to Take Smart Notes" für den Rest der Welt aufgeschrieben: Atomicity, Verlinkung, eigene Worte, fleeting/literature/permanent notes. Die Begriffe sind übrigens Ahrens' Erweiterung - Luhmann selbst nutzte sie nie.
+
+Die Prinzipien sind richtig. Das Problem ist die Ausführung. Der "Evernote-Effekt", wie ihn zettelkasten.de beschreibt, trifft jedes wachsende System: Je mehr du sammelst, desto mehr Energie verschlingt die Pflege - bis der Return die Maintenance nicht mehr rechtfertigt. Wer von uns hat täglich 30 Minuten für die Verdichtung seiner Gedanken? Eben.
+
+### Second Brain hat sein eigenes Problem diagnostiziert
+
+Tiago Forte hat mit "Building a Second Brain" (CODE: Capture-Organize-Distill-Express, PARA: Projects-Areas-Resources-Archive) eine ganze Generation geprägt. Und er hat das Sammel-Grab-Problem selbst benannt - sinngemäß: ein Second Brain soll keine Lagerhalle sein, sondern eine Fabrik, die Ideen in konkrete Ergebnisse verwandelt. Forte selbst formuliert: *"information only becomes knowledge when we put it to use"*.
+
+Die Diagnose ist präzise. Nur - die Lösung verlangt wieder menschliche Disziplin. Distill und Express sind Arbeit. Viel Arbeit. Und genau an diesen beiden Schritten scheitert das System in der Praxis, nicht am Capture.
+
+<LinkCard url="https://fortelabs.com/blog/basboverview/"/>
+
+### Moderne Tools, alte Arbeitsteilung
+
+Obsidian, Notion, Tana - alle haben in den letzten zwei Jahren AI-Features bekommen. Smart Connections findet semantische Nachbarn. Copilot for Obsidian beantwortet Fragen über den Vault. Notion AI stellt einen Query-Layer bereit, der Datenbank-Beziehungen oft nicht versteht und externe Embeds gar nicht erst sieht. Tana geht mit Agent Nodes, Triggern und Supertags am weitesten. Aber auch Tana ist regelbasiert, nicht autonom denkend.
+
+Das sind alles Assistenten. Keiner davon ist Maintainer. Keiner schreibt unaufgefordert neue Notizen, verdichtet Themen, erkennt Widersprüche zwischen alten und neuen Gedanken oder archiviert stilles Material. Die Arbeit bleibt bei dir - die Tools machen sie nur bequemer.
+
+### Der gemeinsame blinde Fleck
+
+Egal ob Zettelkasten, Second Brain oder modernes PKM-Tooling: Jede dieser Methoden setzt einen disziplinierten menschlichen Maintainer voraus. Jemanden, der regelmäßig aufräumt, verknüpft, verdichtet, aussortiert. Der existiert in der Theorie. In der Praxis sitzt da ein Wissensarbeiter mit vollem Kalender, der froh ist, wenn er überhaupt etwas capturen kann.
+
+> Die Methoden sind nicht gescheitert. Die Annahme, dass der Mensch gleichzeitig Autor, Kurator und Archivar sein kann, ist gescheitert.
+
+Nicht die Regale sind das Problem. Nicht die Tags, nicht die Links, nicht die Ordner. Das Problem ist die Rollenverteilung. Und genau da muss man neu ansetzen.
+
+## Mycel - die neue Arbeitsteilung
+
+Wenn Maintainer selten sind, muss die Rolle verschwinden - nicht die Arbeit. Genau das ist der gedankliche Umbruch, den Andrej Karpathy am 2. April 2026 in einen Post gepackt hat: LLMs als Kuratoren persönlicher Wissensbasen. Knapp 20 Millionen Views, kurz darauf ein Gist mit der Architekturskizze. Karpathy beschreibt sein eigenes Wiki: rund 100 Artikel, etwa 400.000 Wörter, komplett vom LLM kompiliert und gepflegt - er selbst editiert es kaum noch.
+
+<LinkCard url="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f"/>
+
+Die Architektur, die ich parallel für mich entwickelt und an Karpathys Skizze geschärft habe, läuft in drei Schichten:
+
+- **`raw/`** - unveränderliche Quellen. Artikel, Transkripte, Screenshots, Paper. Das LLM liest hier nur. Geschrieben wird nie.
+- **`wiki/`** - kompiliertes Wissen. Source-Pages pro Quelle, Entity-Pages pro Person/Organisation/Produkt, Concept-Pages pro Idee, Synthesis-Pages, die mehrere Quellen verweben, und Question-Pages, die offene Fragen tracken. Komplett LLM-geschrieben.
+- **Schema/Skills** - die Regeln, nach denen gearbeitet wird. Welche Seitentypen es gibt, wie verlinkt wird, was ein gutes Concept-Page-Format ist. Das Schema lebt und wird mit jedem Ingest schärfer.
+
+Der Unterschied zu klassischem PKM ist nicht "mehr Automatisierung". Es ist eine andere Rollenverteilung. Ich entscheide, was reinkommt und welche Fragen ich an das Material habe. Das LLM destilliert, verknüpft, pflegt.
+
+### Warum Mycel?
+
+Weil die Metapher präzise ist. Ein Mycel ist das unterirdische Fadengeflecht eines Pilzes. Es nimmt Nährstoffe auf, vernetzt sich mit allem in Reichweite und bildet irgendwann Fruchtkörper - die sichtbaren Pilze, die wir für "den Pilz" halten.
+
+| Biologie | Wissenssystem |
+|---|---|
+| Nährstoffe aufnehmen | Quellen einlesen (`raw/`) |
+| Hyphen vernetzen sich | Wikilinks zwischen Seiten |
+| Organisches Wachstum | Jeder Ingest verdichtet das Netz |
+| Fruchtkörper | Synthesen und Konzepte als sichtbare Ergebnisse |
+| Symbiose | Mensch kuratiert, Maschine kompiliert |
+
+Zwei Eigenschaften davon tragen die ganze Architektur:
+
+**Compound-Wachstum.** Mycelien wachsen nicht linear, sie wachsen exponentiell. In meiner Praxis berührt eine neue Quelle typischerweise 5 bis 20 bestehende Seiten: aktualisiert Entities, schärft Concepts, öffnet oder schließt Questions. Der Wert liegt nicht in der Zahl der Einträge, sondern in der Verknüpfungsdichte. Compound über Completeness.
+
+**Unsichtbare Infrastruktur.** Der größte Teil eines Myzels liegt unter der Erde. Das Wertvollste am Wiki ist nicht die einzelne Zusammenfassung, die ich oben sehe. Es ist das Netz aus Querverweisen, Widersprüchen zwischen Quellen und offenen Fragen dazwischen. Die Fruchtkörper - Synthesen, Concept-Pages - sind nur die sichtbare Spitze.
+
+> Der Mensch kuratiert nicht weniger. Er kuratiert nur anders: auf der Ebene der Fragen, nicht auf der Ebene der Zettel.
+
+Das ist der Bruch. Ich pflege keine Notizen mehr - ich pflege die Richtung. Was interessiert mich gerade? Welche Fragen sind offen? Wo liegen Widersprüche? Das LLM übernimmt den Teil, den Menschen strukturell nicht skaliert bekommen: das konsequente Nachziehen aller Kanten, jedes Mal, wenn irgendwo neues Material dazukommt.
+
+Bleibt eine Frage, die sich aufdrängt, sobald man das System einmal gesehen hat - vor allem für alle, die mit LLMs schon gebaut haben: Wenn das LLM aus dem `raw/`-Ordner ein Wiki kompiliert, ist das dann nicht einfach RAG mit mehr Schritten?
+
+## Compiled Knowledge ist kein RAG
+
+Bevor wir zum eigentlichen Punkt kommen - dem Abruf - lohnt sich der kurze technische Umweg. Die RAG-Frage bleibt sonst im Raum stehen, und sie verdient eine klare Antwort. Nein, das ist nicht RAG. Der Unterschied liegt nicht in der Anzahl der Schritte, sondern im Zeitpunkt der Synthese. RAG denkt bei der Antwort. Compiled Knowledge hat schon gedacht, bevor die Frage gestellt wurde.
+
+Bevor wir tiefer einsteigen: "Compiled Knowledge" ist kein etablierter Fachbegriff. Du wirst ihn in keinem Lehrbuch finden, und auch in der LLM-Community ist er kein feststehender Term. Das Framing geht im Wesentlichen auf Karpathys Compiler-Analogie aus dem April 2026 zurück - rohe Quellen werden behandelt wie Source-Code: erst kompilieren, dann ausführen. Das Ergebnis ist dichter, strukturierter, schneller abrufbar. Ich übernehme den Begriff, weil er das Prinzip gut auf den Punkt bringt.
+
+### Was RAG eigentlich tut
+
+RAG zerlegt Dokumente in Chunks, jagt jeden Chunk durch ein Embedding-Modell und legt die Vektoren in einen Vector-Store. Bei einer Query wird die Frage ebenfalls embedded, der Store liefert die ähnlichsten Chunks zurück, und das LLM bekommt diese Schnipsel als Kontext. Alles passiert just-in-time. Der eigentliche Denkprozess - was bedeutet das, wie hängt es zusammen, wo widerspricht es sich - wird bei jeder einzelnen Abfrage aufs Neue ans Modell delegiert.
+
+Ich meine hier klassisches, nicht-agentisches RAG. Moderne Hybrid-Search-, Re-Ranking- oder Agentic-RAG-Ansätze verwischen die Grenze - der Unterschied wird dann gradueller, nicht prinzipiell.
+
+### Was Compiled Knowledge anders macht
+
+Synthese passiert beim Ingest, nicht bei der Antwort. Eine neue Quelle wird nicht stumpf zerschnitten und vektorisiert, sondern gelesen, destilliert und explizit ins bestehende Netz verknüpft. Es entstehen strukturierte Markdown-Seiten mit Querverweisen, offenen Fragen und dokumentierten Widersprüchen. Die teure Arbeit ist beim Aufnehmen schon erledigt. Die Abfrage holt fertige Gedanken, keine Rohzutaten.
+
+### Die Unterschiede in der Praxis
+
+RAG findet einen ähnlichen Chunk. Compiled Knowledge liefert eine fertige Seite, die Quelle A und Quelle B bereits aufeinander bezogen hat - inklusive der Stellen, an denen sie sich widersprechen. Und während RAG bei jeder Query bei null anfängt, reichert jede neue Quelle das compound-Netz weiter an: jeder Querverweis erhöht den Wert der bereits vorhandenen Seiten.
+
+### Wo das Modell an Grenzen stößt
+
+Um ehrlich zu bleiben: Mycel läuft in meinem Setup aktuell ohne Embedding-Infrastruktur. Das funktioniert, solange das Wissensnetz überschaubar bleibt und die Verknüpfungen sauber gepflegt sind. Skaliert das auf zehntausende Seiten? Vermutlich nicht ohne Hybrid-Ansatz - Compiled Knowledge als kuratierte Basis, Embeddings als Fulltext-Fallback für das, was noch nicht destilliert wurde. Ich habe es noch nicht ans Limit gebracht. Wer behauptet, das eine Modell löse alle Fälle, verkauft etwas.
+
+Aber selbst ein perfekt gepflegtes, kompiliertes Wiki löst das eigentliche Problem nicht. Eine Seite zu haben, die genau die Antwort enthält, nützt nichts, wenn sie im richtigen Moment nicht aufgerufen wird. Ablage ist die halbe Miete. Die andere Hälfte ist Abruf.
+
+> 30 gut verknüpfte Seiten sind wertvoller als 200 isolierte Zusammenfassungen. Aber beide sind wertlos, wenn sie im entscheidenden Moment nicht präsent sind.
+
+## Das eigentliche Problem war nie das Sammeln
+
+Wir hatten alles gelöst. Ein Wiki, das sich selbst pflegt. Compound-Wachstum statt Verfallsdatum. Keine Widersprüche mehr unter dem Teppich, keine drei halbgaren Notizen zum selben Thema, kein Friedhof aus Markdown-Dateien. Auf dem Papier war das Problem erledigt.
+
+Und trotzdem.
+
+Ich hatte mein Wissen gepflegt, verknüpft, synthetisiert - und in den Momenten, in denen es zählte, fiel es mir nicht ein. Im Meeting, in der Architekturentscheidung, im schnellen Code-Review. Da war es nicht da. Es lag im Wiki, sauber sortiert, perfekt verlinkt, und half mir genau gar nicht.
+
+Wissen abrufen ist eine andere Disziplin als Wissen speichern. Das ist die unbequeme Erkenntnis. Speichern ist asynchron, kontrolliert, in Ruhe. Abrufen passiert unter Druck, mitten im Gespräch, in der Sekunde, in der die Entscheidung fällt.
+
+Die klassische PKM-Debatte hat einen blinden Fleck: Sie kreist fast ausschließlich um Input. Wie organisiere ich? Welches System? Atomic Notes oder Folgezettel? Tags oder Folder? Die andere Hälfte - was hole ich in welcher Situation hervor? - bleibt unbeantwortet. Als wäre Abruf ein gelöstes Nebenprodukt sauberer Ablage. Ist es nicht.
+
+Bei den Denkwerkzeugen wird das schmerzhaft konkret. Ich kenne Inversion. Ich kenne Second-Order-Thinking. Ich kenne Ishikawa, Pre-Mortem, Opportunity Cost. Ich habe Bücher dazu gelesen, Notizen gemacht, sie verknüpft. Und wende sie trotzdem nicht an, wenn ich sie bräuchte.
+
+Mentale Modelle aktivieren System-2-Denken - das langsame, bewusste, analytische. Nur: Unter Druck übernimmt System 1. Schnell, reflexhaft, gemustert. So zumindest die populäre Lesart nach Kahneman. Das Buch im Regal hilft nicht im Meeting. Die Notiz im Wiki hilft nicht in der Pull-Request-Diskussion. Und genau das ist der Gap, den klassisches PKM nie adressiert hat: zwischen "Ich kenne das Konzept" und "Ich nutze es im richtigen Moment".
+
+Die Konsequenz ist unbequem, aber klar. Mehr Wissen sammeln löst dieses Problem nicht. Besser organisieren auch nicht. Selbst ein perfekt LLM-gepflegtes Mycel-Wiki bleibt passiv - es wartet, bis ich nachfrage. Und genau das tue ich im entscheidenden Moment nicht.
+
+Was es braucht, ist etwas anderes: Denkwerkzeuge, die im richtigen Moment verfügbar sind. Nicht als Buch, nicht als Notiz, nicht als Kapitel im Wiki. Als Skill auf Abruf.
+
+> Wissen sammeln ist die halbe Miete. Es im richtigen Moment zu aktivieren ist der Rest - und der schwierigere Teil.
+
+## Denkwerkzeuge auf Abruf
+
+"Skill auf Abruf" klingt abstrakt, also mache ich es konkret: Ein Denkwerkzeug ist erst dann ein Werkzeug, wenn es in der Situation greifbar ist, in der ich es brauche. Nicht zehn Minuten später. Nicht nach dem Termin. Nicht wenn mir abends einfällt, dass ich heute Vormittag eigentlich hätte invertieren sollen.
+
+Genau das war jahrelang mein Problem mit Frameworks: Ich kannte sie. Ich hatte sie sogar notiert und destilliert, brav nach CODE. Und trotzdem waren sie im Moment der Entscheidung nicht da.
+
+### untools.co als Rohmaterial
+
+<LinkCard url="https://untools.co"/>
+
+Adam Amran, Produktdesigner aus Tschechien, kuratiert auf untools.co über 25 Denkwerkzeuge in vier Kategorien: Decision Making, Problem Solving, Systems Thinking und Communication. Die Mission ist trocken beschrieben: *"Collection of thinking tools and frameworks to help you solve problems, make decisions and understand systems."*
+
+Als Bookmark ist die Seite nutzlos. Als ingestiertes Rohmaterial in meinem Mycel - Concept-Seiten pro Tool, plus je ein Claude-Skill pro Tool, plus eine Synthesis-Seite als Navigator - ist sie etwas anderes.
+
+<Accordion title="Inversion">
+Frage nicht "wie erreiche ich X?", sondern "wie könnte ich X garantiert verhindern?". Die Liste der Vermeidungen ist oft konkreter als die Liste der Wege. Typischer Einsatz: Pre-Mortem vor einer Entscheidung.
+</Accordion>
+
+<Accordion title="Second-order thinking">
+"And then what?" Nicht bei der ersten Konsequenz stoppen, sondern die Kaskadenfolgen mitdenken. Greift, wenn eine Entscheidung offensichtlich gut aussieht - das ist meistens das Signal, mindestens zwei Ebenen weiterzudenken.
+</Accordion>
+
+<Accordion title="Issue trees">
+MECE-strukturierte Zerlegung eines Problems in Teilprobleme, dann 80/20-Fokus auf die Äste mit dem größten Hebel. Greift, wenn ein Problem zu groß wirkt, um es anzufassen.
+</Accordion>
+
+<Accordion title="Eisenhower Matrix">
+Vier Quadranten aus Wichtigkeit und Dringlichkeit. Popularisiert wurde sie von Stephen Covey in "7 Habits" (Habit 3: Put First Things First). Klingt banal, ist aber der präziseste Filter, den ich für Wochenplanung kenne - vor allem um "dringend, aber unwichtig" ehrlich zu benennen.
+</Accordion>
+
+### Die entscheidende Verschiebung
+
+Der Navigator funktioniert wie ein Routing-Layer. Ich beschreibe die Situation: *"Problem ist zu komplex, ich weiß nicht, wo ich anfangen soll."* Vorschlag: Issue Trees. *"Ich sehe nur Ideallösungen."* Vorschlag: Inversion. *"Entscheidung fühlt sich zu schnell richtig an."* Vorschlag: Second-order thinking.
+
+Ich muss nicht mehr wissen, welches Tool ich brauche. Ich muss nur meine Situation beschreiben. Der Rest ist Navigation - und die übernimmt der Assistent.
+
+> Ein Framework, das ich im richtigen Moment nicht aktivieren kann, ist kein Werkzeug. Es ist ein Erinnerungsstück.
+
+### Integration in Routinen - die Phönix-Progression
+
+Meine eigene Produktivitätsroutine - ich nenne sie Phönix-Progression - kombiniert das 12-Week-Year-Prinzip von Moran und Lennington (*"In 12 weeks, there just isn't enough time to get complacent, and urgency increases and intensifies."*) mit einem zyklischen Rhythmus aus fünf Zeitebenen: Ära (5 Jahre), Zyklus (6 Monate), Feuersturm (12 Wochen), Wochen-Feuer (1 Woche), Flamme (2 Stunden).
+
+Jede Ebene hat eigene Rituale. Und genau in diesen Ritualen docken die Denkwerkzeuge an.
+
+Für eine **Flamme** - einen 2h-Deep-Work-Block - bekomme ich beim Einstieg situativ passende Methodiken vorgeschlagen. Für **Wochen-Feuer-Reviews** andere. Für die **Feuersturm-Retrospektive** wird Inversion als Pre-Mortem für den nächsten Zyklus nahegelegt. In der Tagesplanung kommt die Eisenhower-Matrix ins Spiel, wenn die Liste zu lang wird. In der Zyklus-Planung First Principles, wenn ich merke, dass ich Ziele nur fortschreibe, statt sie neu zu denken.
+
+Ich rufe das nicht ab. Der Skill bringt sich ein, wenn die Situation passt - die Methodik wächst aus dem Mycel als Fruchtkörper im richtigen Moment.
+
+Der Unterschied ist subtil, aber entscheidend: Der kognitive Aufwand, überhaupt an das richtige Framework zu denken, entfällt. Das Framework ist nicht mehr im Regal. Es ist in der Situation - als Skill, der geladen wird, wenn der Kontext stimmt.
+
+Kein "hätte ich mal an Inversion gedacht". Kein Nachlesen in alten Notizen. Die Arbeit des Erinnerns übernimmt der Skill.
+
+Das klingt fertig. Ist es nicht.
+
+## Was sich gerade verändert - und was (noch) nicht funktioniert
+
+Was ich oben beschreibe, ist ein laufender Aushandlungsprozess - keine abgeschlossene Produktivitätslösung, die man kopieren kann.
+
+### Was sich gerade verändert
+
+**Notizen schreiben fühlt sich anders an.** Ich sammle weniger. Nicht, weil ich weniger lese, sondern weil ich weiß, dass der LLM-Maintainer beim Ingest verdichtet. Ich muss nicht mehr jede Passage wortwörtlich festhalten, damit sie später auffindbar ist. Das ändert, was ich als notizwürdig empfinde.
+
+**Denken in Frameworks ist leichter geworden.** Nicht, weil ich mehr Frameworks kenne - sondern weil sie im richtigen Moment auftauchen. Ein Dialectic-Skill, der sich meldet, wenn ich eine Entscheidung treffen muss, ist etwas anderes als ein Buch im Regal, das ich aktiv konsultieren müsste.
+
+**Querverbindungen tauchen auf, die ich nie gesehen hätte.** Beim Ingest entstehen Wikilinks, auf die ich alleine nicht gekommen wäre. Manche sind trivial, manche verändern, wie ich ein Thema einordne. Das ist der Teil, der sich am meisten nach Kompilieren und am wenigsten nach Suche anfühlt.
+
+<Callout type="warning">
+**Was noch nicht funktioniert:**
+
+- **Ich ingestiere zu wenig.** Die Quellen-Bereitstellung ist weiter der Engpass. Ein System, das kompiliert, ist nur so gut wie das Material, das reingeht.
+- **Stale Content ist ein echtes Problem.** Lint-Runs helfen, aber sie fangen nicht alles ab. Wiki-Seiten veralten, Widersprüche bleiben stehen, Quellen verschieben sich.
+- **Es rutscht nicht in den Alltag.** Das System greift nur dort, wo ich es bewusst aufrufe. Vergesse ich es, existiert es praktisch nicht.
+- **Vertrauen ist nicht automatisch.** Halluzinierte Fakten, falsche Wikilinks, übersehene Widersprüche kommen vor. Ich muss dem Maintainer weiter auf die Finger schauen.
+- **Cognitive Outsourcing ist eine reale Gefahr.** Ethan Mollick weist immer wieder darauf hin, dass der Pfad des geringsten Widerstands beim LLM-Einsatz das passive Auslagern des eigenen Denkens ist - mit dem Risiko, dass die mentalen Muskeln für tiefe Gedankenarbeit verkümmern. Wer das LLM das Wiki pflegen lässt, übergibt Autorität an das System. Ich muss aktiv dagegen arbeiten - sonst pflegt der Maintainer irgendwann ein Wiki, das ich nicht mehr kritisch lese.
+</Callout>
+
+Und es bleiben offene Fragen. Wie skaliert das über 500 Seiten hinaus, wenn Querverbindungen exponentiell wachsen? Was passiert, wenn ich das Schema grundlegend ändern will - migriert der Maintainer das Wiki, oder fängt er bei null an? Ich weiß es nicht.
+
+Das ist kein fertiges Produktivitätssystem, das man kopiert. Es ist ein laufender Aushandlungsprozess zwischen mir und einer Maschine, die immer besser darin wird, Wissen zu verdichten. Und immer besser darin, mir Arbeit abzunehmen, die ich vielleicht gar nicht abgeben sollte. Der Hebel liegt in der Arbeitsteilung. Ich entscheide, was wichtig ist, was bleibt, welche Richtung das Ganze nimmt. Die Maschine destilliert, verknüpft, stellt situativ bereit. Diese Grenze zu halten ist Arbeit - und sie ist die eigentliche Aufgabe.
+
+Der Punkt ist nicht, mehr zu wissen. Der Punkt ist, im richtigen Moment das Richtige präsent zu haben.
+
+> Der Mensch kuratiert, die Maschine kompiliert.
