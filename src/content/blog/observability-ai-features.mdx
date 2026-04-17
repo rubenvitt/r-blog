@@ -1,7 +1,7 @@
 ---
 title: "Observability für AI-Features: Welche Spans, Events und IDs du wirklich brauchst"
 description: "Ohne Traces, Modell- und Promptversionen, Tool-Spans und Kostenmetriken bleibt jeder Incident Spekulation. Ein Leitfaden für Teams, die AI-Features in Produktion betreiben."
-date: 2026-04-10
+date: 2026-04-19
 tags: ["ai", "observability", "software-engineering", "security"]
 image: ./_images/observability-ai-features/hero.png
 draft: true
@@ -17,15 +17,15 @@ import approvalModal from './_images/observability-ai-features/approval-modal.pn
 
 > Ohne Traces, Modell- und Promptversionen, Tool-Spans und Kostenmetriken bleibt jeder Incident Spekulation.
 
-Vier Posts lang haben wir über Prinzipien gesprochen. Contracts statt Freitext. Evals statt Hoffnung. Tool-Sicherheit statt "wird schon passen". Human Oversight statt blinder Automatisierung. Alles richtig, alles wichtig - aber wie sehe ich in Produktion, ob das tatsächlich funktioniert?
+Vier Posts lang habe ich über Prinzipien geschrieben: Contracts, Evals, Tool-Sicherheit, Human Oversight. Richtig - aber wie sehe ich im Betrieb, ob das alles tatsächlich funktioniert?
 
-Die Antwort ist unbequem: Ohne strukturierte Observability gar nicht. Ein False Success im Refund-Agent - das Tool meldet Erfolg, der Kunde wartet auf sein Geld - ist mit Application Logs und Error Rates nicht zu finden. Alles war grün. Das System hat nicht versagt, es hat gelogen.
+Die ehrliche Antwort: ohne strukturierte Observability gar nicht. Ein False Success im Refund-Agent - das Tool meldet Erfolg, der Kunde wartet auf sein Geld - ist mit Application Logs und Error Rates nicht zu finden. Alles grün. Das System hat nicht versagt, es hat gelogen.
 
-Dieser Post zeigt, welche Observability-Infrastruktur Teams brauchen, die AI-Features in Produktion betreiben. Nicht als Tutorial, sondern als Leitfaden: Welche Fragen muss ich beantworten können? Wie sieht ein guter Trace aus? Wo liegen die häufigsten Fehler - und wie ordne ich meinen eigenen Stand ein?
+Dieser Post zeigt, welche Observability-Infrastruktur Teams brauchen, die AI-Features live betreiben. Welche Fragen muss ich beantworten können? Wie sieht ein guter Trace aus? Und wo ordne ich meinen eigenen Stand ein?
 
 <LinkCard url="/blog/tools-sind-keine-prompts"/>
 
-## Die fünf Fragen, die ich in jedem AI-Projekt zuerst stelle
+## Fünf Fragen vor dem Tooling
 
 <Callout type="info">
 Kurzer Rückblick: Der `refund-agent` begleitet uns als laufendes Beispiel durch die Serie - ein Multi-Agent Support-System, das Erstattungen verarbeitet. Das Szenario: Der Agent bestätigt dem Kunden, die Rückerstattung sei raus. War sie nicht. `refund_order` wurde nie erfolgreich ausgeführt, aber der Chatverlauf sah aus wie ein gelöstes Ticket. False Success.
@@ -33,9 +33,9 @@ Kurzer Rückblick: Der `refund-agent` begleitet uns als laufendes Beispiel durch
 
 Wie hätte ich das in 30 Sekunden debuggen können?
 
-Nicht mit `grep` in Logfiles. Nicht mit einem Dashboard, das mir Uptime und Error Rate zeigt. Denn beides war grün. Kein Fehler, kein Alert - nur ein falsches Ergebnis.
+Nicht mit `grep` in Logfiles. Nicht mit einem Dashboard, das mir Uptime und Error Rate zeigt - denn beides war grün. Kein Fehler, kein Alert, nur ein falsches Ergebnis.
 
-Traditionelle Metriken fangen AI-spezifische Fehler nicht. False Success, falsche Tool-Auswahl, halluzinierte Aktionen - all das ist unsichtbar, solange ich nur auf HTTP-Statuscodes und Exception-Counts schaue. Das Problem sitzt tiefer: in der Entscheidungslogik des Agents, in der Interpretation von Tool-Ergebnissen, im Kontextverlust zwischen Turns.
+Traditionelle Metriken fangen AI-spezifische Fehler nicht. False Success, falsche Tool-Auswahl oder halluzinierte Aktionen bleiben unsichtbar, solange ich nur auf HTTP-Statuscodes und Exception-Counts schaue. Das Problem sitzt tiefer - in der Entscheidungslogik des Agents und in der Interpretation der Tool-Antworten. Zwischen Turns geht Kontext verloren, ohne dass irgendein Logfile darauf hinweist.
 
 Bevor ich über Tooling rede, fünf Fragen, die jedes Team beantworten können sollte.
 
@@ -57,7 +57,7 @@ Der Agent hat vier Tools zur Auswahl. Wie oft greift er zum richtigen? Wie oft r
 
 ### 5. Compliance: Kann ich den vollständigen Entscheidungspfad für einen konkreten Kundenvorgang nachvollziehen?
 
-Kunde ruft an, will wissen, warum die Erstattung nicht angekommen ist. Regulierung verlangt Nachvollziehbarkeit. Ich brauche einen Audit-Trail, der zeigt: Welcher Agent hat wann welches Tool aufgerufen, welche Approval-Events gab es, wer hat was genehmigt? Ohne das ist jeder Kundenvorgang eine Blackbox.
+Kunde ruft an, will wissen, warum die Erstattung nicht angekommen ist. Regulierung verlangt Nachvollziehbarkeit. Ich brauche einen Audit-Trail, der zeigt: Welcher Agent hat wann welches Tool aufgerufen, welche Approval-Events gab es, wer hat was genehmigt? Ohne das ist jeder Kundenvorgang eine Black Box.
 
 ---
 
@@ -126,7 +126,7 @@ Warum das wichtig ist? Zwei Metriken fallen direkt heraus: **Approval-Latenz** (
 
 ### Was NICHT in den Trace gehört
 
-Jetzt wird es unangenehm. AI-Workloads erzeugen 10-50x mehr Telemetrie als klassische Services. Jeder LLM-Call hat einen Prompt, eine Completion, oft mehrere Tool-Calls mit Ergebnissen. Die Versuchung, alles zu loggen, ist groß.
+AI-Workloads erzeugen 10-50x mehr Telemetrie als klassische Services. Jeder LLM-Call hat einen Prompt, eine Completion, oft mehrere Tool-Calls mit Ergebnissen. Die Versuchung, alles zu loggen, ist groß.
 
 <Callout type="warning">Vollständige Prompts und Completions in Produktions-Traces sind ein PII-Risiko. Kundennamen, E-Mail-Adressen, Bestelldetails - alles, was der Agent verarbeitet, landet im Prompt. Und damit im Trace. Und damit in eurem Observability-Backend. Die OTel GenAI Spec setzt Content-Events deshalb bewusst auf Opt-In, nicht Opt-Out.</Callout>
 
@@ -144,11 +144,9 @@ Das Muster ist nicht neu - es ist dasselbe Prinzip wie bei Production-Database-A
 
 </Accordion>
 
-> Metadata und Referenzen als Default. Rohe Prompts sind Ausnahme-Zugriffspfade, keine normale Telemetrie.
-
 ## Was OpenTelemetry liefert - und was nicht
 
-Wer sich mit Observability für AI-Features beschäftigt, stößt früher oder später auf die OpenTelemetry GenAI Semantic Conventions. Die Spec existiert, sie wächst, sie hat Momentum. Aber sie hat auch ein Problem: Stand April 2026 ist kein einziges Attribut Stable. Alles trägt den Status "Development". Wer die Conventions heute nutzt, muss `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` setzen - und damit akzeptieren, dass sich Attribute Names jederzeit ändern können.
+Wer sich mit Observability für AI-Features beschäftigt, stößt früher oder später auf die OpenTelemetry GenAI Semantic Conventions. Die Spec existiert, sie wächst, sie hat Momentum. Aber sie hat auch ein Problem: Stand April 2026 ist kein einziges Attribut Stable. Alles trägt den Status "Development". Wer die Conventions heute nutzt, muss `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` setzen - und damit akzeptieren, dass sich Attribute jederzeit umbenennen können.
 
 Das heißt nicht, dass die Spec nutzlos ist. Es heißt, dass wir wissen müssen, was sie kann - und vor allem, was sie nicht kann. (Kurze Begriffsklärung: Die Spec verwendet den Status "Development", aber die Opt-In-Variable heißt `experimental` - ein historisches Überbleibsel. Gemeint ist dasselbe.)
 
@@ -160,7 +158,7 @@ Neuere Ergänzungen sind MCP-Conventions (`mcp.method.name`, `mcp.session.id`), 
 
 ### Was die Spec nicht abdeckt
 
-Und hier wird es relevant. Denn die Lücken betreffen genau die Dinge, die in Produktion den Unterschied machen:
+Die Lücken betreffen genau die Dinge, die im Betrieb den Unterschied machen:
 
 - **Kosten-Tracking**: Kein `gen_ai.cost`-Attribut. Die Provider-APIs liefern Token-Counts, aber keine Preise. Plattformen wie Langfuse oder Helicone lösen das über gepflegte Preis-Tabellen - aber auf Spec-Ebene bleibt Kostenberechnung eine eigene Baustelle.
 - **Prompt-Versioning**: Kein Konzept von Prompt-Registries. Welche Version des Refund-Agent-System-Prompts zu welchem Ergebnis geführt hat - nicht abgedeckt.
@@ -168,7 +166,7 @@ Und hier wird es relevant. Denn die Lücken betreffen genau die Dinge, die in Pr
 - **Approval und HITL**: Keine Convention für Pause/Resume-Events. Wann ein Mensch eingegriffen hat und warum - unsichtbar.
 - **Guardrails**: Kein Event für Content-Filtering oder Safety-Checks. Ob ein Output gefiltert wurde - nicht vorgesehen.
 
-Kurz: Die Spec liefert das Skelett. Modell, Provider, Tokens, Latenz. Aber alles, was AI-Features von einer Spielerei zu einem Produktionssystem macht - Kosten, Versionen, Feedback, Governance - liegt außerhalb der Conventions.
+Die Spec liefert das Skelett: Modell, Provider, Tokens, Latenz. Alles, was AI-Features von der Spielerei zum Produktionssystem macht - Kosten, Versionen, Feedback, Governance - liegt außerhalb der Conventions.
 
 <Accordion title="Deprecated Attributes - was sich bereits geändert hat">
 
@@ -183,7 +181,7 @@ Wer früh mit den Conventions gestartet ist, muss migrieren: `gen_ai.system` hei
 
 ## Die sechs häufigsten Fehler bei LLM-Observability
 
-Observability für AI-Features ist noch jung. Aber ein paar Fallen haben sich jetzt schon als Klassiker etabliert. Hier sind sechs Anti-Patterns, die sich hartnäckig halten.
+Observability für AI-Features ist noch jung. Aber ein paar Fallen haben sich jetzt schon als Klassiker etabliert. Sechs Anti-Patterns, denen ich regelmäßig begegne:
 
 ### 1. Alles loggen, nichts korrelieren
 
@@ -193,7 +191,7 @@ Ohne Trace-IDs als Klammer sind Logs nur Rauschen mit Zeitstempeln. Wenn der Ref
 
 ### 2. Prompts in Produktion vollständig loggen
 
-Wie im Trace-Kapitel beschrieben: Content-Events gehören auf Opt-In, nicht Opt-Out. Trotzdem wird oft alles geloggt - aus Angst, im Incident etwas zu verpassen. Das Ergebnis: explodierende Speicherkosten und PII im Observability-Backend. Die bessere Frage ist nicht "Was könnten wir brauchen?", sondern "Welche Metadata reichen für 95% der Fälle - und wie kommen wir an den Rest, wenn wir ihn brauchen?" Die Break-Glass-Architektur löst genau das.
+Wie im Trace-Kapitel beschrieben: Content-Events gehören auf Opt-In, nicht Opt-Out. Trotzdem wird oft alles geloggt - aus Angst, im Incident etwas zu verpassen. Das Ergebnis: explodierende Speicherkosten und PII im Observability-Backend. Die bessere Frage ist nicht "Was könnten wir brauchen?", sondern "Welche Metadata reichen für 95% der Fälle - und wie kommen wir an den Rest, wenn wir ihn brauchen?" Die oben skizzierte Break-Glass-Architektur löst genau das.
 
 ### 3. Token-Counts ohne Kostenzuordnung
 
@@ -205,7 +203,7 @@ Globale Token-Counts sind eine Zahl auf einem Dashboard. Nicht mehr. Ohne Metada
 
 Das ist der gefährlichste Fehler. Tool-Fehler, Retries, abgebrochene Chains - alles unsichtbar. Die Error Rate sieht gut aus, weil nur erfolgreiche Abschlüsse gezählt werden.
 
-Die Mathematik ist unbarmherzig: Bei 10 Agent-Steps mit je 99% Accuracy landet die Gesamtaccuracy bei 90%. Und jeder unsichtbare Retry multipliziert Kosten und Latenz, ohne dass es jemand merkt. Error-Spans, Retry-Counts und Finish-Reason-Tracking gehören an jeden Step - nicht nur an den letzten.
+Rechne nach: 10 Agent-Steps mit je 99% Accuracy landen bei 90% Gesamtaccuracy. Und jeder unsichtbare Retry multipliziert Kosten und Latenz, ohne dass es jemand merkt. Error-Spans, Retry-Counts und Finish-Reason-Tracking gehören an jeden Step - nicht nur an den letzten.
 
 > Was du nicht misst, optimierst du nicht. Was du nicht siehst, ignorierst du - bis es ein Incident wird.
 
@@ -221,8 +219,6 @@ Latenz-Chart. Token-Count-Graph. Error-Rate-Gauge. Drei Dashboards, zwölf Panel
 
 Ein Dashboard, das "Requests pro Minute" zeigt, beantwortet keine einzige Betriebsfrage. Wie hoch ist die Halluzinationsrate? Welcher Agent-Pfad kostet am meisten? Gibt es Prompt-Drift? Dashboards müssen Entscheidungen ermöglichen, nicht Metriken dekorieren.
 
-> Ein Dashboard, das niemand anschaut, ist kein Observability - es ist Cargo Cult.
-
 ## Reifegradmodell: Von Blind bis Diagnostic
 
 Es gibt kein offizielles "LLM Observability Maturity Model" - keinen ISO-Standard, kein Gartner-Quadranten-PDF. Aber wenn ich mir anschaue, wie Honeycomb, LangChain und Portkey das Thema beschreiben, zeichnet sich eine klare Progression ab. Ich habe sie in fünf Stufen verdichtet - nicht als akademisches Framework, sondern als Bewertungsraster für die eine Frage: *Wo stehen wir, und was ist der nächste sinnvolle Schritt?*
@@ -230,7 +226,7 @@ Es gibt kein offizielles "LLM Observability Maturity Model" - keinen ISO-Standar
 | Stufe | Name | Kennzeichen | Welche der fünf Fragen beantwortet werden |
 |-------|------|-------------|-------------------------------------------|
 | 0 | **Blind** | Keine Traces, nur Application Logs | Keine. Jeder Incident ist Spekulation. |
-| 1 | **Basic** | Request/Response-Logging, Token-Counts | Frage 2 (Kosten) teilweise - aber nicht wo oder warum. |
+| 1 | **Basic** | Request/Response-Logging, Token-Counts | Frage 2 (Kosten) teilweise - aber ohne Antwort auf das Wo und Warum. |
 | 2 | **Structured** | OTel-Traces mit GenAI-Conventions, Tool-Spans | Fragen 1 (Debugging), 3 (Latenz), 4 (Qualität). |
 | 3 | **Operational** | Dashboards, Alerts auf Kosten/Latenz/Fehlerrate | Fragen 1-4 proaktiv. Kostencontrolling. SLOs. |
 | 4 | **Diagnostic** | Trace-zu-Eval-Pipeline, Drift-Erkennung | Alle fünf Fragen - plus Feedback-Loop in die Evals. |
@@ -243,7 +239,9 @@ Das ist keine Vermutung. Wer heute `console.log("LLM response:", result)` in Pro
 
 **Stufe 3** braucht mehr als Tooling - sie braucht organisatorische Reife. Dashboards bauen kann jeder. Aber *sinnvolle* Alerts definieren, SLOs für AI-Features formulieren, Kostenbudgets pro Feature durchsetzen - das sind Entscheidungen, die ein Team gemeinsam treffen muss.
 
-**Stufe 4** ist dort, wo Observability und Evals zusammenwachsen. Produktions-Traces fließen zurück in die Eval-Pipeline. Ein Incident wird nicht nur gefixt, sondern als Regressionstest verankert. Wer den Evals-Post gelesen hat: Dort habe ich geschrieben, dass Evals ohne Produktionsfeedback veralten. Stufe 4 schließt genau diese Lücke.
+**Stufe 4** ist dort, wo Observability und Evals zusammenwachsen. Produktions-Traces fließen zurück in die Eval-Pipeline. Ein Incident wird nicht nur gefixt, sondern als Regressionstest verankert. Im Evals-Post habe ich geschrieben, dass Evals ohne Produktionsfeedback veralten - Stufe 4 schließt genau diese Lücke.
+
+<LinkCard url="/blog/ai-evals-ci-pipeline"/>
 
 <Callout type="tip">
 Wenn du nur eine Sache aus diesem Post mitnimmst: Starte mit den fünf Betriebsfragen aus dem ersten Kapitel, nicht mit dem Tooling. Die Stufe im Reifegradmodell ergibt sich daraus, welche dieser Fragen du heute beantworten kannst - und welche nicht.
@@ -263,11 +261,9 @@ Observability für AI-Features zerfällt in zwei grundlegend verschiedene Frages
 
 Beide Schichten beantworten unterschiedliche Fragen. Beides in ein Tool zu pressen ist ein Kompromiss in beiden Richtungen.
 
-> Wer Token-Counts hat, aber keine Kostenzuordnung, weiß, dass viel verbraucht wird - aber nicht wo.
-
 ### Drei Szenarien
 
-**Euer Team hat bereits OTel im Stack?** Dann ergänzt die GenAI Semantic Conventions für die Infrastruktur-Sicht und setzt Langfuse (oder eine vergleichbare Plattform) für die Prompt-Level-Observability obendrauf. Zwei Schichten, zwei Tools, klare Trennung.
+**Ein Team mit OTel im Stack?** Dann ergänzen die GenAI Semantic Conventions die Infrastruktur-Sicht, und Langfuse (oder eine vergleichbare Plattform) setzt für die Prompt-Level-Observability obendrauf auf.
 
 **Greenfield AI-Projekt?** Für Startups: Langfuse Cloud, fertig. Schneller geht der Einstieg nicht. Für größere Organisationen: OTel von Tag 1 einplanen - das nachzurüsten wird mit jedem Service teurer. Plus eine LLM-Plattform für die zweite Schicht.
 
@@ -287,7 +283,7 @@ Beide Schichten beantworten unterschiedliche Fragen. Beides in ein Tool zu press
 
 </Accordion>
 
-## Der Bogen zur Serie
+## Wie alles zusammenläuft
 
 Dieser Post ist kein Einzelstück. Er ist die logische Konsequenz aus allem, was in den letzten Wochen geschrieben wurde - und er operationalisiert die Konzepte der vorigen Posts:
 
@@ -319,4 +315,4 @@ Die Deadline für High-Risk-Pflichten ist August 2026. Diese Artikel bilden eine
 
 Der nächste logische Schritt ist die Trace-zu-Eval-Pipeline. Ein produktiver Incident - ein halluzinierter Betrag, ein False Success, ein übersehener Edge Case - wird zum Trace. Der Trace wird zum Eval-Datensatz. Der Eval-Datensatz wird zum dauerhaften Regressionstest in der CI. Kein Incident darf zweimal auf die gleiche Weise passieren.
 
-> Observability für AI-Features ist kein Ops-Thema - es ist die Voraussetzung dafür, dass Contracts, Evals und Human Oversight in Produktion funktionieren.
+> Observability ist kein Ops-Thema. Ohne sie bleiben Contracts, Evals und Human Oversight Konzepte, die ich nicht sehe, wenn sie brechen.
