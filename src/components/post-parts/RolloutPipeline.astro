@@ -1,0 +1,999 @@
+---
+// Release Pipeline diagram for the "Release-Disziplin für AI-Features" post.
+// Inline SVG with theme-aware colors for light and dark mode. Click to zoom.
+
+interface Props {
+	caption?: string;
+}
+
+const { caption } = Astro.props;
+---
+
+<figure class="not-prose rollout-figure my-8">
+	<button class="rollout-diagram" type="button" aria-label="Diagramm vergrößern">
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 1200 500"
+			role="img"
+			aria-labelledby="rollout-title rollout-desc"
+			preserveAspectRatio="xMidYMid meet"
+		>
+			<title id="rollout-title">Release Pipeline für AI-Features</title>
+			<desc id="rollout-desc">
+				Horizontaler Ablauf von Merge über PR-Eval, Shadow, Canary 1/5/25/100 Prozent bis Monitor,
+				mit Rollback-Schleife.
+			</desc>
+
+			<defs>
+				<marker
+					id="arrow-orange"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="7"
+					markerHeight="7"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-accent" />
+				</marker>
+				<marker
+					id="arrow-red"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="7"
+					markerHeight="7"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-danger" />
+				</marker>
+				<marker
+					id="arrow-dim"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-accent" opacity="0.75" />
+				</marker>
+
+				<filter id="glow-orange" x="-20%" y="-20%" width="140%" height="140%">
+					<feGaussianBlur stdDeviation="2" result="b"></feGaussianBlur>
+					<feMerge>
+						<feMergeNode in="b"></feMergeNode>
+						<feMergeNode in="SourceGraphic"></feMergeNode>
+					</feMerge>
+				</filter>
+			</defs>
+
+			<text class="title" x="40" y="44">Release Pipeline für AI-Features</text>
+			<text class="sublabel" x="40" y="66">Merge bis Production, vier Gates, ein Rollback-Pfad</text>
+
+			<!-- Merge -->
+			<g transform="translate(40, 190)">
+				<rect class="card" x="0" y="0" width="130" height="80" rx="10"></rect>
+				<g transform="translate(18, 22)" class="stroke-muted" stroke-width="1.8" fill="none">
+					<circle cx="5" cy="5" r="3.5"></circle>
+					<circle cx="5" cy="30" r="3.5"></circle>
+					<circle cx="25" cy="17" r="3.5"></circle>
+					<path d="M5,8.5 L5,26.5"></path>
+					<path d="M5,17 C 15,17 15,17 22,17"></path>
+				</g>
+				<text class="label" x="62" y="38">Merge</text>
+				<text class="sublabel" x="62" y="58">in main</text>
+			</g>
+
+			<line
+				x1="170"
+				y1="230"
+				x2="210"
+				y2="230"
+				class="stroke-accent"
+				stroke-width="2.25"
+				marker-end="url(#arrow-orange)"
+			></line>
+
+			<!-- PR-Eval (Gate 1) -->
+			<g transform="translate(210, 190)">
+				<rect class="card card-success" x="0" y="0" width="150" height="80" rx="10"></rect>
+				<text class="gate-tag" x="12" y="16">Gate 1</text>
+				<g
+					transform="translate(14, 28)"
+					class="stroke-success"
+					stroke-width="2.2"
+					fill="none"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="10" cy="16" r="10" stroke-opacity="0.35"></circle>
+					<path d="M5,16 L9,20 L15,11"></path>
+				</g>
+				<text class="label" x="44" y="46">PR-Eval</text>
+				<text class="sublabel" x="44" y="64">Offline-Suite grün</text>
+			</g>
+
+			<line
+				x1="360"
+				y1="230"
+				x2="400"
+				y2="230"
+				class="stroke-accent"
+				stroke-width="2.25"
+				marker-end="url(#arrow-orange)"
+			></line>
+
+			<!-- Shadow (Gate 2) -->
+			<g transform="translate(400, 190)">
+				<rect class="card card-accent" x="0" y="0" width="160" height="80" rx="10"></rect>
+				<text class="gate-tag" x="12" y="16">Gate 2</text>
+				<g transform="translate(14, 26)" fill="none" class="stroke-accent" stroke-width="1.8">
+					<rect x="0" y="6" width="16" height="14" rx="2" opacity="0.4"></rect>
+					<rect x="5" y="1" width="16" height="14" rx="2"></rect>
+				</g>
+				<text class="label" x="46" y="46">Shadow</text>
+				<text class="sublabel" x="46" y="64">Traffic gespiegelt</text>
+			</g>
+
+			<line
+				x1="560"
+				y1="230"
+				x2="600"
+				y2="230"
+				class="stroke-accent"
+				stroke-width="2.25"
+				marker-end="url(#arrow-orange)"
+			></line>
+
+			<!-- Canary Group (Gate 3) -->
+			<g transform="translate(600, 140)">
+				<rect
+					class="card-group"
+					x="0"
+					y="0"
+					width="400"
+					height="180"
+					rx="14"
+					stroke-dasharray="4 4"
+				></rect>
+				<text class="gate-tag" x="16" y="22">Gate 3 · Progressive Rollout</text>
+				<text class="label" x="16" y="44">Canary</text>
+
+				<!-- 1% -->
+				<g transform="translate(16, 70)">
+					<rect class="card" x="0" y="0" width="80" height="70" rx="8"></rect>
+					<rect class="track" x="10" y="52" width="60" height="6" rx="3"></rect>
+					<rect class="fill-accent-rect" x="10" y="52" width="6" height="6" rx="3"></rect>
+					<text class="pct" x="40" y="32" text-anchor="middle">1%</text>
+				</g>
+				<line
+					x1="96"
+					y1="105"
+					x2="108"
+					y2="105"
+					class="stroke-accent"
+					stroke-width="2"
+					marker-end="url(#arrow-dim)"></line>
+
+				<!-- 5% -->
+				<g transform="translate(108, 70)">
+					<rect class="card" x="0" y="0" width="80" height="70" rx="8"></rect>
+					<rect class="track" x="10" y="52" width="60" height="6" rx="3"></rect>
+					<rect class="fill-accent-rect" x="10" y="52" width="12" height="6" rx="3"></rect>
+					<text class="pct" x="40" y="32" text-anchor="middle">5%</text>
+				</g>
+				<line
+					x1="188"
+					y1="105"
+					x2="200"
+					y2="105"
+					class="stroke-accent"
+					stroke-width="2"
+					marker-end="url(#arrow-dim)"></line>
+
+				<!-- 25% -->
+				<g transform="translate(200, 70)">
+					<rect class="card" x="0" y="0" width="80" height="70" rx="8"></rect>
+					<rect class="track" x="10" y="52" width="60" height="6" rx="3"></rect>
+					<rect class="fill-accent-rect" x="10" y="52" width="24" height="6" rx="3"></rect>
+					<text class="pct" x="40" y="32" text-anchor="middle">25%</text>
+				</g>
+				<line
+					x1="280"
+					y1="105"
+					x2="292"
+					y2="105"
+					class="stroke-accent"
+					stroke-width="2"
+					marker-end="url(#arrow-dim)"></line>
+
+				<!-- 100% -->
+				<g transform="translate(292, 70)" filter="url(#glow-orange)">
+					<rect class="card card-accent" x="0" y="0" width="92" height="78" rx="8"></rect>
+					<rect class="track" x="12" y="54" width="68" height="6" rx="3"></rect>
+					<rect class="fill-accent-rect" x="12" y="54" width="68" height="6" rx="3"></rect>
+					<text class="pct" x="46" y="30" text-anchor="middle">100%</text>
+					<text class="sublabel" x="46" y="72" text-anchor="middle">Prod</text>
+				</g>
+			</g>
+
+			<line
+				x1="1000"
+				y1="230"
+				x2="1040"
+				y2="230"
+				class="stroke-accent"
+				stroke-width="2.25"
+				marker-end="url(#arrow-orange)"
+			></line>
+
+			<!-- Monitor (Gate 4) -->
+			<g transform="translate(1040, 190)">
+				<rect class="card card-info" x="0" y="0" width="140" height="80" rx="10"></rect>
+				<text class="gate-tag gate-tag-info" x="12" y="16">Gate 4</text>
+				<g
+					transform="translate(14, 30)"
+					fill="none"
+					class="stroke-info"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M0,18 L6,12 L12,15 L18,6 L24,10"></path>
+					<circle cx="24" cy="10" r="2" class="fill-info"></circle>
+				</g>
+				<text class="label" x="46" y="46">Monitor</text>
+				<text class="sublabel" x="46" y="64">Guardrails live</text>
+			</g>
+
+			<!-- Rollback loop -->
+			<g>
+				<path
+					d="M 1110 270 L 1110 390 L 800 390 L 800 320"
+					fill="none"
+					class="stroke-danger"
+					stroke-width="2.25"
+					stroke-dasharray="6 5"
+					marker-end="url(#arrow-red)"
+				></path>
+				<g transform="translate(820, 402)">
+					<rect class="rb-badge" x="0" y="0" width="260" height="30" rx="15"></rect>
+					<g
+						transform="translate(10, 8)"
+						fill="none"
+						class="stroke-danger"
+						stroke-width="1.6"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M7,0 L14,13 L0,13 z"></path>
+						<path d="M7,5 L7,9"></path>
+						<circle cx="7" cy="11.2" r="0.6" class="fill-danger"></circle>
+					</g>
+					<text class="rb-label" x="34" y="20">Rollback on Guardrail Breach</text>
+				</g>
+			</g>
+
+			<!-- Legend -->
+			<g transform="translate(40, 432)">
+				<rect class="legend-bg" x="0" y="0" width="740" height="44" rx="10"></rect>
+				<circle cx="18" cy="22" r="5" class="fill-success"></circle>
+				<text class="sublabel" x="30" y="26">Gate 1: Pre-Merge Eval</text>
+				<circle cx="190" cy="22" r="5" class="fill-accent"></circle>
+				<text class="sublabel" x="202" y="26">Gate 2: Shadow Run</text>
+				<circle
+					cx="340"
+					cy="22"
+					r="5"
+					fill="none"
+					class="stroke-accent"
+					stroke-width="1.8"
+					stroke-dasharray="2 2"></circle>
+				<text class="sublabel" x="352" y="26">Gate 3: Progressive Rollout</text>
+				<circle cx="530" cy="22" r="5" class="fill-info"></circle>
+				<text class="sublabel" x="542" y="26">Gate 4: Monitor & Guardrails</text>
+			</g>
+		</svg>
+		<span class="zoom-hint" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="11" cy="11" r="7"></circle>
+				<path d="M21 21l-4.3-4.3"></path>
+				<path d="M11 8v6"></path>
+				<path d="M8 11h6"></path>
+			</svg>
+		</span>
+	</button>
+	{caption && <figcaption class="caption">{caption}</figcaption>}
+</figure>
+
+<script is:inline>
+	(function () {
+		function makeBtn(act, label, text) {
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.setAttribute('data-act', act);
+			b.setAttribute('aria-label', label);
+			b.textContent = text;
+			return b;
+		}
+
+		function initRolloutZoom() {
+			document.querySelectorAll('.rollout-diagram').forEach(function (btn) {
+				if (btn.dataset.zoomInit) return;
+				btn.dataset.zoomInit = '1';
+				btn.addEventListener('click', openRolloutZoom);
+			});
+		}
+
+		function openRolloutZoom(e) {
+			var btn = e.currentTarget;
+			var svg = btn.querySelector('svg');
+			if (!svg) return;
+
+			var overlay = document.createElement('div');
+			overlay.className = 'rollout-zoom-overlay';
+
+			var stage = document.createElement('div');
+			stage.className = 'rollout-zoom-stage';
+
+			var canvas = document.createElement('div');
+			canvas.className = 'rollout-zoom-canvas';
+
+			canvas.appendChild(svg.cloneNode(true));
+			stage.appendChild(canvas);
+			overlay.appendChild(stage);
+
+			var controls = document.createElement('div');
+			controls.className = 'rollout-zoom-controls';
+			var levelEl = document.createElement('span');
+			levelEl.className = 'rollout-zoom-level';
+			levelEl.setAttribute('data-role', 'level');
+			levelEl.textContent = '100%';
+			controls.appendChild(makeBtn('out', 'Herauszoomen', '−'));
+			controls.appendChild(levelEl);
+			controls.appendChild(makeBtn('in', 'Hineinzoomen', '+'));
+			controls.appendChild(makeBtn('reset', 'Ansicht zurücksetzen', '⟲'));
+			controls.appendChild(makeBtn('close', 'Schließen', '×'));
+			overlay.appendChild(controls);
+
+			document.body.appendChild(overlay);
+			document.body.classList.add('rollout-zoom-active');
+
+			var scale = 1;
+			var tx = 0;
+			var ty = 0;
+			var MIN = 0.5;
+			var MAX = 8;
+
+			function apply() {
+				canvas.style.transform = 'translate(' + tx + 'px, ' + ty + 'px) scale(' + scale + ')';
+				levelEl.textContent = Math.round(scale * 100) + '%';
+			}
+
+			function setScaleAt(newScale, clientX, clientY) {
+				var prev = scale;
+				scale = Math.max(MIN, Math.min(MAX, newScale));
+				if (clientX !== undefined && clientY !== undefined) {
+					var rect = stage.getBoundingClientRect();
+					var cx = clientX - rect.left - rect.width / 2;
+					var cy = clientY - rect.top - rect.height / 2;
+					tx = cx - ((cx - tx) * scale) / prev;
+					ty = cy - ((cy - ty) * scale) / prev;
+				}
+				apply();
+			}
+
+			function centerX() {
+				var r = stage.getBoundingClientRect();
+				return r.left + r.width / 2;
+			}
+			function centerY() {
+				var r = stage.getBoundingClientRect();
+				return r.top + r.height / 2;
+			}
+
+			function reset() {
+				scale = 1;
+				tx = 0;
+				ty = 0;
+				apply();
+			}
+
+			stage.addEventListener(
+				'wheel',
+				function (ev) {
+					ev.preventDefault();
+					var factor = Math.exp(-ev.deltaY * 0.002);
+					setScaleAt(scale * factor, ev.clientX, ev.clientY);
+				},
+				{ passive: false }
+			);
+
+			var dragging = false;
+			var sX = 0, sY = 0, sTx = 0, sTy = 0;
+			stage.addEventListener('pointerdown', function (ev) {
+				if (ev.target.closest('.rollout-zoom-controls')) return;
+				dragging = true;
+				sX = ev.clientX;
+				sY = ev.clientY;
+				sTx = tx;
+				sTy = ty;
+				try { stage.setPointerCapture(ev.pointerId); } catch (_) {}
+				stage.classList.add('dragging');
+			});
+			stage.addEventListener('pointermove', function (ev) {
+				if (!dragging) return;
+				tx = sTx + (ev.clientX - sX);
+				ty = sTy + (ev.clientY - sY);
+				apply();
+			});
+			function endDrag() {
+				dragging = false;
+				stage.classList.remove('dragging');
+			}
+			stage.addEventListener('pointerup', endDrag);
+			stage.addEventListener('pointercancel', endDrag);
+
+			stage.addEventListener('dblclick', function (ev) {
+				if (ev.target.closest('.rollout-zoom-controls')) return;
+				if (scale > 1.01) reset();
+				else setScaleAt(2, ev.clientX, ev.clientY);
+			});
+
+			controls.addEventListener('click', function (ev) {
+				var target = ev.target.closest('button');
+				if (!target) return;
+				var act = target.getAttribute('data-act');
+				if (act === 'in') setScaleAt(scale * 1.3, centerX(), centerY());
+				else if (act === 'out') setScaleAt(scale / 1.3, centerX(), centerY());
+				else if (act === 'reset') reset();
+				else if (act === 'close') close();
+				ev.stopPropagation();
+			});
+
+			function close() {
+				overlay.classList.remove('active');
+				document.body.classList.remove('rollout-zoom-active');
+				overlay.addEventListener(
+					'transitionend',
+					function () { overlay.remove(); },
+					{ once: true }
+				);
+				document.removeEventListener('keydown', onKey);
+			}
+			function onKey(ev) {
+				if (ev.key === 'Escape') close();
+				else if (ev.key === '+' || ev.key === '=') setScaleAt(scale * 1.3, centerX(), centerY());
+				else if (ev.key === '-' || ev.key === '_') setScaleAt(scale / 1.3, centerX(), centerY());
+				else if (ev.key === '0') reset();
+			}
+			overlay.addEventListener('click', function (ev) {
+				if (ev.target === overlay) close();
+			});
+			document.addEventListener('keydown', onKey);
+
+			requestAnimationFrame(function () {
+				requestAnimationFrame(function () { overlay.classList.add('active'); });
+			});
+		}
+
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initRolloutZoom);
+		} else {
+			initRolloutZoom();
+		}
+		document.addEventListener('astro:page-load', initRolloutZoom);
+	})();
+</script>
+
+<style>
+	.rollout-figure {
+		margin-inline: 0;
+	}
+
+	/* Breakout: auf größeren Viewports aus der Prose-Breite ausbrechen */
+	@media (min-width: 1160px) {
+		.rollout-figure {
+			margin-inline: calc((var(--content-width) - var(--content-width-wide)) / 2);
+			max-width: var(--content-width-wide);
+		}
+	}
+
+	.rollout-diagram {
+		/* Light-Mode Tokens (Default) */
+		--d-card-bg: #ffffff;
+		--d-card-border: rgba(0, 0, 0, 0.08);
+		--d-group-bg: rgba(0, 0, 0, 0.02);
+		--d-track: rgba(0, 0, 0, 0.06);
+		--d-text: #111827;
+		--d-text-muted: #6b7280;
+		--d-accent: #c2410c;
+		--d-success: #059669;
+		--d-info: #0284c7;
+		--d-danger: #b91c1c;
+		--d-danger-bg: #fef2f2;
+		--d-danger-border: #fecaca;
+		--d-danger-text: #991b1b;
+		--d-legend-bg: rgba(0, 0, 0, 0.02);
+
+		display: block;
+		width: 100%;
+		position: relative;
+		border-radius: 0.75rem;
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-secondary);
+		padding: 1.5rem 1.25rem;
+		cursor: zoom-in;
+		transition: box-shadow 0.2s ease, transform 0.2s ease;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+	}
+
+	.rollout-diagram:hover {
+		box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.15);
+	}
+
+	.rollout-diagram:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 2px;
+	}
+
+	:global(.dark) .rollout-diagram {
+		--d-card-bg: #0f1729;
+		--d-card-border: rgba(255, 255, 255, 0.08);
+		--d-group-bg: rgba(255, 255, 255, 0.02);
+		--d-track: rgba(255, 255, 255, 0.08);
+		--d-text: #e5e7eb;
+		--d-text-muted: #9ca3af;
+		--d-accent: #ea580c;
+		--d-success: #10b981;
+		--d-info: #38bdf8;
+		--d-danger: #ef4444;
+		--d-danger-bg: #1a0f12;
+		--d-danger-border: rgba(239, 68, 68, 0.5);
+		--d-danger-text: #fca5a5;
+		--d-legend-bg: rgba(255, 255, 255, 0.02);
+	}
+
+	:global(.dark) .rollout-diagram:hover {
+		box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+	}
+
+	.rollout-diagram svg {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+
+	/* Zoom-Hint-Badge (oben rechts) */
+	.rollout-diagram .zoom-hint {
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-secondary);
+		opacity: 0.7;
+		transition: opacity 0.2s ease;
+		pointer-events: none;
+	}
+	.rollout-diagram .zoom-hint svg {
+		width: 1rem;
+		height: 1rem;
+	}
+	.rollout-diagram:hover .zoom-hint {
+		opacity: 1;
+		color: var(--color-accent);
+	}
+
+	/* SVG-Elemente */
+	.rollout-diagram .card {
+		fill: var(--d-card-bg);
+		stroke: var(--d-card-border);
+		stroke-width: 1.25;
+	}
+	.rollout-diagram .card-accent {
+		stroke: var(--d-accent);
+		stroke-width: 1.5;
+	}
+	.rollout-diagram .card-success {
+		stroke: var(--d-success);
+		stroke-width: 1.5;
+	}
+	.rollout-diagram .card-info {
+		stroke: var(--d-info);
+		stroke-width: 1.5;
+	}
+	.rollout-diagram .card-group {
+		fill: var(--d-group-bg);
+		stroke: var(--d-accent);
+		stroke-width: 1.25;
+		opacity: 0.9;
+	}
+	.rollout-diagram .track {
+		fill: var(--d-track);
+	}
+	.rollout-diagram .legend-bg {
+		fill: var(--d-legend-bg);
+		stroke: var(--d-card-border);
+		stroke-width: 1;
+	}
+	.rollout-diagram .rb-badge {
+		fill: var(--d-danger-bg);
+		stroke: var(--d-danger-border);
+		stroke-width: 1.25;
+	}
+
+	.rollout-diagram .title {
+		fill: var(--d-text);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-weight: 700;
+		font-size: 20px;
+		letter-spacing: 0.01em;
+	}
+	.rollout-diagram .label {
+		fill: var(--d-text);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-weight: 600;
+		font-size: 16px;
+	}
+	.rollout-diagram .sublabel {
+		fill: var(--d-text-muted);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-size: 12px;
+		letter-spacing: 0.02em;
+	}
+	.rollout-diagram .pct {
+		fill: var(--d-text);
+		font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+		font-weight: 600;
+		font-size: 14px;
+	}
+	.rollout-diagram .gate-tag {
+		fill: var(--d-accent);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-weight: 700;
+		font-size: 11px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+	.rollout-diagram .gate-tag-info {
+		fill: var(--d-info);
+	}
+	.rollout-diagram .rb-label {
+		fill: var(--d-danger-text);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-weight: 600;
+		font-size: 13px;
+	}
+
+	.rollout-diagram .stroke-accent {
+		stroke: var(--d-accent);
+	}
+	.rollout-diagram .stroke-success {
+		stroke: var(--d-success);
+	}
+	.rollout-diagram .stroke-info {
+		stroke: var(--d-info);
+	}
+	.rollout-diagram .stroke-danger {
+		stroke: var(--d-danger);
+	}
+	.rollout-diagram .stroke-muted {
+		stroke: var(--d-text-muted);
+	}
+	.rollout-diagram .fill-accent,
+	.rollout-diagram .fill-accent-rect {
+		fill: var(--d-accent);
+	}
+	.rollout-diagram .fill-success {
+		fill: var(--d-success);
+	}
+	.rollout-diagram .fill-info {
+		fill: var(--d-info);
+	}
+	.rollout-diagram .fill-danger {
+		fill: var(--d-danger);
+	}
+
+	.caption {
+		margin-top: 0.75rem;
+		text-align: center;
+		font-size: 0.875rem;
+		color: var(--color-text-secondary);
+		font-style: italic;
+	}
+</style>
+
+<style is:global>
+	body.rollout-zoom-active {
+		overflow: hidden;
+	}
+
+	.rollout-zoom-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.88);
+		backdrop-filter: blur(4px);
+		z-index: 100;
+		opacity: 0;
+		transition: opacity 0.25s ease;
+	}
+	.rollout-zoom-overlay.active {
+		opacity: 1;
+	}
+
+	.rollout-zoom-stage {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		cursor: grab;
+		touch-action: none;
+	}
+	.rollout-zoom-stage.dragging {
+		cursor: grabbing;
+	}
+
+	.rollout-zoom-canvas {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 3rem;
+		transform-origin: center center;
+		transition: transform 0.05s linear;
+		will-change: transform;
+		pointer-events: none;
+	}
+
+	.rollout-zoom-canvas svg {
+		display: block;
+		width: min(90vw, 1600px);
+		height: auto;
+		max-height: 85vh;
+		background: #0a0a0a;
+		border-radius: 0.75rem;
+		padding: 1.5rem;
+		box-shadow: 0 25px 60px -20px rgba(0, 0, 0, 0.6);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg {
+		background: #ffffff;
+		border: 1px solid rgba(0, 0, 0, 0.06);
+	}
+
+	/* Text-Styles fuer geklontes SVG im Overlay
+	   (scoped styles greifen dort nicht, daher explizit global) */
+	.rollout-zoom-canvas svg text {
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+	}
+	.rollout-zoom-canvas svg .title {
+		font-weight: 700;
+		font-size: 20px;
+		letter-spacing: 0.01em;
+	}
+	.rollout-zoom-canvas svg .label {
+		font-weight: 600;
+		font-size: 16px;
+	}
+	.rollout-zoom-canvas svg .sublabel {
+		font-size: 12px;
+		letter-spacing: 0.02em;
+	}
+	.rollout-zoom-canvas svg .pct {
+		font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+		font-weight: 600;
+		font-size: 14px;
+	}
+	.rollout-zoom-canvas svg .gate-tag,
+	.rollout-zoom-canvas svg .gate-tag-info {
+		font-weight: 700;
+		font-size: 11px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+	.rollout-zoom-canvas svg .rb-label {
+		font-weight: 600;
+		font-size: 13px;
+	}
+
+	/* Controls */
+	.rollout-zoom-controls {
+		position: fixed;
+		bottom: 1.5rem;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.375rem;
+		background: rgba(15, 23, 42, 0.9);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 999px;
+		color: #e5e7eb;
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		backdrop-filter: blur(8px);
+		box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+	}
+	.rollout-zoom-controls button {
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 999px;
+		border: none;
+		background: transparent;
+		color: #e5e7eb;
+		font-size: 1.25rem;
+		line-height: 1;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: background 0.15s ease;
+	}
+	.rollout-zoom-controls button:hover {
+		background: rgba(255, 255, 255, 0.1);
+	}
+	.rollout-zoom-controls button:focus-visible {
+		outline: 2px solid #ea580c;
+		outline-offset: 2px;
+	}
+	.rollout-zoom-controls [data-act='close'] {
+		color: #fca5a5;
+		font-size: 1.5rem;
+	}
+	.rollout-zoom-level {
+		min-width: 3rem;
+		text-align: center;
+		font-size: 0.75rem;
+		font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+		color: #9ca3af;
+		user-select: none;
+	}
+
+	/* SVG-Farben im Overlay (fester dunkler Hintergrund, Light-Overrides weiter unten) */
+	.rollout-zoom-canvas svg .card {
+		fill: #0f1729;
+		stroke: rgba(255, 255, 255, 0.08);
+	}
+	.rollout-zoom-canvas svg .card-group {
+		fill: rgba(255, 255, 255, 0.02);
+		stroke: #ea580c;
+	}
+	.rollout-zoom-canvas svg .track {
+		fill: rgba(255, 255, 255, 0.08);
+	}
+	.rollout-zoom-canvas svg .legend-bg {
+		fill: rgba(255, 255, 255, 0.02);
+		stroke: rgba(255, 255, 255, 0.08);
+	}
+	.rollout-zoom-canvas svg .rb-badge {
+		fill: #1a0f12;
+		stroke: rgba(239, 68, 68, 0.5);
+	}
+	.rollout-zoom-canvas svg .title,
+	.rollout-zoom-canvas svg .label,
+	.rollout-zoom-canvas svg .pct {
+		fill: #e5e7eb;
+	}
+	.rollout-zoom-canvas svg .sublabel {
+		fill: #9ca3af;
+	}
+	.rollout-zoom-canvas svg .gate-tag {
+		fill: #ea580c;
+	}
+	.rollout-zoom-canvas svg .gate-tag-info {
+		fill: #38bdf8;
+	}
+	.rollout-zoom-canvas svg .rb-label {
+		fill: #fca5a5;
+	}
+	.rollout-zoom-canvas svg .stroke-accent,
+	.rollout-zoom-canvas svg .card-accent {
+		stroke: #ea580c;
+	}
+	.rollout-zoom-canvas svg .stroke-success,
+	.rollout-zoom-canvas svg .card-success {
+		stroke: #10b981;
+	}
+	.rollout-zoom-canvas svg .stroke-info,
+	.rollout-zoom-canvas svg .card-info {
+		stroke: #38bdf8;
+	}
+	.rollout-zoom-canvas svg .stroke-danger {
+		stroke: #ef4444;
+	}
+	.rollout-zoom-canvas svg .stroke-muted {
+		stroke: #9ca3af;
+	}
+	.rollout-zoom-canvas svg .fill-accent,
+	.rollout-zoom-canvas svg .fill-accent-rect {
+		fill: #ea580c;
+	}
+	.rollout-zoom-canvas svg .fill-success {
+		fill: #10b981;
+	}
+	.rollout-zoom-canvas svg .fill-info {
+		fill: #38bdf8;
+	}
+	.rollout-zoom-canvas svg .fill-danger {
+		fill: #ef4444;
+	}
+
+	/* Light-Mode Overlay: hellere SVG-Farben auf weißem Hintergrund */
+	:root:not(.dark) .rollout-zoom-canvas svg .card {
+		fill: #ffffff;
+		stroke: rgba(0, 0, 0, 0.08);
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .card-group {
+		fill: rgba(0, 0, 0, 0.02);
+		stroke: #c2410c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .track {
+		fill: rgba(0, 0, 0, 0.06);
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .legend-bg {
+		fill: rgba(0, 0, 0, 0.02);
+		stroke: rgba(0, 0, 0, 0.08);
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .rb-badge {
+		fill: #fef2f2;
+		stroke: #fecaca;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .title,
+	:root:not(.dark) .rollout-zoom-canvas svg .label,
+	:root:not(.dark) .rollout-zoom-canvas svg .pct {
+		fill: #111827;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .sublabel {
+		fill: #6b7280;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .gate-tag {
+		fill: #c2410c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .gate-tag-info {
+		fill: #0284c7;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .rb-label {
+		fill: #991b1b;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .stroke-accent,
+	:root:not(.dark) .rollout-zoom-canvas svg .card-accent {
+		stroke: #c2410c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .stroke-success,
+	:root:not(.dark) .rollout-zoom-canvas svg .card-success {
+		stroke: #059669;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .stroke-info,
+	:root:not(.dark) .rollout-zoom-canvas svg .card-info {
+		stroke: #0284c7;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .stroke-danger {
+		stroke: #b91c1c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .stroke-muted {
+		stroke: #6b7280;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .fill-accent,
+	:root:not(.dark) .rollout-zoom-canvas svg .fill-accent-rect {
+		fill: #c2410c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .fill-success {
+		fill: #059669;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .fill-info {
+		fill: #0284c7;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .fill-danger {
+		fill: #b91c1c;
+	}
+</style>
