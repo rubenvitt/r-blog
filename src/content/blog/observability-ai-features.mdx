@@ -1,10 +1,10 @@
 ---
 title: "Observability für AI-Features: Welche Spans, Events und IDs du wirklich brauchst"
 description: "Ohne Traces, Modell- und Promptversionen, Tool-Spans und Kostenmetriken bleibt jeder Incident Spekulation. Ein Leitfaden für Teams, die AI-Features in Produktion betreiben."
-date: 2026-04-19
+date: 2026-04-21
 tags: ["ai", "observability", "software-engineering", "security"]
 image: ./_images/observability-ai-features/hero.png
-draft: true
+draft: false
 ---
 
 import Callout from '../../components/widgets/Callout.astro';
@@ -19,7 +19,7 @@ import approvalModal from './_images/observability-ai-features/approval-modal.pn
 
 Vier Posts lang habe ich über Prinzipien geschrieben: Contracts, Evals, Tool-Sicherheit, Human Oversight. Richtig - aber wie sehe ich im Betrieb, ob das alles tatsächlich funktioniert?
 
-Die ehrliche Antwort: ohne strukturierte Observability gar nicht. Ein False Success im Refund-Agent - das Tool meldet Erfolg, der Kunde wartet auf sein Geld - ist mit Application Logs und Error Rates nicht zu finden. Alles grün. Das System hat nicht versagt, es hat gelogen.
+Ohne strukturierte Observability gar nicht. Ein False Success im Refund-Agent - das Tool meldet Erfolg, der Kunde wartet auf sein Geld - ist mit Application Logs und Error Rates nicht zu finden. Alles grün. Das System hat nicht versagt, es hat gelogen.
 
 Dieser Post zeigt, welche Observability-Infrastruktur Teams brauchen, die AI-Features live betreiben. Welche Fragen muss ich beantworten können? Wie sieht ein guter Trace aus? Und wo ordne ich meinen eigenen Stand ein?
 
@@ -35,7 +35,7 @@ Wie hätte ich das in 30 Sekunden debuggen können?
 
 Nicht mit `grep` in Logfiles. Nicht mit einem Dashboard, das mir Uptime und Error Rate zeigt - denn beides war grün. Kein Fehler, kein Alert, nur ein falsches Ergebnis.
 
-Traditionelle Metriken fangen AI-spezifische Fehler nicht. False Success, falsche Tool-Auswahl oder halluzinierte Aktionen bleiben unsichtbar, solange ich nur auf HTTP-Statuscodes und Exception-Counts schaue. Das Problem sitzt tiefer - in der Entscheidungslogik des Agents und in der Interpretation der Tool-Antworten. Zwischen Turns geht Kontext verloren, ohne dass irgendein Logfile darauf hinweist.
+Traditionelle Metriken fangen AI-spezifische Fehler nicht ab. False Success, falsche Tool-Auswahl oder halluzinierte Aktionen bleiben unsichtbar, solange ich nur auf HTTP-Statuscodes und Exception-Counts schaue. Das Problem sitzt tiefer - in der Entscheidungslogik des Agents und in der Interpretation der Tool-Antworten. Zwischen Turns geht Kontext verloren, ohne dass irgendein Logfile darauf hinweist.
 
 Bevor ich über Tooling rede, fünf Fragen, die jedes Team beantworten können sollte.
 
@@ -130,7 +130,7 @@ AI-Workloads erzeugen 10-50x mehr Telemetrie als klassische Services. Jeder LLM-
 
 <Callout type="warning">Vollständige Prompts und Completions in Produktions-Traces sind ein PII-Risiko. Kundennamen, E-Mail-Adressen, Bestelldetails - alles, was der Agent verarbeitet, landet im Prompt. Und damit im Trace. Und damit in eurem Observability-Backend. Die OTel GenAI Spec setzt Content-Events deshalb bewusst auf Opt-In, nicht Opt-Out.</Callout>
 
-Das Prinzip ist einfach: Metadata und Referenzen sind der Default. Token-Counts, Modellversion, Finish-Reason, Tool-Name, Dauer - ja. Vollständiger Prompt-Text, API-Keys, rohes Kundenfeedback - nein. Nicht weil es technisch unmöglich wäre, sondern weil es im Normalfall unnötig ist.
+Metadata und Referenzen sind der Default. Token-Counts, Modellversion, Finish-Reason, Tool-Name, Dauer - ja. Vollständiger Prompt-Text, API-Keys, rohes Kundenfeedback - nein. Nicht weil es technisch unmöglich wäre, sondern weil es im Normalfall unnötig ist.
 
 <Accordion title="Break-Glass-Architektur: Wenn du doch den vollen Content brauchst">
 
@@ -146,7 +146,7 @@ Das Muster ist nicht neu - es ist dasselbe Prinzip wie bei Production-Database-A
 
 ## Was OpenTelemetry liefert - und was nicht
 
-Wer sich mit Observability für AI-Features beschäftigt, stößt früher oder später auf die OpenTelemetry GenAI Semantic Conventions. Die Spec existiert, sie wächst, sie hat Momentum. Aber sie hat auch ein Problem: Stand April 2026 ist kein einziges Attribut Stable. Alles trägt den Status "Development". Wer die Conventions heute nutzt, muss `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` setzen - und damit akzeptieren, dass sich Attribute jederzeit umbenennen können.
+Wer sich mit Observability für AI-Features beschäftigt, stößt auf die OpenTelemetry GenAI Semantic Conventions. Die Spec existiert, sie wächst, sie hat Momentum. Aber sie hat auch ein Problem: Stand April 2026 ist kein einziges Attribut Stable. Alles trägt den Status "Development". Wer die Conventions heute nutzt, muss `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` setzen - und damit akzeptieren, dass sich Attribute jederzeit umbenennen können.
 
 Das heißt nicht, dass die Spec nutzlos ist. Es heißt, dass wir wissen müssen, was sie kann - und vor allem, was sie nicht kann. (Kurze Begriffsklärung: Die Spec verwendet den Status "Development", aber die Opt-In-Variable heißt `experimental` - ein historisches Überbleibsel. Gemeint ist dasselbe.)
 
@@ -181,7 +181,7 @@ Wer früh mit den Conventions gestartet ist, muss migrieren: `gen_ai.system` hei
 
 ## Die sechs häufigsten Fehler bei LLM-Observability
 
-Observability für AI-Features ist noch jung. Aber ein paar Fallen haben sich jetzt schon als Klassiker etabliert. Sechs Anti-Patterns, denen ich regelmäßig begegne:
+Observability für AI-Features ist noch jung. Aber ein paar Fallen tauchen in Post-Mortems und Engineering-Blogs jetzt schon immer wieder auf. Sechs Anti-Patterns:
 
 ### 1. Alles loggen, nichts korrelieren
 
@@ -235,7 +235,7 @@ Es gibt kein offizielles "LLM Observability Maturity Model" - keinen ISO-Standar
 
 Das ist keine Vermutung. Wer heute `console.log("LLM response:", result)` in Produktion hat, ist auf Stufe 1. Wer nicht mal das hat - Stufe 0. Beides bedeutet: Wenn etwas schiefgeht, wird geraten statt diagnostiziert.
 
-**Stufe 2** - Structured Traces mit OpenTelemetry und den GenAI Semantic Conventions - ist der Punkt, ab dem Debugging aufhört, ein Ratespiel zu sein. Hier werden einzelne Requests nachvollziehbar: Welcher Prompt ging rein, welches Modell hat geantwortet, welche Tools wurden aufgerufen, wie lange hat jeder Schritt gedauert. Das ist mit überschaubarem Aufwand erreichbar und liefert sofort Wert.
+**Stufe 2** - Structured Traces mit OpenTelemetry und den GenAI Semantic Conventions - ist der Punkt, ab dem Debugging aufhört, ein Ratespiel zu sein. Hier werden einzelne Requests nachvollziehbar: Welcher Prompt ging rein, welches Modell hat geantwortet, welche Tools wurden aufgerufen, wie lange hat jeder Schritt gedauert. Das ist mit überschaubarem Aufwand erreichbar - und zahlt sich ab dem ersten Incident aus.
 
 **Stufe 3** braucht mehr als Tooling - sie braucht organisatorische Reife. Dashboards bauen kann jeder. Aber *sinnvolle* Alerts definieren, SLOs für AI-Features formulieren, Kostenbudgets pro Feature durchsetzen - das sind Entscheidungen, die ein Team gemeinsam treffen muss.
 
@@ -249,7 +249,7 @@ Wenn du nur eine Sache aus diesem Post mitnimmst: Starte mit den fünf Betriebsf
 
 ## Tooling-Entscheidung: Welches Setup passt?
 
-Die ehrliche Antwort auf "Welches Observability-Tool soll ich nehmen?" ist: Es kommt darauf an. Aber nicht auf Features - sondern auf die Frage, welche Schichten ich abdecken muss.
+"Welches Observability-Tool soll ich nehmen?" - Es kommt darauf an. Aber nicht auf Features - sondern auf die Frage, welche Schichten ich abdecken muss.
 
 ### Das Zwei-Schichten-Modell
 
@@ -268,6 +268,16 @@ Beide Schichten beantworten unterschiedliche Fragen. Beides in ein Tool zu press
 **Greenfield AI-Projekt?** Für Startups: Langfuse Cloud, fertig. Schneller geht der Einstieg nicht. Für größere Organisationen: OTel von Tag 1 einplanen - das nachzurüsten wird mit jedem Service teurer. Plus eine LLM-Plattform für die zweite Schicht.
 
 **Compliance-Anforderungen?** Dann zählt Self-Hosting. Langfuse ist vollständig self-hostbar und die klarste Option. LangSmith und Braintrust bieten Self-Hosting im Enterprise-Tier an, aber mit höherem Infrastruktur-Aufwand und eingeschränkter Kontrolle. Helicone ist Open Source und ebenfalls self-hostbar. Wer Daten nicht aus der Hand geben kann, hat Optionen - aber die Einstiegshürde variiert erheblich.
+
+### Oder: selber bauen?
+
+Berechtigter Einwurf: Mit AI-Unterstützung lässt sich doch so ein Observability-Stack in ein paar Abenden zusammenstöpseln. Stimmt - für **Layer 1**. OTel-SDK, Grafana Tempo oder Jaeger als Backend, Grafana-Dashboards, ein paar eigene Span-Attribute für `gen_ai.*`. Kostentabelle als JSON, Prompt-Versionen als Hash im Span. Das ist keine Raketentechnik, und ich bin der Letzte, der davon abrät - im Gegenteil.
+
+<LinkCard url="/blog/drei-abende-drei-tools"/>
+
+**Layer 2** ist der härtere Teil. Prompt-Registry mit Diff-Ansicht zwischen Versionen, Eval-Pipelines mit LLM-as-Judge, Session-Threading über lange Konversationen, Feedback-Capture mit UI für Product und QA. Das sind nicht "ein paar Abende" - das ist eine eigene Plattform.
+
+Die pragmatische Variante: Layer 1 selbst bauen, bei Layer 2 eine Plattform andocken. Langfuse lässt sich per OTel-Bridge an einen selbstgebauten Layer-1-Stack anschließen - Best of both.
 
 <Accordion title="Kurzeinschätzungen: Langfuse, Arize Phoenix, LangSmith, Helicone, Braintrust">
 
