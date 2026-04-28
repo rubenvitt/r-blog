@@ -1,0 +1,210 @@
+---
+// Release-Trigger Fan-In: zeigt, wie sechs Trigger Production verändern,
+// aber nur einer durchs CI-Gate läuft.
+//
+// Reuses .rollout-diagram wrapper styling and zoom infrastructure from
+// RolloutPipeline.astro (loaded globally when RolloutPipeline is imported
+// elsewhere on the page).
+
+interface Props {
+	caption?: string;
+}
+
+const { caption } = Astro.props;
+---
+
+<figure class="not-prose rollout-figure my-8">
+	<button class="rollout-diagram" type="button" aria-label="Diagramm vergrößern">
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 1100 500"
+			role="img"
+			aria-labelledby="trigger-title trigger-desc"
+			preserveAspectRatio="xMidYMid meet"
+		>
+			<title id="trigger-title">Release-Trigger für AI-Features</title>
+			<desc id="trigger-desc">
+				Sechs Quellen können das Verhalten in Production verändern: nur Code-Commit
+				läuft durch ein CI-Gate, die anderen fünf Trigger umgehen jede Prüfung.
+			</desc>
+
+			<defs>
+				<marker
+					id="t-arrow-success"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-success"></path>
+				</marker>
+				<marker
+					id="t-arrow-danger"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-danger"></path>
+				</marker>
+			</defs>
+
+			<text class="title" x="40" y="34">Release-Trigger: ein Gate, sechs Pfade</text>
+			<text class="sublabel" x="40" y="56"
+				>Code geht durchs Gate. Fünf weitere Trigger ändern Production ungebremst.</text
+			>
+
+			<!-- Trigger row -->
+			<g transform="translate(20, 90)">
+				<rect class="card card-success" x="0" y="0" width="160" height="74" rx="10"></rect>
+				<text class="label" x="80" y="36" text-anchor="middle">Code-Commit</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">PR + Eval</text>
+			</g>
+			<g transform="translate(195, 90)">
+				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
+				<text class="label" x="80" y="36" text-anchor="middle">Prompt-Edit</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">CMS / Admin-UI</text>
+			</g>
+			<g transform="translate(370, 90)">
+				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
+				<text class="label" x="80" y="36" text-anchor="middle">Modell-Update</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">Provider-seitig</text>
+			</g>
+			<g transform="translate(545, 90)">
+				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
+				<text class="label" x="80" y="36" text-anchor="middle">System-Prompt</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">Hersteller-Patch</text>
+			</g>
+			<g transform="translate(720, 90)">
+				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
+				<text class="label" x="80" y="36" text-anchor="middle">MCP-Tool-Drift</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">Description geändert</text>
+			</g>
+			<g transform="translate(895, 90)">
+				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
+				<text class="label" x="80" y="36" text-anchor="middle">RAG-Index</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">Rebuild / Re-Embed</text>
+			</g>
+
+			<!-- Code-Commit: continuous line through CI Gate (badge drawn on top) -->
+			<path
+				d="M 100 164 L 100 270 Q 100 340 540 390"
+				fill="none"
+				class="stroke-success"
+				stroke-width="2"
+				marker-end="url(#t-arrow-success)"
+			></path>
+
+			<!-- 5 ungated arrows (dashed, danger) -->
+			<path
+				d="M 275 164 Q 275 280 540 390"
+				fill="none"
+				class="stroke-danger"
+				stroke-width="2"
+				stroke-dasharray="6 5"
+				marker-end="url(#t-arrow-danger)"
+			></path>
+			<path
+				d="M 450 164 Q 450 270 540 390"
+				fill="none"
+				class="stroke-danger"
+				stroke-width="2"
+				stroke-dasharray="6 5"
+				marker-end="url(#t-arrow-danger)"
+			></path>
+			<path
+				d="M 625 164 Q 625 270 560 390"
+				fill="none"
+				class="stroke-danger"
+				stroke-width="2"
+				stroke-dasharray="6 5"
+				marker-end="url(#t-arrow-danger)"
+			></path>
+			<path
+				d="M 800 164 Q 800 280 580 390"
+				fill="none"
+				class="stroke-danger"
+				stroke-width="2"
+				stroke-dasharray="6 5"
+				marker-end="url(#t-arrow-danger)"
+			></path>
+			<path
+				d="M 975 164 Q 975 300 600 390"
+				fill="none"
+				class="stroke-danger"
+				stroke-width="2"
+				stroke-dasharray="6 5"
+				marker-end="url(#t-arrow-danger)"
+			></path>
+
+			<!-- CI Gate badge sits ON TOP of the line (solid bg masks the line) -->
+			<g transform="translate(50, 215)">
+				<rect class="badge-success" x="0" y="0" width="100" height="34" rx="17"></rect>
+				<g
+					transform="translate(14, 9)"
+					class="stroke-success"
+					stroke-width="2"
+					fill="none"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M0,8 L4,12 L12,2"></path>
+				</g>
+				<text class="gate-tag gate-tag-success" x="32" y="22">CI Gate</text>
+			</g>
+
+			<!-- Production -->
+			<g transform="translate(440, 390)">
+				<rect class="card card-accent" x="0" y="0" width="220" height="74" rx="12"></rect>
+				<text class="label" x="110" y="36" text-anchor="middle">Production</text>
+				<text class="sublabel" x="110" y="56" text-anchor="middle"
+					>verändertes Verhalten</text
+				>
+			</g>
+
+			<!-- Legend -->
+			<g transform="translate(720, 410)">
+				<rect class="legend-bg" x="0" y="0" width="360" height="46" rx="10"></rect>
+				<line
+					x1="14"
+					y1="18"
+					x2="36"
+					y2="18"
+					class="stroke-success"
+					stroke-width="2"
+				></line>
+				<text class="sublabel" x="44" y="22">durch CI Gate</text>
+				<line
+					x1="14"
+					y1="34"
+					x2="36"
+					y2="34"
+					class="stroke-danger"
+					stroke-width="2"
+					stroke-dasharray="4 3"
+				></line>
+				<text class="sublabel" x="44" y="38">ohne Gate, ohne Deploy-Signal</text>
+			</g>
+		</svg>
+		<span class="zoom-hint" aria-hidden="true">
+			<svg
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<circle cx="11" cy="11" r="7"></circle>
+				<path d="M21 21l-4.3-4.3"></path>
+				<path d="M11 8v6"></path>
+				<path d="M8 11h6"></path>
+			</svg>
+		</span>
+	</button>
+	{caption && <figcaption class="caption">{caption}</figcaption>}
+</figure>

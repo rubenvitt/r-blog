@@ -1,0 +1,218 @@
+---
+// Champion/Challenger im Shadow Run: Proxy splittet Traffic, Champion bedient
+// die echte Anfrage, Challenger läuft parallel mit, Outputs werden verglichen.
+//
+// Reuses .rollout-diagram wrapper styling and zoom infrastructure from
+// RolloutPipeline.astro.
+
+interface Props {
+	caption?: string;
+}
+
+const { caption } = Astro.props;
+---
+
+<figure class="not-prose rollout-figure my-8">
+	<button class="rollout-diagram" type="button" aria-label="Diagramm vergrößern">
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 1100 460"
+			role="img"
+			aria-labelledby="champ-title champ-desc"
+			preserveAspectRatio="xMidYMid meet"
+		>
+			<title id="champ-title">Shadow Run: Champion und Challenger</title>
+			<desc id="champ-desc">
+				Eingehender Request wird vom Proxy an Champion und Challenger gespiegelt.
+				Champion antwortet dem Nutzer, Challenger landet im Vergleich. Vier Metriken
+				werden verglichen: Tool-Call-Divergenz, Antwort-Qualität, Token-Kosten, Latenz.
+			</desc>
+
+			<defs>
+				<marker
+					id="c-arrow-accent"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-accent"></path>
+				</marker>
+				<marker
+					id="c-arrow-info"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-info"></path>
+				</marker>
+				<marker
+					id="c-arrow-muted"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse"
+				>
+					<path d="M0,0 L10,5 L0,10 z" class="fill-muted"></path>
+				</marker>
+			</defs>
+
+			<text class="title" x="40" y="34">Shadow Run: Champion bedient, Challenger lernt mit</text>
+			<text class="sublabel" x="40" y="56"
+				>Beide Versionen verarbeiten denselben Request. Nur eine antwortet dem Nutzer.</text
+			>
+
+			<!-- Request -->
+			<g transform="translate(20, 195)">
+				<rect class="card" x="0" y="0" width="130" height="74" rx="10"></rect>
+				<text class="label" x="65" y="36" text-anchor="middle">Request</text>
+				<text class="sublabel" x="65" y="56" text-anchor="middle">vom Nutzer</text>
+			</g>
+
+			<!-- Proxy -->
+			<g transform="translate(195, 195)">
+				<rect class="card card-accent" x="0" y="0" width="130" height="74" rx="10"></rect>
+				<text class="label" x="65" y="36" text-anchor="middle">Proxy</text>
+				<text class="sublabel" x="65" y="56" text-anchor="middle">spiegelt Traffic</text>
+			</g>
+
+			<!-- Champion (top branch) -->
+			<g transform="translate(385, 110)">
+				<text class="gate-tag" x="0" y="-8">CHAMPION · LIVE</text>
+				<rect class="card card-accent" x="0" y="0" width="180" height="78" rx="10"></rect>
+				<text class="label" x="90" y="36" text-anchor="middle">Aktuelle Version</text>
+				<text class="sublabel" x="90" y="56" text-anchor="middle"
+					>antwortet dem Nutzer</text
+				>
+			</g>
+
+			<!-- Challenger (bottom branch) -->
+			<g transform="translate(385, 290)">
+				<text class="gate-tag gate-tag-info" x="0" y="-8">CHALLENGER · SHADOW</text>
+				<rect class="card card-info" x="0" y="0" width="180" height="78" rx="10"></rect>
+				<text class="label" x="90" y="36" text-anchor="middle">Neue Version</text>
+				<text class="sublabel" x="90" y="56" text-anchor="middle"
+					>Output ins Log, kein Nutzer</text
+				>
+			</g>
+
+			<!-- Request → Proxy -->
+			<line
+				x1="150"
+				y1="232"
+				x2="195"
+				y2="232"
+				class="stroke-accent"
+				stroke-width="2"
+				marker-end="url(#c-arrow-accent)"
+			></line>
+
+			<!-- Proxy → Champion (curve up) -->
+			<path
+				d="M 325 220 C 360 220 360 149 385 149"
+				fill="none"
+				class="stroke-accent"
+				stroke-width="2"
+				marker-end="url(#c-arrow-accent)"
+			></path>
+
+			<!-- Proxy → Challenger (curve down) -->
+			<path
+				d="M 325 244 C 360 244 360 329 385 329"
+				fill="none"
+				class="stroke-info"
+				stroke-width="2"
+				marker-end="url(#c-arrow-info)"
+			></path>
+
+			<!-- Champion → Nutzer -->
+			<path
+				d="M 565 149 L 660 149"
+				fill="none"
+				class="stroke-accent"
+				stroke-width="2"
+				marker-end="url(#c-arrow-accent)"
+			></path>
+			<g transform="translate(660, 110)">
+				<rect class="card-soft" x="0" y="0" width="120" height="78" rx="10"></rect>
+				<text class="label" x="60" y="36" text-anchor="middle">Nutzer</text>
+				<text class="sublabel" x="60" y="56" text-anchor="middle">erhält Antwort</text>
+			</g>
+
+			<!-- Champion → Compare (dashed, "for comparison") -->
+			<path
+				d="M 565 188 C 700 188 760 220 820 240"
+				fill="none"
+				class="stroke-muted"
+				stroke-width="1.6"
+				stroke-dasharray="5 4"
+				marker-end="url(#c-arrow-muted)"
+			></path>
+
+			<!-- Challenger → Compare -->
+			<path
+				d="M 565 329 C 700 329 760 290 820 270"
+				fill="none"
+				class="stroke-info"
+				stroke-width="2"
+				marker-end="url(#c-arrow-info)"
+			></path>
+
+			<!-- Compare / Metrics box -->
+			<g transform="translate(820, 130)">
+				<rect class="card-compare" x="0" y="0" width="260" height="240" rx="12"></rect>
+				<text class="gate-tag" x="16" y="22">VERGLEICH · GELOGGTE PAARE</text>
+				<text class="label" x="16" y="50">Metriken</text>
+
+				<g transform="translate(16, 70)">
+					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
+					<text class="metric" x="20" y="14">Tool-Call-Divergenz</text>
+				</g>
+				<g transform="translate(16, 105)">
+					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
+					<text class="metric" x="20" y="14">Antwort-Qualität (LLM-Judge)</text>
+				</g>
+				<g transform="translate(16, 140)">
+					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
+					<text class="metric" x="20" y="14">Token-Kosten pro Operation</text>
+				</g>
+				<g transform="translate(16, 175)">
+					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
+					<text class="metric" x="20" y="14">Latenz p95 / p99</text>
+				</g>
+
+				<text class="sublabel" x="16" y="220">→ Promotion oder Rollback</text>
+			</g>
+
+			<!-- Note about side-effects -->
+			<g transform="translate(385, 392)">
+				<rect class="note-bg" x="0" y="0" width="395" height="44" rx="8"></rect>
+				<text class="note" x="14" y="18">⚠ Schreibende Tools brauchen Sandbox, Mock</text>
+				<text class="note" x="14" y="34">oder Intent-Vergleich - sonst doppelte Side-Effects.</text>
+			</g>
+		</svg>
+		<span class="zoom-hint" aria-hidden="true">
+			<svg
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<circle cx="11" cy="11" r="7"></circle>
+				<path d="M21 21l-4.3-4.3"></path>
+				<path d="M11 8v6"></path>
+				<path d="M8 11h6"></path>
+			</svg>
+		</span>
+	</button>
+	{caption && <figcaption class="caption">{caption}</figcaption>}
+</figure>
