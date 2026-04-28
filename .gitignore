@@ -28,3 +28,6 @@ pnpm-debug.log*
 
 # link-card build cache
 .link-card-cache.json
+
+# git worktrees
+.worktrees/

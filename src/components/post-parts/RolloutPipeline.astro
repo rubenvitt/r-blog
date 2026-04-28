@@ -487,7 +487,7 @@ const { caption } = Astro.props;
 	})();
 </script>
 
-<style>
+<style is:global>
 	.rollout-figure {
 		margin-inline: 0;
 	}
@@ -540,7 +540,7 @@ const { caption } = Astro.props;
 		outline-offset: 2px;
 	}
 
-	:global(.dark) .rollout-diagram {
+	.dark .rollout-diagram {
 		--d-card-bg: #0f1729;
 		--d-card-border: rgba(255, 255, 255, 0.08);
 		--d-group-bg: rgba(255, 255, 255, 0.02);
@@ -557,7 +557,7 @@ const { caption } = Astro.props;
 		--d-legend-bg: rgba(255, 255, 255, 0.02);
 	}
 
-	:global(.dark) .rollout-diagram:hover {
+	.dark .rollout-diagram:hover {
 		box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
 	}
 
@@ -668,6 +668,9 @@ const { caption } = Astro.props;
 	.rollout-diagram .gate-tag-info {
 		fill: var(--d-info);
 	}
+	.rollout-diagram .gate-tag-success {
+		fill: var(--d-success);
+	}
 	.rollout-diagram .rb-label {
 		fill: var(--d-danger-text);
 		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
@@ -704,12 +707,66 @@ const { caption } = Astro.props;
 		fill: var(--d-danger);
 	}
 
-	.caption {
+	.rollout-figure .caption {
 		margin-top: 0.75rem;
 		text-align: center;
 		font-size: 0.875rem;
 		color: var(--color-text-secondary);
 		font-style: italic;
+	}
+
+	/* Shared classes used by additional diagrams (ReleaseTriggerFanIn, ChampionChallenger) */
+	.rollout-diagram .card-danger {
+		stroke: var(--d-danger);
+		stroke-width: 1.6;
+	}
+	.rollout-diagram .card-soft {
+		fill: var(--d-card-bg);
+		stroke: var(--d-text-muted);
+		stroke-width: 1.25;
+		stroke-dasharray: 5 4;
+		opacity: 0.9;
+	}
+	.rollout-diagram .card-compare {
+		fill: var(--d-card-bg);
+		stroke: var(--d-accent);
+		stroke-width: 1.4;
+		opacity: 0.96;
+	}
+	.rollout-diagram .badge-success {
+		fill: var(--d-success-bg, rgba(16, 185, 129, 0.1));
+		stroke: var(--d-success);
+		stroke-width: 1.4;
+	}
+	.rollout-diagram .note-bg {
+		fill: var(--d-note-bg, rgba(202, 138, 4, 0.1));
+		stroke: none;
+	}
+	.rollout-diagram .note {
+		fill: var(--d-note-fg, #92400e);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-size: 12px;
+		font-weight: 500;
+	}
+	.rollout-diagram .metric {
+		fill: var(--d-text);
+		font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+		font-size: 13px;
+	}
+	.rollout-diagram .fill-muted {
+		fill: var(--d-text-muted);
+	}
+
+	/* Light/Dark token defaults for the additional diagram classes (solid bg colors so badges mask underlying lines) */
+	.rollout-diagram {
+		--d-success-bg: #ecfdf5;
+		--d-note-bg: #fef3c7;
+		--d-note-fg: #92400e;
+	}
+	.dark .rollout-diagram {
+		--d-success-bg: #062e22;
+		--d-note-bg: #2a1f08;
+		--d-note-fg: #fcd34d;
 	}
 </style>
 
@@ -893,6 +950,9 @@ const { caption } = Astro.props;
 	.rollout-zoom-canvas svg .gate-tag-info {
 		fill: #38bdf8;
 	}
+	.rollout-zoom-canvas svg .gate-tag-success {
+		fill: #10b981;
+	}
 	.rollout-zoom-canvas svg .rb-label {
 		fill: #fca5a5;
 	}
@@ -962,6 +1022,9 @@ const { caption } = Astro.props;
 	:root:not(.dark) .rollout-zoom-canvas svg .gate-tag-info {
 		fill: #0284c7;
 	}
+	:root:not(.dark) .rollout-zoom-canvas svg .gate-tag-success {
+		fill: #059669;
+	}
 	:root:not(.dark) .rollout-zoom-canvas svg .rb-label {
 		fill: #991b1b;
 	}
@@ -995,5 +1058,65 @@ const { caption } = Astro.props;
 	}
 	:root:not(.dark) .rollout-zoom-canvas svg .fill-danger {
 		fill: #b91c1c;
+	}
+
+	/* Overlay overrides for additional diagram classes (dark default) */
+	.rollout-zoom-canvas svg .card-danger {
+		stroke: #ef4444;
+	}
+	.rollout-zoom-canvas svg .card-soft {
+		fill: #0f1729;
+		stroke: #9ca3af;
+		stroke-dasharray: 5 4;
+		opacity: 0.9;
+	}
+	.rollout-zoom-canvas svg .card-compare {
+		fill: #0f1729;
+		stroke: #ea580c;
+	}
+	.rollout-zoom-canvas svg .badge-success {
+		fill: #062e22;
+		stroke: #10b981;
+	}
+	.rollout-zoom-canvas svg .note-bg {
+		fill: rgba(202, 138, 4, 0.16);
+	}
+	.rollout-zoom-canvas svg .note {
+		fill: #fcd34d;
+	}
+	.rollout-zoom-canvas svg .metric {
+		fill: #e5e7eb;
+	}
+	.rollout-zoom-canvas svg .fill-muted {
+		fill: #9ca3af;
+	}
+
+	/* Light-mode overlay overrides for additional diagram classes */
+	:root:not(.dark) .rollout-zoom-canvas svg .card-danger {
+		stroke: #b91c1c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .card-soft {
+		fill: #ffffff;
+		stroke: #6b7280;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .card-compare {
+		fill: #ffffff;
+		stroke: #c2410c;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .badge-success {
+		fill: #ecfdf5;
+		stroke: #059669;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .note-bg {
+		fill: rgba(202, 138, 4, 0.1);
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .note {
+		fill: #92400e;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .metric {
+		fill: #111827;
+	}
+	:root:not(.dark) .rollout-zoom-canvas svg .fill-muted {
+		fill: #6b7280;
 	}
 </style>

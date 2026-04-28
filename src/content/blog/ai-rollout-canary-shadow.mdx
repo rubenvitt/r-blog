@@ -1,21 +1,30 @@
 ---
 title: "Release-Disziplin für AI-Features: Canary, Shadow Runs und automatischer Rollback"
 description: "Eval grün im PR, zwei Wochen später rote Zahlen in Produktion - ohne neuen Deploy. Warum AI-Features zwischen Merge und 100% Traffic eigene Gates brauchen."
-date: 2026-04-26
+date: 2026-04-28
 tags: ["ai", "release-engineering", "observability", "software-engineering"]
 image: ./_images/ai-rollout-canary-shadow/hero.png
 draft: true
+podcast:
+  audioFile: /audio/ai-rollout-canary-shadow.mp3
+  transcript: /audio/ai-rollout-canary-shadow.txt
+  duration: "35:26"
 ---
 
 import Callout from '../../components/widgets/Callout.astro';
 import LinkCard from '../../components/widgets/LinkCard.astro';
 import Accordion from '../../components/widgets/Accordion.astro';
 import CodeTabs from '../../components/widgets/CodeTabs.astro';
+import Figure from '../../components/widgets/Figure.astro';
 import RolloutPipeline from '../../components/post-parts/RolloutPipeline.astro';
+import ReleaseTriggerFanIn from '../../components/post-parts/ReleaseTriggerFanIn.astro';
+import ChampionChallenger from '../../components/post-parts/ChampionChallenger.astro';
+import shadowRunLab from './_images/ai-rollout-canary-shadow/shadow-run-lab.png';
+import auditLog from './_images/ai-rollout-canary-shadow/audit-log.png';
 
 > Ein grüner Eval-Score im PR ist keine Produktionsfreigabe - er ist eine Hoffnung.
 
-Der `refund-agent` läuft seit dem letzten Release sauber. Evals im PR waren grün, Canary war grün, das Dashboard ist grün. Zwei Wochen später ruft ein Kunde an: Er hat seine Refund-Bestätigung im Chat bekommen, aber kein Geld. Wieder. Obwohl die Evals zum Release noch grün waren.
+Der `refund-agent` läuft seit dem letzten Release sauber durch alle Gates: Pre-Merge-Evals bestanden, Canary unauffällig, Dashboards ohne Ausschlag. Zwei Wochen später ruft ein Kunde an: Er hat seine Refund-Bestätigung im Chat bekommen, aber kein Geld auf dem Konto.
 
 Was ist passiert? Der MCP-Server, der `refund_order` bereitstellt, hat seine Tool-Description geändert. Nicht der Code, nicht das Modell, nicht unser Prompt. Ein externer Parameter. Zwischen Merge und Production liegen bei AI-Features mehr Zwischenstände als bei klassischer Software - und genau da findet der nächste Incident statt.
 
@@ -37,17 +46,19 @@ Ein paar Trigger, die Verhalten ändern, ohne einen einzigen Git-Push auszulöse
 - **MCP-Tool-Descriptions** von externen Servern, die sich zwischen zwei Tool-Calls ändern können. Potentiell bösartig, oft einfach nur ein undokumentiertes Server-Update.
 - **RAG-Index**, der neu gebaut wurde, weil jemand ein paar PDFs ausgetauscht oder die Embeddings-Pipeline angefasst hat.
 
-Jede dieser Änderungen kann das Verhalten kippen. Keine davon löst ein CI-Gate aus. Keine davon taucht in der Deploy-History auf. Der Incident aus dem Intro - refund-agent kippt wegen MCP-Tool-Description-Drift - ist genau dieses Muster.
+Jede dieser Änderungen kann eine Regression auslösen. Keine davon triggert ein CI-Gate. Keine davon taucht in der Deploy-History auf. Der Incident aus dem Intro - der `refund-agent`, der wegen MCP-Tool-Description-Drift falsche Tool-Argumente schickt - ist genau dieses Muster.
 
 Die Menge der Release-Trigger ist bei AI-Features also strukturell größer als die Menge der Git-Commits. Wer nur auf Code-Changes reagiert, bekommt einen Teil der Realität nicht mit.
 
+<ReleaseTriggerFanIn caption="Sechs Quellen verändern Production - aber nur eine läuft durch ein klassisches CI-Gate."/>
+
 Dazu kommt der zweite, unangenehme Faktor: Nicht-Determinismus. Ein deterministischer Bug ist brutal, aber ehrlich. Er trifft entweder 100% der Requests oder 0%. Wir sehen ihn im Error-Log, im 500er-Count, in den Alerts.
 
-Eine stochastische Regression verhält sich anders. Sie trifft vielleicht 3% der Fälle. Keine Exception, kein 500er, nur: der Agent entscheidet in einem bestimmten Edge-Case falsch. Ohne saubere Attribution über Prompt-Version, Modell-Version und Tool-Registry ist das im Dashboard unsichtbar. Der p99 der Latenz bleibt grün. Die Error-Rate bleibt grün. Die User beschweren sich - aber erst drei Sprints später, wenn der NPS einbricht.
+Eine stochastische Regression verhält sich anders. Sie trifft vielleicht 3% der Fälle. Keine Exception, kein 500er, nur: der Agent entscheidet in einem bestimmten Edge-Case falsch. Ohne saubere Attribution über Prompt-Version, Modell-Version und Tool-Registry ist das im Dashboard unsichtbar. Die p99-Latenz bleibt grün. Die Error-Rate bleibt grün. Die User beschweren sich - aber erst drei Sprints später, wenn der NPS einbricht.
 
 Das ist der Punkt, an dem ein einzelnes Pre-Merge-Eval-Gate nicht mehr reicht. Ein Gate deckt genau einen Trigger ab: den Code-Merge. Fünf weitere Trigger passieren nach dem Merge, ohne dass wir sie kontrollieren. Also brauchen wir einen Release-Prozess, der auch dann noch greift, wenn gar kein Release im klassischen Sinn stattgefunden hat.
 
-> "Bei AI-Features ist 'die Produktion hat sich geändert' der Default-Zustand, nicht die Ausnahme."
+> Bei AI-Features ist "die Produktion hat sich geändert" der Default-Zustand, nicht die Ausnahme.
 
 ## Vier Gates zwischen Merge und 100%
 
@@ -67,9 +78,19 @@ Mehr nicht. Das Test-Set ist kuratiert, also bekannt. Es fängt Regressionen auf
 
 Jetzt wird es interessant. Im Shadow Run bekommt die neue Version echten Produktions-Traffic, aber ihre Antworten werden dem Nutzer nicht ausgespielt. Der alte Champion bedient weiterhin die echte Anfrage. Der neue Challenger läuft parallel mit, seine Antworten landen im Log.
 
+<ChampionChallenger caption="Champion bedient den Nutzer, Challenger lernt mit. Vergleich auf den geloggten Paaren."/>
+
 Das Muster ist nicht neu. Das Microsoft Engineering Playbook beschreibt Shadow Testing als etabliertes Pattern: Ein Proxy spiegelt Traffic an V-Current und V-Next, nur V-Current antwortet an Nutzer, V-Next-Antworten werden zum Vergleich erfasst. Für AI-Features wird der Ansatz interessant durch die Metriken, die wir vergleichen.
 
 <LinkCard url="https://microsoft.github.io/code-with-engineering-playbook/automated-testing/shadow-testing/"/>
+
+Bei stateless Request/Response funktioniert das Pattern aus dem Playbook ohne Aufwand. Bei Agents mit schreibenden Tools nicht: Wenn der Challenger im Shadow Mode `refund_order` aufruft, wird tatsächlich Geld überwiesen. Zweimal, weil der Champion es auch tut. Drei Auswege:
+
+- **Tool-Mocking**: Der Challenger läuft gegen Sandbox- oder Stub-Tools. `refund_order` antwortet im Shadow mit einer realistischen Mock-Response, ohne den echten Effekt. Setzt voraus, dass die Sandbox glaubhaft imitiert - sonst messen wir Verhalten gegen Fiktion.
+- **Intent-Vergleich statt Execution**: Der Challenger plant nur die Tool-Calls und führt sie nicht aus. Wir loggen Tool-Name plus Argumente und vergleichen mit dem, was der Champion tatsächlich aufgerufen hat. Genau dieses Muster nutzt Ramp im Merchant-Classifier (gleich mehr dazu). Funktioniert für Single-Step-Entscheidungen sauber; bei mehrstufigen Tool-Chains wird es hakelig, weil die zweite Tool-Entscheidung vom Result der ersten abhängt.
+- **Read-only-Subset**: Der Challenger darf nur lesende Tools aufrufen, schreibende werden geblockt oder gemockt. Spart Sandbox-Komplexität, deckt aber nur einen Teil des Verhaltens ab.
+
+Welche Variante passt, hängt vom Tool-Mix ab. Für reine Read-Agents ist Shadow trivial. Für Write-heavy Agents ist Intent-Vergleich oft die einzige praktikable Option.
 
 Was wird verglichen:
 
@@ -80,19 +101,21 @@ Was wird verglichen:
 
 <Callout type="info">Shadow verdoppelt temporär die LLM-Kosten. Beide Versionen verarbeiten jeden Request. Das ist eine bewusste Entscheidung, nicht gratis.</Callout>
 
-Ramp hat das beim Merchant-Classification-Agent genau so gemacht: Der Agent entschied im Shadow Mode, welche Aktionen er auslösen würde, ohne sie tatsächlich auszuführen. Erst nach dieser Phase ging er live. Die Gesamtauswertung des Agents, laut ZenMLs Aufbereitung der Case Study: 99% der Klassifikationen verbessert, zwei Drittel der Rejections als reasonable eingestuft, weniger als 10% Follow-up-Correction-Requests. Wie lange die Shadow-Phase genau lief und mit welchem Approval-Threshold sie beendet wurde, ist öffentlich nicht dokumentiert - das sind die Kennzahlen, die man sieht, nicht die Prozess-Details dahinter.
+<Figure src={shadowRunLab} alt="Shadow-Run-Vergleich: Champion routet eine Passwort-Reset-Anfrage zu account und ruft reset_password auf, Challenger routet zu refund und antwortet 'Ups, Problem!'." caption="Shadow Run auf einem Test-Set mit Auth-Cases: bei bfla-1 routet der Challenger zu refund statt account - Tool-Call-Divergenz zum Anfassen." />
+
+Ramp ist das Lehrbuchbeispiel für den Intent-Vergleich: Beim Merchant-Classification-Agent lief das Modell zunächst im Shadow Mode - geplante Aktionen wurden geloggt statt ausgeführt. Erst nach dieser Phase ging er live. Die Gesamtauswertung, laut ZenMLs Aufbereitung der Case Study: 99% der Klassifikationen verbessert, zwei Drittel der Rejections als reasonable eingestuft, weniger als 10% Follow-up-Correction-Requests. Wie lange die Shadow-Phase lief und mit welchem Approval-Threshold sie beendet wurde, ist öffentlich nicht dokumentiert - das sind die Kennzahlen, die man sieht, nicht die Prozess-Details dahinter.
 
 <LinkCard url="https://www.zenml.io/llmops-database/ai-agent-for-automated-merchant-classification-and-transaction-matching"/>
 
 <LinkCard url="https://www.langchain.com/breakoutagents/ramp"/>
 
-Ein Missverständnis: Ein Shadow Run ist **kein Feature-Launch vor wenigen Nutzern**. Kein Nutzer sieht die neue Antwort. Der Shadow Run ist ein Vergleich mit dem Champion unter echtem Traffic - nicht mehr, nicht weniger. Die Frage, die er beantwortet: **Verhält sich die neue Version unter echtem Traffic so, wie ich es erwarte?**
+Ein mögliches Missverständnis: Ein Shadow Run ist **kein Feature-Launch vor wenigen Nutzern**. Kein Nutzer sieht die neue Antwort. Der Shadow Run ist ein Vergleich mit dem Champion unter echtem Traffic - nicht mehr, nicht weniger. Die Frage, die er beantwortet: **Verhält sich die neue Version unter echtem Traffic so, wie ich es erwarte?**
 
 ### Canary und Progressive Rollout
 
 Erst jetzt sieht der erste echte Nutzer die neue Version. Und zwar nur ein Bruchteil.
 
-Es gibt kein einheitliches Rezept für die Stufen. Die Literatur streut zwischen 1-5-10-25, 1-20-50-100 und 5-10-25. Was die Stufen bedeuten, ist wichtiger als die Zahlen selbst: **1% zum Konfigurationscheck, 5 bis 25% für echte Vergleichbarkeit, dann schrittweise auf 100%.** Dazwischen jeweils genug Zeit, dass die Metriken Signal tragen.
+Es gibt kein einheitliches Rezept für die Stufen. Gängige Schemata: 1-5-10-25, 1-20-50-100 oder 5-10-25. Was die Stufen bedeuten, ist wichtiger als die Zahlen selbst: **1% zum Konfigurationscheck, 5 bis 25% für echte Vergleichbarkeit, dann schrittweise auf 100%.** Dazwischen jeweils genug Zeit, dass die Metriken Signal tragen.
 
 Welche Metriken entscheiden über Promotion oder Rollback?
 
@@ -105,7 +128,7 @@ Welche Metriken entscheiden über Promotion oder Rollback?
 
 Die OTel GenAI Semantic Conventions geben uns diese Minimaltabelle frei Haus - sie sind noch im Status *Development*, also stabil genug für den Einstieg, aber Namen und Attribute können sich bis zum 1.0-Release noch ändern. Beide Kern-Metriken sind Histogramme. Das ist kein Zufall - bei LLMs sagt der Mittelwert wenig. Der p99-Latency-Ausschlag ist das, was Nutzer als "das Ding hängt" wahrnehmen, nicht die gemittelten Millisekunden.
 
-Hier lohnt sich eine Begriffs-Klärung, die LaunchDarkly in den Docs sauber zieht: **Progressive Rollout** bedeutet nur zeitbasiertes Hochschalten - 5% heute, 25% morgen, 100% übermorgen. **Guarded Rollout** ist das metrikgetriebene Gegenstück: Der Prozentsatz steigt nur, wenn die Guardrail-Metriken grün bleiben, und fällt automatisch zurück, wenn nicht. Für AI-Features ist der Guarded Rollout nicht Luxus, sondern Default. Zeitbasierte Progression ohne Metrik-Kopplung ist für stochastische Systeme nicht ausreichend.
+Hier lohnt sich eine Begriffs-Klärung, die LaunchDarkly in den Docs sauber zieht: **Progressive Rollout** bedeutet nur zeitbasiertes Hochschalten - 5% heute, 25% morgen, 100% übermorgen. **Guarded Rollout** ist das metrikgetriebene Gegenstück: Der Prozentsatz steigt nur, wenn die Guardrail-Metriken grün bleiben, und fällt automatisch zurück, wenn nicht. Für AI-Features führt an Guarded Rollout kein Weg vorbei: Eine reine Zeitkurve ohne Guardrails verschiebt Regressionen in größeren Stufen, statt sie zu fangen.
 
 <LinkCard url="https://launchdarkly.com/docs/home/releases/guarded-rollouts"/>
 
@@ -127,11 +150,38 @@ Bei klassischen Deploys ist Rollback ein alter Container-Tag. Bei AI-Features re
 - **RAG-Index-Version** - Vector-DB-Snapshot plus das exakte Embedding-Modell, das den Index erzeugt hat
 - **Eval-Baseline** - Test-Set und Schwellenwerte
 
+Wie das versioniert aussehen kann - ein Release-Manifest, das alle fünf Artefakte mit Hashes und Pins zusammenfasst, am Git-Tag mit dem Code verheiratet:
+
+<CodeTabs labels={["YAML"]}>
+```yaml
+release: refund-agent@2026.04.18
+prompt:
+  version: prompts/refund-v7
+  sha256: 3a1f7d...
+model:
+  provider: anthropic
+  id: claude-sonnet-4-7
+  pinned_at: 2026-04-15
+tools:
+  manifest: tools.pinned.json
+  sha256: 9e8b21...
+rag:
+  index_id: vec-prod-2026-04-12
+  embedder: text-embedding-3-large
+  embedder_revision: 2024-01-25
+evals:
+  baseline: evals/baseline-2026-04.jsonl
+  thresholds: evals/thresholds-v3.yaml
+```
+</CodeTabs>
+
+Rollback heißt dann nicht "git revert", sondern: voriges Manifest re-applizieren. Index-ID und Embedder werden zusammen ausgerollt, Tool-Hashes vor dem Apply gegen den MCP-Server geprüft. Was nicht im Manifest steht, lässt sich nicht atomar zurückrollen.
+
 Den Tool-Description-Snapshot explizit als Teil der rollbaren Einheit zu führen, ist noch keine Mainstream-Konvention. Meine Position: die Tool-Signaturen sind Teil der Umgebung, die das Modell sieht. Ändert sich ein Tool-Name, ein Parameter oder eine Description - etwa durch eine MCP-Server-Aktualisierung - verhält sich derselbe Prompt auf demselben Modell anders. Dieses Detail gehört also rein, sonst ist der Rollback nicht atomar. Das nächste Kapitel zeigt das an einem konkreten Beispiel.
 
 Wer das Embedding-Modell wechselt, muss die Vector-DB neu indizieren. Index und Embedder gehören zusammen. Ein Rollback, der eines von beiden zurücknimmt und das andere stehen lässt, ist kein Rollback.
 
-Der **Kill Switch** ist das harte Not-Aus. Ein Feature Flag, das das AI-Feature komplett deaktiviert und auf einen sicheren Fallback routet: eine regelbasierte Nachricht, ein Fallback auf manuell bearbeitete Support-Tickets, eine deterministische Kurzvariante ohne LLM. Ein Kill Switch, der einen Deploy braucht, ist keiner.
+Der **Kill Switch** ist das harte Not-Aus. Ein Feature Flag, das das AI-Feature komplett deaktiviert und auf einen sicheren Fallback routet: eine regelbasierte Nachricht, ein Fallback auf manuell bearbeitete Support-Tickets, eine deterministische Kurzvariante ohne LLM. Wenn der Switch erst noch deployed werden muss, kommt er im Incident zu spät.
 
 Das LaunchDarkly-Pattern dafür ist simpel: Observability-Tool feuert bei Metrik-Überschreitung einen Webhook, der Webhook setzt das Flag auf 0%. Das greift in Sekunden, ohne dass jemand deployen muss.
 
@@ -143,17 +193,31 @@ Die vier Gates zusammen, als Pipeline:
 
 <RolloutPipeline caption="Rollback greift bei Guardrail-Breach zurück auf die Canary-Stufen."/>
 
-> "Progressive Delivery für AI ist kein Luxus - es ist die einzige Art, stochastische Regressionen zu finden, bevor alle Kunden sie finden."
+> Progressive Delivery für AI ist kein Luxus - es ist die einzige Art, stochastische Regressionen zu finden, bevor alle Kunden sie finden.
+
+## Was nach 100% läuft: Continuous Evaluation
+
+Vier Gates bringen den Release sauber von Merge bis Production. Was sie nicht beantworten: Was passiert in den Wochen danach, in denen kein Deploy stattfindet?
+
+Die MCP-Drift-Demo aus dem nächsten Kapitel ist genau dieses Szenario - aber nicht der einzige Fall. Der Modell-Provider rollt einen Minor-Patch aus, der RAG-Index wird über Nacht neu aufgebaut, ein User-Pattern verschiebt sich saisonal. Jede dieser Veränderungen kann Performance kosten, ohne ein klassisches Release-Signal auszulösen.
+
+Drei Mechanismen halten den Steady State sichtbar:
+
+- **Sampling-Eval auf Prod-Traces**: Ein paar Prozent des Live-Traffics laufen täglich durch denselben LLM-Judge, der im PR-Eval steht. Trend im Pass-Rate-Score über Zeit ist das Frühwarnsystem.
+- **Champion-Drift gegen historische Baseline**: Heutige Output-Verteilung gegen die der letzten 30 Tage - bei Tool-Call-Mix, Antwortlänge, Halluzinationsrate. Verschiebungen ohne Deploy sind verdächtig.
+- **Trigger für unscheduled Shadow-Replays**: Wenn der Drift-Vergleich anschlägt, läuft automatisch ein Shadow Replay alter Produktions-Traces gegen die aktuelle Version. Ist die Regression neu, oder Messrauschen?
+
+Continuous Evaluation ist der Punkt, an dem Rollout-Prozess in Observability übergeht. Die Trace-Daten und Eval-Infrastruktur, die Shadow und Canary speist, ist dieselbe, die nach 100% weiterläuft. Wer das eine baut, hat das andere fast geschenkt.
 
 ## Die Demo: MCP-Tool-Description-Drift
 
 Das Konzept klingt sauber - aber es setzt voraus, dass jede relevante Änderung als Release erkannt wird. Bei AI-Features kippt diese Annahme. Nehmen wir an, der `refund-agent` läuft mit folgendem Setup.
 
-### Ausgangslage: grün, grün, grün - und trotzdem kaputt
+### Ausgangslage: alle Gates grün - und trotzdem kaputt
 
 Der Agent orchestriert Rückerstattungen. Er ruft unter anderem `refund_order` auf einem externen MCP-Server auf. Die Eval-Suite ist grün, der Shadow Run vor dem letzten Release zeigte keine Divergenz, Canary lief sauber, der Rollout ist durch. Das Dashboard: grün.
 
-Eine Woche später kippt das Verhalten. Der Agent greift plötzlich zu einem anderen Tool, ruft `refund_order` mit falschen Argumenten auf, oder antwortet dem Kunden in einer anderen Sprache. Kein Code-Change. Kein PR. Kein Deploy.
+Eine Woche später reagiert der Agent anders. Er greift plötzlich zu einem anderen Tool, ruft `refund_order` mit falschen Argumenten auf, oder antwortet dem Kunden in einer anderen Sprache. Kein Code-Change. Kein PR. Kein Deploy.
 
 Was ist passiert? Der MCP-Server, der `refund_order` hostet, hat seine Tool-Description geändert. Entweder ein legitimes Vendor-Update - neue Parameterbeschreibung, kleineres Rewording - oder ein **Rug Pull**: die dokumentierte MCP-Angriffsklasse, bei der ein Server nach Installation still seine Tool-Description austauscht. Invariant Labs hat den Angriff als PoC am WhatsApp-MCP-Server demonstriert; Simon Willison hat die Kategorie im April 2025 zusammengefasst. Beides sind PoCs, keine bekannten Prod-Incidents. Reproduzierbar sind sie trotzdem - und die Rollout-Frage, die daraus folgt, ebenso.
 
@@ -171,7 +235,7 @@ Heißt konkret: Bei MCP-Drift greift keines der klassischen Pre-Merge-Gates. Der
 
 ### Tool-Description-Pinning als Eval-Grader
 
-Das Gegenmittel ist geradlinig und hat einen Namen: **Tool Pinning**. Beim ersten Onboarding eines MCP-Servers werden die Tool-Definitionen gehasht - `name`, `description`, `inputSchema`, optional `annotations`. Canonical JSON mit sortierten Keys, SHA-256. Das Ergebnis landet als `tools.pinned.json` im Repo, menschlich reviewt, committed.
+Das Gegenmittel ist geradlinig und hat einen Namen: **Tool Pinning**. Beim ersten Onboarding eines MCP-Servers werden die Tool-Definitionen gehasht - `name`, `description`, `inputSchema`, optional `annotations`. Canonical JSON mit sortierten Keys, SHA-256. Das Ergebnis landet als `tools.pinned.json` im Repo.
 
 Nightly - und vor jedem Deploy - läuft ein Check: aktuelle Descriptions vom Server holen, erneut hashen, gegen die Baseline vergleichen. Exakter Match heißt pass. Drift heißt fail, mit Diff der veränderten Felder. Neue Tools sind warn: bewusste Entscheidung nötig.
 
@@ -220,9 +284,9 @@ Das Snippet ist absichtlich klein. Es ersetzt keine Runtime-Überwachung und kei
 - **Canary** schützt vor eigenen Änderungen, nicht vor Server-Drift. Gegen MCP-Rug-Pulls hilft er nicht direkt.
 - **Shadow Run** findet Verhaltensabweichung zuverlässig - aber nur, wenn er auch nightly läuft, nicht nur beim Release.
 - **Eval Gate** ist der Ort, an dem Tool-Pinning hingehört. Als Test, der jeden Morgen läuft und vor jedem Deploy.
-- **Rollback** heißt hier: Kill Switch auf das betroffene Tool, nicht Revert auf einen Commit. Das Code-Artefakt ist unschuldig.
+- **Rollback** heißt hier: Kill Switch auf das betroffene Tool, nicht Revert auf einen Commit. Am Code liegt es nicht.
 
-> "Wenn sich die Produktion ändern kann, ohne dass wir deployen, dann muss der Rollout ebenfalls ohne Deploy greifen können."
+> Wenn sich die Produktion ändern kann, ohne dass wir deployen, dann muss der Rollout ebenfalls ohne Deploy greifen können.
 
 Tool-Calls sind eben keine Prompts - sie sind live-eingebundene Abhängigkeiten mit eigenem Lifecycle.
 
@@ -230,7 +294,7 @@ Tool-Calls sind eben keine Prompts - sie sind live-eingebundene Abhängigkeiten 
 
 ## Betriebsmodell: Wer darf promoten, wer darf rollbacken
 
-Bis hier war fast alles Technik. Pipelines, Metriken, Drift. Aber Rollout ist keine Pipeline-Frage. Rollout ist eine Verantwortungsfrage.
+Bis hier war fast alles Technik. Pipelines, Metriken, Drift. Was fehlt: wer wann was schalten darf.
 
 Wer darf eine Canary auf 100% hochziehen? Wer darf sie zurückdrehen? Und wann entscheidet ein Mensch, wann ein Schwellwert?
 
@@ -238,7 +302,9 @@ Wer darf eine Canary auf 100% hochziehen? Wer darf sie zurückdrehen? Und wann e
 
 Nicht jede Änderung braucht dieselbe Zeremonie. Ein kleiner Prompt-Edit, der nur eine Formulierung schärft, kann automatisch promoten - wenn die Eval-Pass-Rate stabil bleibt und die Cost-Metrik nicht abweicht. Das ist die risikoarme Spur.
 
-Modell-Switch, neues Tool im Agent-Zugriff, geänderte Policy-Grenzen - das ist eine andere Liga. Da gehört eine manuelle Freigabe hin, mit Review. Nicht weil die Metriken lügen würden, sondern weil die Klasse der möglichen Fehlermodi weiter ist, als ein Eval-Set abdecken kann.
+Modell-Switch, neues Tool im Agent-Zugriff, geänderte Policy-Grenzen sind etwas anderes - manuelle Freigabe, Review. Nicht weil die Metriken lügen würden, sondern weil die Klasse der möglichen Fehlermodi weiter ist, als ein Eval-Set abdecken kann.
+
+Eine eigene Streitfrage: Wann wird der Challenger zum neuen Champion? Direkt bei 100%? Dann fehlt der Rollback-Anker. Erst nach Tagen Stabilität? Dann laufen Shadow-Vergleiche gegen einen veralteten Champion. Eine pragmatische Default-Regel: Promotion 7 Tage nach 100%, sofern die Steady-State-Metriken in Toleranz bleiben - kürzer bei reinen Prompt-Edits, länger bei Modell-Switches.
 
 ### Rollback: hart, nicht weich
 
@@ -259,6 +325,9 @@ Dazu der Kill Switch als manueller Notausschalter. Für den Fall, den keine Metr
 
 Die Matrix ist kein Dogma. Sie ist ein Anfang. Wichtig ist, dass jede Zeile in einem konkreten Setup beantwortet ist - auch die leeren Zellen.
 
+<Figure src={auditLog} alt="Rollout Audit Log mit Einträgen: canary_promoted, shadow_run_completed, challenger_set, snapshot_created - jeweils mit Zeitstempel und User." caption="Audit-Log: jede Promotion, jeder Shadow Run, jeder Challenger-Wechsel mit Zeitstempel und User. Genau die Aufzeichnung, die Art. 12 verlangt - nicht im Nachhinein nachgebaut, sondern Teil des Rollout-Tools." />
+
+
 ### Approval auf Release-Ebene ist Approval auf Tool-Ebene
 
 Wer "Canary-Promote braucht Human Approval" entwirft, entwirft dasselbe Muster, das in Agent-Architekturen auf Tool-Ebene steht: bevor der Agent eine Aktion ausführt, die Konsequenzen hat, fragt er nach. Release ist Tool-Call, nur eine Ebene höher.
@@ -275,6 +344,27 @@ Art. 17 fordert ein Quality-Management-System, das "examination, test and valida
 
 Heißt konkret: Shadow liefert Test-Evidenz vor User-Exposure. Canary mit Gates operationalisiert den "continuous iterative process". Rollback und Kill Switch sind die konkreten Maßnahmen, um das Rest-Risiko unter der akzeptablen Schwelle zu halten - für das, was trotz aller Gates durchkommt. Continuous Evaluation in Prod speist Post-Market-Monitoring.
 
+Validierungs-Prozeduren in Art. 17 müssen *durchgeführt* werden, nicht nur dokumentiert: Ein Kill Switch, der nie unter Last getestet wurde, ist eine Annahme. Ein **Rollback-GameDay** pro Quartal - Switch triggern, Recovery-Zeit messen, Befunde dokumentieren - liefert die Evidenz, die ein Audit nicht durch Code-Reading entscheiden kann.
+
+<Accordion title="Konkret: Rollback-GameDay in 60 Minuten">
+**Vorbereitung (Tag vorher):**
+- **Erfolgskriterium festschreiben:** Welche Metriken müssen zurück im Soll sein, damit Recovery zählt? Eval-Pass-Rate, Error-Rate, p95/p99-Latenz wieder auf Baseline.
+- **Stakeholder informieren:** Angekündigte Übung, kein Stealth-Test - sonst entstehen Incident-Tickets, die der GameDay selbst verursacht.
+- **Rollback-Pfad festlegen:** Kill Switch (Feature komplett aus), Bundle-Apply (vorheriges Manifest re-applizieren), Tool-Block (nur ein MCP-Tool aus). Pro GameDay einen Pfad.
+
+**Durchführung:**
+- **T−5min:** Baseline-Snapshot von Eval-Pass-Rate, Error-Rate, p95/p99-Latenz, Token-Kosten.
+- **T0:** Trigger setzen. Stoppuhr.
+- **T+1, +5, +15min:** Metriken erneut messen. Recovery-Zeit ist der Punkt, ab dem die Erfolgskriterien stabil halten - nicht der erste Touch der Schwelle.
+
+**Auswertung:**
+- Recovery-Zeit als harte Zahl ins Quartals-Review.
+- Was hat länger gedauert als gedacht? Webhook-Verzögerung, DNS-TTL, Cache-Invalidation, Provider-Latenz beim Flag-Update - genau die Befunde, die im Normalbetrieb unsichtbar bleiben.
+- Findings als Tickets, nicht als Slack-Thread - sonst war der GameDay reine Show.
+
+**Anti-Pattern:** Drill in der ruhigen Stunde. Wenn der Switch bei drei Requests pro Minute glatt durchläuft, sagt das wenig über den realen Incident-Fall. GameDay zur Peak-Zeit, sonst kein belastbares Ergebnis.
+</Accordion>
+
 Wer Shadow, Canary und Rollback baut, baut nebenbei die Evidenz, die der EU AI Act fordert. Wer das nicht baut, hat ab 2. August 2026 ein Problem - nicht nur ein Qualitäts-, sondern ein Compliance-Problem.
 
 <LinkCard url="https://artificialintelligenceact.eu/article/9/"/>
@@ -287,7 +377,7 @@ Wer Shadow, Canary und Rollback baut, baut nebenbei die Evidenz, die der EU AI A
 - **Art. 72 - Post-Market Monitoring:** kontinuierliche Überwachung der Performance in Produktion. Abgedeckt durch Continuous Evaluation - Sampling-basierte Auswertung von Prod-Traces.
 </Accordion>
 
-> "Wer Canary und Rollback baut, baut parallel Compliance-Nachweis. Der EU AI Act verlangt genau diesen Prozess - er ist kein zusätzlicher Aufwand, er ist der eigentliche Contract."
+> Wer Canary und Rollback baut, baut parallel Compliance-Nachweis. Der EU AI Act verlangt genau diesen Prozess - er ist kein zusätzlicher Aufwand, er ist der eigentliche Contract.
 
 ## Typische Gegenargumente
 
@@ -303,7 +393,13 @@ Stimmt - wenn wir Full Traffic shadowen. Deshalb läuft Shadow auf Sample, nicht
 
 ### "Unser Traffic ist zu gering für Canary"
 
-Dann ist klassischer 5%-Canary tatsächlich sinnlos. 5% von 50 Tages-Usern sind zwei bis drei Canary-Requests pro Tag. Das ist kein Canary, das ist Kaffeesatzleserei. Aber: Wir haben Alternativen. Interner Canary auf Mitarbeiter-Traffic. Synthetic Traffic aus kuratierten Prompt-Sets. Shadow Replay alter Produktions-Traces gegen den Challenger. Drei Varianten, die ohne Produktions-Volume funktionieren - und von denen die wenigsten Teams systematisch alle drei ausschöpfen.
+Stimmt für den klassischen User-Bucketing-Canary. 5% von 50 Tages-Usern sind zwei bis drei Requests pro Tag - statistisch nichts. Aber Canary muss nicht heißen, dass echte User die neue Version sehen. Drei Alternativen ohne Produktions-Volume:
+
+- **Interner Canary** auf Mitarbeiter-Traffic
+- **Synthetic Traffic** aus kuratierten Prompt-Sets
+- **Shadow Replay** alter Produktions-Traces gegen den Challenger
+
+Selten ausgeschöpft, fast nie kombiniert.
 
 ### "Feature Flags für AI sind Overkill"
 
@@ -331,4 +427,4 @@ Der wichtigste Takeaway: Jede Art von Änderung - Code, Prompt, Modell, Tool-Des
 
 Und dann gibt es noch den nächsten Schritt, der sich daraus ergibt und der hier nicht mehr hineinpasst: Produktions-Incidents als Test-Dataset ernstnehmen. Von Post-Mortem zur Eval. Aber das ist ein anderer Post.
 
-> "Ein AI-Feature in Produktion zu nehmen heißt nicht nur, es live zu schalten. Es heißt, jederzeit erklären zu können, warum es heute anders antwortet als gestern - und es jederzeit zurücknehmen zu können."
+> Ein AI-Feature in Produktion zu nehmen heißt nicht nur, es live zu schalten. Es heißt, jederzeit erklären zu können, warum es heute anders antwortet als gestern - und es jederzeit zurücknehmen zu können.
