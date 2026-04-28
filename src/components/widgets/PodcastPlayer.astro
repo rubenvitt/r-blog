@@ -45,7 +45,7 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
                     <span class="time-total">--:--</span>
                 </span>
                 <div class="bottom-controls">
-                    <div class="skip-controls" style="display:none">
+                    <div class="skip-controls">
                         <button class="skip-btn skip-back" type="button" aria-label="15 Sekunden zurück" title="15s zurück">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="1 4 1 10 7 10" />
@@ -372,264 +372,266 @@ const barHeights = Array.from({length: BAR_COUNT}, () => 40 + Math.floor(Math.ra
 
 <script is:inline>
 (function () {
-    var player = document.querySelector('.podcast-player');
-    if (!player) return;
+    var players = document.querySelectorAll('.podcast-player:not([data-pp-init])');
+    players.forEach(function (player) {
+        player.setAttribute('data-pp-init', '');
+        initPlayer(player);
+    });
 
-    var audio = player.querySelector('audio');
-    var playBtn = player.querySelector('.play-btn');
-    var iconPlay = player.querySelector('.icon-play');
-    var iconPause = player.querySelector('.icon-pause');
-    var waveform = player.querySelector('.waveform');
-    var bars = player.querySelectorAll('.bar');
-    var timeCurrent = player.querySelector('.time-current');
-    var timeInput = player.querySelector('.time-input');
-    var timeTotal = player.querySelector('.time-total');
-    var durationDisplay = player.querySelector('.duration');
-    var skipControls = player.querySelector('.skip-controls');
-    var skipBack = player.querySelector('.skip-back');
-    var skipForward = player.querySelector('.skip-forward');
-    var speedBtn = player.querySelector('.speed-btn');
-    var transcriptToggle = player.querySelector('.transcript-toggle');
-    var accordion = player.querySelector('.transcript-accordion');
+    function initPlayer(player) {
+        var audio = player.querySelector('audio');
+        var playBtn = player.querySelector('.play-btn');
+        var iconPlay = player.querySelector('.icon-play');
+        var iconPause = player.querySelector('.icon-pause');
+        var waveform = player.querySelector('.waveform');
+        var bars = player.querySelectorAll('.bar');
+        var timeCurrent = player.querySelector('.time-current');
+        var timeInput = player.querySelector('.time-input');
+        var timeTotal = player.querySelector('.time-total');
+        var durationDisplay = player.querySelector('.duration');
+        var skipBack = player.querySelector('.skip-back');
+        var skipForward = player.querySelector('.skip-forward');
+        var speedBtn = player.querySelector('.speed-btn');
+        var transcriptToggle = player.querySelector('.transcript-toggle');
+        var accordion = player.querySelector('.transcript-accordion');
 
-    var speeds = [1, 1.25, 1.5, 2];
-    var speedIndex = 0;
+        var speeds = [1, 1.25, 1.5, 2];
+        var speedIndex = 0;
 
-    function formatTime(seconds) {
-        var m = Math.floor(seconds / 60);
-        var s = Math.floor(seconds % 60);
-        return m + ':' + (s < 10 ? '0' : '') + s;
-    }
-
-    function parseTime(str) {
-        var parts = str.trim().split(':');
-        if (parts.length === 2) {
-            var m = parseInt(parts[0], 10);
-            var s = parseInt(parts[1], 10);
-            if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+        function formatTime(seconds) {
+            if (!isFinite(seconds) || seconds < 0) seconds = 0;
+            var m = Math.floor(seconds / 60);
+            var s = Math.floor(seconds % 60);
+            return m + ':' + (s < 10 ? '0' : '') + s;
         }
-        var num = parseFloat(str);
-        if (!isNaN(num)) return num;
-        return -1;
-    }
 
-    function updateProgress() {
-        if (!audio.duration) return;
-        var progress = audio.currentTime / audio.duration;
-        var playedCount = Math.floor(progress * bars.length);
-        for (var i = 0; i < bars.length; i++) {
-            if (i < playedCount) {
-                bars[i].classList.add('played');
-            } else {
-                bars[i].classList.remove('played');
+        function parseTime(str) {
+            var parts = str.trim().split(':');
+            if (parts.length === 2) {
+                var m = parseInt(parts[0], 10);
+                var s = parseInt(parts[1], 10);
+                if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
             }
+            var num = parseFloat(str);
+            if (!isNaN(num)) return num;
+            return -1;
         }
-        timeCurrent.textContent = formatTime(audio.currentTime);
-        timeTotal.textContent = formatTime(audio.duration);
-    }
 
-    function setPlaying(playing) {
-        if (playing) {
-            iconPlay.style.display = 'none';
-            iconPause.style.display = '';
-            skipControls.style.display = '';
-        } else {
-            iconPlay.style.display = '';
-            iconPause.style.display = 'none';
-            skipControls.style.display = 'none';
+        function hasDuration() {
+            return typeof audio.duration === 'number' && isFinite(audio.duration) && audio.duration > 0;
         }
-    }
 
-    function updateDuration() {
-        if (!audio.duration || !isFinite(audio.duration)) return;
-        var dur = formatTime(audio.duration);
-        durationDisplay.textContent = dur;
-        timeTotal.textContent = dur;
-    }
-
-    audio.addEventListener('loadedmetadata', function () {
-        updateDuration();
-        timeCurrent.textContent = '0:00';
-    });
-
-    audio.addEventListener('durationchange', updateDuration);
-
-    audio.addEventListener('timeupdate', updateProgress);
-
-    audio.addEventListener('ended', function () {
-        audio.currentTime = 0;
-        setPlaying(false);
-        updateProgress();
-    });
-
-    audio.addEventListener('play', function () { setPlaying(true); });
-    audio.addEventListener('pause', function () { setPlaying(false); });
-
-    playBtn.addEventListener('click', function () {
-        if (audio.paused) {
-            audio.play();
-        } else {
-            audio.pause();
-        }
-    });
-
-    // Editable time display
-    timeCurrent.addEventListener('click', function (e) {
-        e.stopPropagation();
-        timeCurrent.style.display = 'none';
-        timeInput.style.display = '';
-        timeInput.value = formatTime(audio.currentTime);
-        timeInput.focus();
-        timeInput.select();
-    });
-
-    function commitTimeInput() {
-        var val = parseTime(timeInput.value);
-        if (val >= 0 && audio.duration) {
-            audio.currentTime = Math.min(val, audio.duration);
+        function seekTo(target) {
+            if (!hasDuration()) return;
+            // Cap a tiny bit before the end to avoid spurious `ended` events on some browsers.
+            var safeMax = Math.max(0, audio.duration - 0.25);
+            var clamped = Math.max(0, Math.min(target, safeMax));
+            audio.currentTime = clamped;
             updateProgress();
         }
-        timeInput.style.display = 'none';
-        timeCurrent.style.display = '';
-    }
 
-    timeInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            commitTimeInput();
+        function updateProgress() {
+            if (!hasDuration()) return;
+            var progress = audio.currentTime / audio.duration;
+            var playedCount = Math.floor(progress * bars.length);
+            for (var i = 0; i < bars.length; i++) {
+                if (i < playedCount) {
+                    bars[i].classList.add('played');
+                } else {
+                    bars[i].classList.remove('played');
+                }
+            }
+            timeCurrent.textContent = formatTime(audio.currentTime);
+            timeTotal.textContent = formatTime(audio.duration);
         }
-        if (e.key === 'Escape') {
-            e.preventDefault();
+
+        function setPlaying(playing) {
+            if (playing) {
+                iconPlay.style.display = 'none';
+                iconPause.style.display = '';
+            } else {
+                iconPlay.style.display = '';
+                iconPause.style.display = 'none';
+            }
+        }
+
+        function updateDuration() {
+            if (!hasDuration()) return;
+            var dur = formatTime(audio.duration);
+            durationDisplay.textContent = dur;
+            timeTotal.textContent = dur;
+        }
+
+        audio.addEventListener('loadedmetadata', function () {
+            updateDuration();
+            timeCurrent.textContent = '0:00';
+        });
+
+        audio.addEventListener('durationchange', updateDuration);
+
+        audio.addEventListener('timeupdate', updateProgress);
+
+        audio.addEventListener('ended', function () {
+            // Only auto-rewind if we genuinely reached the end, not when a seek
+            // accidentally landed past duration on flaky streams.
+            if (hasDuration() && audio.currentTime >= audio.duration - 1) {
+                audio.currentTime = 0;
+            }
+            setPlaying(false);
+            updateProgress();
+        });
+
+        audio.addEventListener('play', function () { setPlaying(true); });
+        audio.addEventListener('pause', function () { setPlaying(false); });
+
+        playBtn.addEventListener('click', function () {
+            if (audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        });
+
+        timeCurrent.addEventListener('click', function (e) {
+            e.stopPropagation();
+            timeCurrent.style.display = 'none';
+            timeInput.style.display = '';
+            timeInput.value = formatTime(audio.currentTime);
+            timeInput.focus();
+            timeInput.select();
+        });
+
+        function commitTimeInput() {
+            var val = parseTime(timeInput.value);
+            if (val >= 0) seekTo(val);
             timeInput.style.display = 'none';
             timeCurrent.style.display = '';
         }
-        e.stopPropagation();
-    });
 
-    timeInput.addEventListener('blur', function () {
-        commitTimeInput();
-    });
-
-    // Skip ±15s
-    skipBack.addEventListener('click', function () {
-        audio.currentTime = Math.max(0, audio.currentTime - 15);
-        updateProgress();
-    });
-
-    skipForward.addEventListener('click', function () {
-        if (!audio.duration) return;
-        audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
-        updateProgress();
-    });
-
-    // Playback speed
-    speedBtn.addEventListener('click', function () {
-        speedIndex = (speedIndex + 1) % speeds.length;
-        audio.playbackRate = speeds[speedIndex];
-        speedBtn.textContent = speeds[speedIndex] + 'x';
-    });
-
-    waveform.addEventListener('click', function (e) {
-        if (!audio.duration) return;
-        var rect = waveform.getBoundingClientRect();
-        var pos = (e.clientX - rect.left) / rect.width;
-        audio.currentTime = pos * audio.duration;
-        updateProgress();
-    });
-
-    player.addEventListener('keydown', function (e) {
-        if (e.target === timeInput) return;
-        if (e.code === 'Space') {
-            e.preventDefault();
-            playBtn.click();
-        }
-        if (e.code === 'ArrowLeft') {
-            e.preventDefault();
-            audio.currentTime = Math.max(0, audio.currentTime - 15);
-            updateProgress();
-        }
-        if (e.code === 'ArrowRight') {
-            e.preventDefault();
-            if (audio.duration) {
-                audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
-                updateProgress();
+        timeInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commitTimeInput();
             }
-        }
-    });
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                timeInput.style.display = 'none';
+                timeCurrent.style.display = '';
+            }
+            e.stopPropagation();
+        });
 
-    // Media Session API — Lock-Screen-Controls
-    if ('mediaSession' in navigator) {
-        var podcastTitle = player.getAttribute('data-title') || 'Podcast';
+        timeInput.addEventListener('blur', function () {
+            commitTimeInput();
+        });
 
-        audio.addEventListener('play', function () {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: podcastTitle,
-                artist: 'rubeen.dev',
+        skipBack.addEventListener('click', function (e) {
+            e.stopPropagation();
+            seekTo(audio.currentTime - 15);
+        });
+
+        skipForward.addEventListener('click', function (e) {
+            e.stopPropagation();
+            seekTo(audio.currentTime + 15);
+        });
+
+        speedBtn.addEventListener('click', function () {
+            speedIndex = (speedIndex + 1) % speeds.length;
+            audio.playbackRate = speeds[speedIndex];
+            speedBtn.textContent = speeds[speedIndex] + 'x';
+        });
+
+        waveform.addEventListener('click', function (e) {
+            if (!hasDuration()) return;
+            var rect = waveform.getBoundingClientRect();
+            if (rect.width <= 0) return;
+            var pos = (e.clientX - rect.left) / rect.width;
+            pos = Math.max(0, Math.min(1, pos));
+            seekTo(pos * audio.duration);
+        });
+
+        player.addEventListener('keydown', function (e) {
+            if (e.target === timeInput) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                playBtn.click();
+            }
+            if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                seekTo(audio.currentTime - 15);
+            }
+            if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                seekTo(audio.currentTime + 15);
+            }
+        });
+
+        if ('mediaSession' in navigator) {
+            var podcastTitle = player.getAttribute('data-title') || 'Podcast';
+
+            audio.addEventListener('play', function () {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: podcastTitle,
+                    artist: 'rubeen.dev',
+                });
             });
-        });
 
-        navigator.mediaSession.setActionHandler('play', function () {
-            audio.play();
-        });
-        navigator.mediaSession.setActionHandler('pause', function () {
-            audio.pause();
-        });
-        navigator.mediaSession.setActionHandler('seekbackward', function () {
-            audio.currentTime = Math.max(0, audio.currentTime - 15);
-            updateProgress();
-        });
-        navigator.mediaSession.setActionHandler('seekforward', function () {
-            if (audio.duration) {
-                audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
-            }
-            updateProgress();
-        });
-        navigator.mediaSession.setActionHandler('seekto', function (details) {
-            if (details.seekTime != null && audio.duration) {
-                audio.currentTime = Math.min(details.seekTime, audio.duration);
-                updateProgress();
-            }
-        });
-    }
-
-    var rssBtn = player.querySelector('.rss-btn');
-    if (rssBtn) {
-        var rssBtnOriginalNodes = Array.from(rssBtn.childNodes).map(function (n) { return n.cloneNode(true); });
-        rssBtn.addEventListener('click', function () {
-            var feedUrl = window.location.origin + '/podcast.xml';
-            navigator.clipboard.writeText(feedUrl).then(function () {
-                rssBtn.textContent = 'Kopiert!';
-                rssBtn.classList.add('copied');
-                setTimeout(function () {
-                    rssBtn.textContent = '';
-                    rssBtnOriginalNodes.forEach(function (n) { rssBtn.appendChild(n.cloneNode(true)); });
-                    rssBtn.classList.remove('copied');
-                }, 2000);
+            navigator.mediaSession.setActionHandler('play', function () {
+                audio.play();
             });
-        });
-    }
+            navigator.mediaSession.setActionHandler('pause', function () {
+                audio.pause();
+            });
+            navigator.mediaSession.setActionHandler('seekbackward', function () {
+                seekTo(audio.currentTime - 15);
+            });
+            navigator.mediaSession.setActionHandler('seekforward', function () {
+                seekTo(audio.currentTime + 15);
+            });
+            navigator.mediaSession.setActionHandler('seekto', function (details) {
+                if (details.seekTime != null) seekTo(details.seekTime);
+            });
+        }
 
-    if (transcriptToggle && accordion) {
-        var loaded = false;
-        transcriptToggle.addEventListener('click', function () {
-            var isOpen = accordion.classList.contains('open');
-            if (isOpen) {
-                accordion.classList.remove('open');
-                transcriptToggle.setAttribute('aria-expanded', 'false');
-            } else {
-                if (!loaded) {
-                    var src = accordion.getAttribute('data-transcript-src');
-                    fetch(src)
-                        .then(function (r) { return r.text(); })
-                        .then(function (text) {
-                            accordion.querySelector('.transcript-content').textContent = text;
-                            loaded = true;
-                        });
+        var rssBtn = player.querySelector('.rss-btn');
+        if (rssBtn) {
+            var rssBtnOriginalNodes = Array.from(rssBtn.childNodes).map(function (n) { return n.cloneNode(true); });
+            rssBtn.addEventListener('click', function () {
+                var feedUrl = window.location.origin + '/podcast.xml';
+                navigator.clipboard.writeText(feedUrl).then(function () {
+                    rssBtn.textContent = 'Kopiert!';
+                    rssBtn.classList.add('copied');
+                    setTimeout(function () {
+                        rssBtn.textContent = '';
+                        rssBtnOriginalNodes.forEach(function (n) { rssBtn.appendChild(n.cloneNode(true)); });
+                        rssBtn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        }
+
+        if (transcriptToggle && accordion) {
+            var loaded = false;
+            transcriptToggle.addEventListener('click', function () {
+                var isOpen = accordion.classList.contains('open');
+                if (isOpen) {
+                    accordion.classList.remove('open');
+                    transcriptToggle.setAttribute('aria-expanded', 'false');
+                } else {
+                    if (!loaded) {
+                        var src = accordion.getAttribute('data-transcript-src');
+                        fetch(src)
+                            .then(function (r) { return r.text(); })
+                            .then(function (text) {
+                                accordion.querySelector('.transcript-content').textContent = text;
+                                loaded = true;
+                            });
+                    }
+                    accordion.classList.add('open');
+                    transcriptToggle.setAttribute('aria-expanded', 'true');
                 }
-                accordion.classList.add('open');
-                transcriptToggle.setAttribute('aria-expanded', 'true');
-            }
-        });
+            });
+        }
     }
 })();
 </script>
