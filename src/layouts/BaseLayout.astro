@@ -66,10 +66,16 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         if (stored === 'dark' || (!stored && prefersDark)) {
             document.documentElement.classList.add('dark');
         }
+        // Enable color transitions after the first paint to avoid initial-load flash
+        window.addEventListener('load', function () {
+            requestAnimationFrame(function () {
+                document.documentElement.classList.add('theme-loaded');
+            });
+        });
     })();
     </script>
 </head>
-<body class="bg-(--color-bg) text-(--color-text) min-h-screen flex flex-col transition-colors duration-200">
+<body class="bg-(--color-bg) text-(--color-text) min-h-screen flex flex-col">
 <Header/>
 <main class="flex-1">
     <slot/>
