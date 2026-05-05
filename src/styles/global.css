@@ -36,6 +36,10 @@
   body {
     background-color: var(--color-bg);
     color: var(--color-text);
+  }
+
+  /* Enable color transitions only after initial paint to avoid FOUC */
+  html.theme-loaded body {
     transition:
       background-color 0.2s ease,
       color 0.2s ease;
