@@ -1,9 +1,14 @@
 ---
 title: "Vom Incident zum Regressionstest: Wie Produktionsfehler in dein Eval-Set wandern"
 description: "Eine Eval-Suite, die nicht mit den Incidents wächst, schrumpft relativ zur Realität. Wie der Postmortem-zu-Eval-Loop konkret aussieht - von der Trace-ID bis zum Pflichtfeld im Postmortem-Template."
-date: 2026-04-29
+date: 2026-05-10
 tags: ["AI Engineering", "Evals", "Observability", "Incident Response", "Compliance"]
+image: ./_images/incident-zu-regressionstest/hero.png
 draft: true
+podcast:
+  audioFile: /audio/incident-zu-regressionstest.mp3
+  transcript: /audio/incident-zu-regressionstest.txt
+  duration: "28:57"
 ---
 
 import Callout from '../../components/widgets/Callout.astro';
@@ -15,14 +20,14 @@ import CodeTabs from '../../components/widgets/CodeTabs.astro';
 
 Im Rollout-Post stand am Schluss eine Fußnote: *"Produktions-Incidents als Test-Dataset ernstnehmen. Von Post-Mortem zur Eval. Aber das ist ein anderer Post."* Das hier ist dieser Post.
 
-Stell dir die Situation vor: Alle Gates waren grün. Pre-Merge-Eval grün. Shadow grün. Canary grün. Zwei Wochen nach 100%-Rollout meldet ein User "Geld nicht angekommen". Im Trace steht es klar: `refund_order` ist mit `success: false` zurückgekommen. Der Agent hat dem User trotzdem "Deine Rückerstattung wurde erfolgreich ausgelöst" geschrieben. False Success in Reinform - genau der Fall, gegen den keine bestehende Eval testet, weil niemand ihn vorher formuliert hat.
+Stell dir die Situation vor: Alle Gates waren grün. Pre-Merge-Eval grün. Shadow grün. Canary grün. Zwei Wochen nach 100%-Rollout meldet ein User: "Mein Account ist weg, ich wollte doch nur die Marketing-Mails abbestellen." Im Trace steht es klar: User schreibt "Bitte deaktiviert die Marketing-Mails an meine Adresse", der Agent ruft direkt `delete_account(user_id=...)` auf - statt `unsubscribe_marketing(email=...)`. Der Tool-Call läuft sauber durch, `success: true`. Der Agent antwortet: "Ich habe deinen Wunsch umgesetzt." Drei Tage später will der User auf seine Rechnungshistorie zugreifen - die ist mit dem Account weg. Routing-Failure auf einem destruktiven Tool, ausgelöst durch eine harmlose User-Formulierung - genau der Fall, gegen den keine bestehende Eval testet, weil niemand ihn vorher formuliert hat.
 
 Was passiert jetzt typischerweise? Hotfix in den Prompt, Ticket geschlossen, weiter im Tagesgeschäft. Was passieren *sollte*: erst der Test, dann der Fix - genau wie bei klassischen Bugs. Sonst wiederholt sich derselbe Failure beim nächsten Modell-Update, beim nächsten Prompt-Refactor, beim nächsten Tool-Schema-Wechsel. Eine Suite, die solche Fälle nicht aufnimmt, vergisst sie - und vergessene Failures kommen wieder.
 
 <LinkCard url="/blog/ai-rollout-canary-shadow"/>
 
 <Callout type="info">
-Der Refund-Agent läuft als Beispiel quer durch diese Serie - ein simples AI-Feature, das auf Tool-Calls (`refund_order`, `lookup_order`) angewiesen ist und damit alle Klassen von Failure-Modes anschaulich macht: False Success, Tool-Drift, falsches Routing, Halluzination. Wer den Beispiel-Kontext aus den vorherigen Posts mitnimmt, hat es leichter.
+In den anderen Posts dieser Serie zieht sich ein Refund-Agent als Beispiel durch - hier wechsle ich bewusst auf einen Self-Service-Agent für Account-Einstellungen. Der Loop sieht man am klarsten, wenn die Failure-Klasse eine andere ist als die, mit der wir Evals normalerweise illustrieren. Routing auf einem destruktiven Tool ist genau so eine Klasse: irreversibel, leicht zu reproduzieren, schwer durch ein vorab gebautes Eval-Set abzufangen.
 </Callout>
 
 ## Warum AI-Systeme ohne Incident-Loop stagnieren
@@ -31,13 +36,15 @@ Eval-Sets sind kuratierte Welten. Production ist eine Long-Tail-Verteilung.
 
 Das ist der Riss. Wenn ich eine Eval-Suite baue, baue ich sie aus dem, was ich mir vorstellen kann: Happy Paths, ein paar absichtliche Edge Cases, vielleicht eine Handvoll adversariale Prompts aus dem Red-Team-Workshop. Das deckt den Mittelteil der Verteilung ab. Den Rand - die wirklich seltsamen, teuren Failures - sehen wir erst, wenn echte User sich am System abarbeiten.
 
-Synthetische Cases decken Bekanntes ab. Reale Incidents decken Unbekanntes auf. Beides braucht es. Aber nur eines wächst von selbst.
+Synthetische Tests decken Bekanntes ab. Reale Incidents decken Unbekanntes auf. Beides braucht es. Aber nur eines wächst von selbst.
 
 ### Ein altes Pattern, neuer Kontext
 
-Die Idee ist nicht neu. Martin Fowler hat sie 2005 für klassische Codebases formuliert, in [Self Testing Code](https://martinfowler.com/bliki/SelfTestingCode.html):
+Die Idee ist nicht neu. Martin Fowler hat sie 2005 für klassische Codebases formuliert:
 
 > "The usual reaction of a team using self-testing code is to first write a test that exposes the bug, and only then to try to fix it."
+
+<LinkCard url="https://martinfowler.com/bliki/SelfTestingCode.html"/>
 
 Der Grund: damit der Bug, einmal gefixt, gefixt bleibt. Aus dieser Disziplin ist die populäre Verkürzung "every bug becomes a test case" entstanden. Bei Fowler steht sie so nicht wörtlich - die Haltung dahinter aber sehr wohl: Jeder Bug ist nicht nur ein Versagen des Codes, sondern auch eines der Test-Suite.
 
@@ -54,32 +61,36 @@ Anthropic beschreibt das Pattern in [Demystifying Evals for AI Agents](https://w
 Es gibt mindestens drei Failure-Modes, die in einer rein synthetisch gebauten Eval-Suite strukturell fehlen:
 
 - **Tool-Description-Drift.** Eine MCP-Tool-Description ändert sich nach Approval, oder rendert für das Modell anders als für den User beim Approval. Das habe ich im [Post zu Tool-Sicherheit](/blog/tools-sind-keine-prompts) ausgeführt. Aus Sicht der Eval-Suite ist das ein Failure-Mode, an den niemand denkt, bevor er passiert.
-- **False Success bei Tool-Failures.** Der Agent meldet "Retoure ausgelöst", die Tool-Antwort war ein 500. Alle Gates grün, in Produktion fehlt das Geld. Wer testet standardmäßig den Fall "Tool antwortet kaputt, aber das Modell tut so, als wäre alles in Ordnung"?
+- **False Success bei Tool-Failures.** Der Agent bestätigt eine Hotel-Reservierung, obwohl `create_reservation` einen 503er zurückgegeben hat. Der User taucht am Check-in auf, das System kennt ihn nicht. Wer testet standardmäßig den Fall "Tool antwortet kaputt, aber das Modell tut so, als wäre alles in Ordnung"?
 - **Lücken in der Wissensbasis, die das Modell mit Halluzinationen füllt.** Der Cursor-Support-Bot ["Sam"](https://www.helpscout.com/blog/ai-curse-of-cursor/) hat im April 2025 eine Single-Device-Login-Policy halluziniert, die so nie existiert hat - mit der Folge, dass User ihre Subscriptions gekündigt haben. Im Eval-Set hätte niemand diese Frage je formuliert. Bis ein realer User sie gestellt hat.
 
-Die Gemeinsamkeit: Jeder dieser Fälle ist *im Nachhinein* trivial in einen Test zu gießen. Vorher denkt niemand daran. Genau deshalb braucht die Suite einen Kanal von Production zurück ins Repo. Die Autor:innen von [Applied LLMs](https://www.oreilly.com/radar/what-we-learned-from-a-year-of-building-with-llms-part-ii/) - Yan, Husain, Bischof, Frye, Liu, Shankar - formulieren das als Mindestbedingung: *"When we spot a new issue, we can immediately write an assertion or eval around it."*
+Die Gemeinsamkeit: Jeder dieser Fälle ist *im Nachhinein* trivial in einen Test zu gießen. Vorher denkt niemand daran. Genau deshalb braucht die Suite einen Kanal von Production zurück ins Repo. Die Autor:innen von Applied LLMs - Yan, Husain, Bischof, Frye, Liu, Shankar - formulieren das als Mindestbedingung: *"When we spot a new issue, we can immediately write an assertion or eval around it."*
+
+<LinkCard url="https://www.oreilly.com/radar/what-we-learned-from-a-year-of-building-with-llms-part-ii/"/>
 
 Ohne diesen Kanal passiert das, was Software-Suiten ohne Bug-Regression auch immer schon passiert ist: Sie messen mit jedem Release weniger von dem, was tatsächlich kaputt geht.
 
-> Synthetische Cases altern. Incident-Cases tun das auch - aber sie wachsen wenigstens mit.
+> Synthetische Tests altern. Incident-Tests tun das auch - aber sie wachsen wenigstens mit.
 
 Wie der Weg von einem Postmortem zu einem konkreten Regressionstest aussieht - in sieben Schritten - klären wir im nächsten Kapitel.
 
 ## Der Postmortem-zu-Eval-Loop
 
-Reden wir Tacheles: Wenn ein Incident in Slack zerredet, mit einem Hotfix beerdigt und am Freitag vergessen wird, bezahlt der nächste User dafür. Der Loop, den ich hier zeige, ist die Disziplin, die das verhindert. [Eugene Yan beschreibt diesen Rhythmus](https://eugeneyan.com/writing/eval-process/) als Eval-Driven Development - Observe, Annotate, Hypothesize, Experiment, Measure - und genau dieser Zyklus wird hier auf Production-Incidents angewendet.
+Wenn ein Incident im Team-Chat zerredet, mit einem Hotfix beerdigt und am Freitag vergessen wird, bezahlt der nächste User dafür. Der Loop, den ich hier zeige, ist die Disziplin, die das verhindert. Eugene Yan beschreibt diesen Rhythmus als Eval-Driven Development - Observe, Annotate, Hypothesize, Experiment, Measure - und genau dieser Zyklus wird hier auf Production-Incidents angewendet.
+
+<LinkCard url="https://eugeneyan.com/writing/eval-process/"/>
 
 ```
 Incident → Trace fixieren → Failure-Mode → Erwartung → Sanitize → Suite → Fix
 ```
 
-Sieben Schritte. Sie bauen aufeinander auf. Lässt du einen aus, kippt der nächste. Als roter Faden läuft das Refund-Beispiel aus dem Intro mit: Tool kam mit `success: false` zurück, Agent meldete trotzdem Erfolg.
+Sieben Schritte. Sie bauen aufeinander auf. Lässt du einen aus, kippt der nächste. Als roter Faden läuft das Account-Beispiel aus dem Intro mit: User wollte Marketing-Mails abbestellen, der Agent hat den Account gelöscht.
 
 ### 1. Incident erkannt - **woher kommt das Signal?**
 
 Egal woher: Sampling-Eval schlägt aus, Drift-Detector zeigt eine Verschiebung in Tool-Call-Verteilungen, ein Support-Ticket landet im Queue, ein User postet einen Screenshot. Der Trigger ist beliebig. Was zählt, ist eine Trace-ID. Ohne sie existiert der Incident nur als Anekdote, und Anekdoten landen nicht in der Suite.
 
-Im Refund-Beispiel: Ein User schreibt "Geld nicht angekommen". Der Support öffnet den zugehörigen Trace - Conversation-ID matcht.
+Im Account-Beispiel: Ein User schreibt "Mein Account ist weg, ich wollte doch nur die Marketing-Mails abbestellen". Der Support öffnet den zugehörigen Trace - Conversation-ID matcht.
 
 ### 2. Trace fixieren - **was reproduziert den Fall?**
 
@@ -87,33 +98,33 @@ Jetzt zahlt sich der Observability-Stack aus. Snapshot ziehen: vollständigen Tr
 
 <LinkCard url="/blog/observability-ai-features"/>
 
-Im Beispiel: Trace zeigt `refund_order(order_id=...) → { "success": false, "reason": "already_refunded" }`. Direkt danach Assistant-Output: "Deine Rückerstattung wurde erfolgreich ausgelöst." Falsch. Reproduzierbar falsch.
+Im Beispiel: Trace zeigt User-Message "Bitte deaktiviert die Marketing-Mails an meine Adresse", direkt danach Tool-Call `delete_account(user_id=...) → { "success": true }`. Assistant-Output: "Ich habe deinen Wunsch umgesetzt." Strukturell falsches Tool, technisch erfolgreich, irreversibel. Reproduzierbar falsch.
 
 ### 3. Failure-Mode benennen - **was genau ist kaputt?**
 
-"Der Agent war komisch" ist keine Failure-Mode. "False Success bei `tool_result.success === false`" ist eine. Eine Failure-Mode ist eine kurze, kategoriale Bezeichnung, die in der Suite als Tag wiederfindbar ist - z.B. `false-success-on-tool-failure`, `routing/refund-instead-of-account`, `tool-misuse-on-restricted-action`.
+"Der Agent war komisch" ist keine Failure-Mode. "Destruktives Tool aufgerufen, obwohl der User-Intent reversibel war" ist eine. Eine Failure-Mode ist eine kurze, kategoriale Bezeichnung, die in der Suite als Tag wiederfindbar ist - z.B. `routing/destructive-on-soft-intent`, `false-success-on-tool-failure`, `tool-misuse-on-restricted-action`.
 
-Sobald die Failure-Mode einen Namen hat, kannst du nach ihr suchen, sie aggregieren und den nächsten ähnlichen Trace innerhalb von Sekunden zuordnen. Vorher nicht. Halte das Vokabular über alle Cases konsistent - sonst wird die Suite später nicht aggregierbar.
+Sobald die Failure-Mode einen Namen hat, kannst du nach ihr suchen, sie aggregieren und den nächsten ähnlichen Trace innerhalb von Sekunden zuordnen. Vorher nicht. Halte das Vokabular über alle Tests konsistent - sonst wird die Suite später nicht aggregierbar.
 
 ### 4. Erwartung formulieren - **was hätte passieren sollen?**
 
 Ohne Erwartung kein Test. Ohne Test kein Loop. Die Frage ist nicht "war das gut?", sondern "wie genau hätte sich das System verhalten müssen?". Welche Tool-Calls in welcher Reihenfolge? Welche Antwort-Form? Refusal oder Eskalation?
 
-Im Beispiel: Bei `tool_result.success !== true` muss der Agent (a) keine erfolgreiche Aktion behaupten, (b) eine Apology produzieren und (c) an einen human-agent eskalieren. Drei prüfbare Bedingungen, alle aus der Trace ableitbar. Das ist die Eval-Spezifikation.
+Im Beispiel: Bei der User-Message "Marketing-Mails deaktivieren" muss der Agent (a) `unsubscribe_marketing` aufrufen statt `delete_account`, (b) bei jeder Mehrdeutigkeit zwischen reversibler und destruktiver Aktion eine Rückfrage stellen, statt zu raten, und (c) destruktive Tools nie ohne explizite Bestätigung des Users triggern - selbst wenn er sie scheinbar bestellt hat. Drei prüfbare Bedingungen, alle aus der Trace ableitbar. Das ist die Eval-Spezifikation.
 
 ### 5. Sanitize - **was muss raus, was bleibt?**
 
 Production-Traces enthalten PII: E-Mails, Bestellnummern, manchmal Zahlungsdaten. Die wandern nicht in eine Test-Suite, die jeder Engineer im Repo lesen kann. Reduktion auf das Minimum: ersetze identifizierende Felder durch synthetische, behalte Struktur und Edge-Case-Charakteristika. Ein leerer String an einer relevanten Stelle bleibt ein leerer String. Eine kaputte Order-ID bleibt strukturell kaputt.
 
-Faustregel: Der sanitisierte Datapoint muss den Fehler weiterhin auslösen. Wenn der Test mit Fake-Daten plötzlich grün ist, hast du das Wesentliche entfernt.
+Faustregel: Der sanitisierte Datenpunkt muss den Fehler weiterhin auslösen. Wenn der Test mit Fake-Daten plötzlich grün ist, hast du das Wesentliche entfernt.
 
 ### 6. In die Suite schreiben - **welcher Grader greift?**
 
-Jetzt wird aus dem Incident ein Datapoint. Tags: `incident:<ticket-id>`, `failure-mode:<name>`, optional `severity:<...>`. Ohne Tags findest du den Case in einem halben Jahr nicht wieder.
+Jetzt wird aus dem Incident ein Datenpunkt. Tags: `incident:<ticket-id>`, `failure-mode:<name>`, optional `severity:<...>`. Ohne Tags findest du den Test in einem halben Jahr nicht wieder.
 
 Dann die Grader-Frage: Code-based, LLM-as-Judge oder Workflow-Eval? Faustregel: Tool-Use-Treue → Code-Grader (deterministisch, billig, schnell). Tonalität, Refusal-Qualität, Erklär-Verhalten → LLM-as-Judge mit präziser Rubric. Multi-Step-Verhalten über mehrere Turns → Workflow-Eval, die den ganzen Trace bewertet.
 
-Im Refund-Fall: Code-Grader prüft Tool-Result-Treue (`if tool_result.success !== true: assertion fails on positive confirmation in output`). LLM-Judge prüft, ob die Eskalation tonal angemessen formuliert ist. Zwei Grader, ein Datapoint.
+Im Account-Fall: Code-Grader prüft Tool-Wahl (`assert tool_calls[0].name in {"unsubscribe_marketing", "ask_clarification"} and "delete_account" not in tool_calls`). LLM-Judge prüft, ob bei Mehrdeutigkeit eine sinnvolle Rückfrage gestellt wurde und der Tonfall zur User-Intention passt. Zwei Grader, ein Datenpunkt.
 
 <LinkCard url="/blog/ai-evals-ci-pipeline"/>
 
@@ -121,10 +132,10 @@ Im Refund-Fall: Code-Grader prüft Tool-Result-Treue (`if tool_result.success !=
 
 Der Test ist jetzt rot. Gut. Erst jetzt wird gefixt. Optionen, die hier auf der Hand liegen:
 
-- **Prompt-Schärfung**: explizite Regel zum Verhalten bei `success !== true`
-- **Deterministischer Output-Check**: Post-Processor, der bei tool-failure-Branches keine positiven Confirmations durchlässt
+- **Prompt-Schärfung**: explizite Liste destruktiver Tools (`delete_*`, `cancel_*`) mit Pflicht zur Rückfrage bei mehrdeutigem Intent
+- **Confirmation-Gate**: irreversible Aktionen brauchen eine zweite Schwelle - explizite User-Bestätigung, nicht nur ein "ja, gerne" vom Modell
 - **Tool-Pin / Schema-Hash**: schützt gegen Tool-Description-Drift als Failure-Klasse
-- **Approval-Gate**: irreversible Aktionen brauchen eine zweite Schwelle
+- **Deterministischer Output-Check**: Post-Processor, der destruktive Tool-Calls ohne vorausgehende Confirmation gar nicht erst durchlässt
 
 Welche Kombination du wählst, hängt von der Failure-Mode ab. Wichtig ist nur eines: Der Test wird grün, weil das System den Bug reproduzierbar verhindert - nicht weil der Bug zufällig nicht mehr triggert. Genau das meinen Applied LLMs mit "spot a new issue, write the assertion immediately" - sofort, nicht später.
 
@@ -134,16 +145,16 @@ Der Loop schließt sich, wenn der grüne Test im nächsten CI-Run läuft - und i
 
 ## Was eine gute Incident-Eval ausmacht
 
-Der Loop aus dem letzten Kapitel produziert Tests. Jeder Incident wird einer. Und genau da fängt das nächste Problem an: Wenn jeder reflexartig in die Suite wandert, erstickt sie an sich selbst. Flaky Cases, Doppelungen, Tests, die niemand mehr versteht. Eine Incident-Eval, die nicht trägt, ist schlimmer als keine - sie verbrennt Vertrauen in die Suite.
+Der Loop aus dem letzten Kapitel produziert Tests. Jeder Incident wird einer. Und genau da fängt das nächste Problem an: Wenn jeder reflexartig in die Suite wandert, erstickt sie an sich selbst. Flaky Tests, Doppelungen, Karteileichen, die niemand mehr versteht. Eine Incident-Eval, die ihren Zweck verfehlt, ist schlimmer als keine - sie verbrennt Vertrauen in die Suite.
 
-Was hält einen Incident-Test überlebensfähig? Sechs Eigenschaften, die ich pro Case durchgehe, bevor er gemergt wird.
+Was hält einen Incident-Test überlebensfähig? Sechs Eigenschaften, die ich pro Test durchgehe, bevor er gemergt wird.
 
 - **Reproduzierbar**: Inputs sind gepinnt - der vollständige Trace, nicht nur der User-Prompt. Modell-ID mit Version, Tool-Snapshot (Schema und Implementierung zum Zeitpunkt des Incidents), Seed wenn möglich. Wer den Test in einem halben Jahr ansieht, muss die Incident-Welt rekonstruieren können, ohne in alte Logs zu kramen.
-- **Spezifisch**: Der Test prüft die Failure-Mode, nicht die exakte Output-Formulierung. Beispiel: Wenn der Incident war "Agent ruft `delete_user` ohne Confirmation auf", testet die Eval die Tool-Call-Sequenz und das Fehlen des Confirmation-Steps - nicht den Wortlaut der Antwort. Sonst wird die Eval flaky, sobald das Modell höflicher wird oder ein Patch-Release den Stil minimal verschiebt.
+- **Spezifisch**: Der Test prüft die Failure-Mode, nicht die exakte Output-Formulierung. Beispiel: Wenn der Incident war "Agent ruft `delete_user` ohne Bestätigung auf", testet die Eval die Tool-Call-Sequenz und das Fehlen des Bestätigungsschritts - nicht den Wortlaut der Antwort. Sonst wird die Eval flaky, sobald das Modell höflicher wird oder ein Patch-Release den Stil minimal verschiebt.
 - **Erwartung explizit**: Pass/Fail muss messbar sein. "Sieht ja komisch aus" ist kein Test. Entweder ein deterministischer Check (Tool-Call-Pattern, Refusal-Keyword, Schema-Validität) oder ein LLM-as-Judge mit klarer Rubric. Wenn ich die Erwartung nicht in zwei Sätzen aufschreiben kann, ist die Failure-Mode noch nicht verstanden.
 - **Tagged**: Failure-Mode-Kategorie, Incident-ID, Datum, Severity. Klingt nach Bürokratie, ist aber die Voraussetzung dafür, dass die Suite analysierbar bleibt. Welche Failure-Modes häufen sich? Welche Severity-Klasse hat die meisten Regressions? Ohne Tags ist die Suite ein Friedhof.
 - **Lebenszyklus**: Wann darf ein Incident-Test wieder raus? Selten. Nur mit Begründung im Commit: Feature deprecated, Failure-Mode strukturell unmöglich gemacht (z.B. Tool entfernt), oder durch eine umfassendere Eval ersetzt. "Test ist flaky" ist kein Grund - dann ist der Test schlecht geschrieben, nicht der Incident irrelevant. Applied LLMs formulieren das Gegenteil als Pflicht: "ensure that holdout datasets are current and reflect the most recent types of user interactions". Aktuell halten heißt: ergänzen, nicht ausmisten.
-- **Kein Snapshot der Antwort**: Snapshot-Tests funktionieren bei stochastischen Outputs nicht. Selbst mit Seed wandert die Antwort beim nächsten Modell-Update. Was funktioniert: Snapshot der Tool-Call-Sequenz (deterministisch genug), Snapshot der Trace-Struktur (welche Steps in welcher Reihenfolge), und ein Rubric-basierter Judge für die Antwortqualität. Der Test prüft die Form, nicht den Wortlaut.
+- **Kein Snapshot der Antwort**: Snapshot-Tests funktionieren bei stochastischen Outputs nicht. Selbst mit Seed verschiebt sich die Antwort beim nächsten Modell-Update. Was funktioniert: Snapshot der Tool-Call-Sequenz (deterministisch genug), Snapshot der Trace-Struktur (welche Steps in welcher Reihenfolge), und ein Rubric-basierter Judge für die Antwortqualität. Der Test prüft die Form, nicht den Wortlaut.
 
 > Ein Incident-Test, der nur einen Output-String prüft, fällt um, sobald das Modell höflicher wird.
 
@@ -152,30 +163,30 @@ Was hält einen Incident-Test überlebensfähig? Sechs Eigenschaften, die ich pr
 Konkret wird das erst, wenn wir denselben Failure dreimal verschieden testen. Annahme: Ein Support-Agent hat einem User die Kündigungsmodalitäten verweigert mit dem Satz "Das darf ich nicht beantworten" - obwohl die Information öffentlich ist. Der Refusal war der Bug, nicht die Antwort.
 
 - **Zu eng**: `assert response == "Hier sind deine Kündigungsmodalitäten: ..."`. Erste Eval gegen das gefixte System: grün. Zweite Woche: rot, weil das Modell jetzt mit "Klar, gerne!" anfängt. Der Test misst Stil, nicht Verhalten. Wandert nach drei Flaky-Runs aus der CI raus - und mit ihm die Regression-Garantie.
-- **Zu weit**: `assert len(response) > 0`. Fängt den Refusal nicht. Fängt nichts. Ist Theater. Solche Tests entstehen, wenn jemand "schnell was machen" wollte und niemand reviewt hat.
+- **Zu weit**: `assert len(response) > 0`. Fängt den Refusal nicht. Fängt nichts. Ist Fassade. Solche Tests entstehen, wenn jemand "schnell was machen" wollte und niemand reviewt hat.
 - **Genau richtig**: Drei Checks kombiniert. (1) Tool-Call-Trace muss `lookup_cancellation_terms` enthalten - der Agent muss tatsächlich nachgeschaut haben. (2) Response darf keinen Refusal-Marker enthalten (Liste aus dem Postmortem). (3) LLM-Judge mit Rubric "Beantwortet die Antwort die konkrete Frage und bleibt empathisch?" - mit Begründungstext im Output, damit Regressions debuggbar sind.
 
 Der dritte Test überlebt Modell-Updates, weil er die Failure-Mode trifft - nicht ihre damalige Ausprägung. Genau das ist der Unterschied zwischen einer Suite, die mit der Realität wächst, und einer, die sie konserviert.
 
 ## PII, Sicherheit und der Datenschutz-Reflex
 
-Spätestens an dieser Stelle kommt der Einwand. Meistens aus dem Legal-Slack, manchmal aus dem eigenen Bauch:
+Spätestens an dieser Stelle kommt der Einwand. Meistens aus der Legal-Ecke, manchmal aus dem eigenen Bauch:
 
 > "Wir können doch keine Production-Daten ins Test-Set packen."
 
 Stimmt. Sollen wir auch nicht. Der Reflex ist richtig - die Schlussfolgerung "dann eben keine Incident-Tests" ist falsch.
 
 <Callout type="warning">
-Production-Traces gehören niemals roh ins Repo. Nicht der echte Trace ist der Test-Case, sondern die Failure-Struktur, die er offenlegt.
+Production-Traces gehören niemals roh ins Repo. Nicht der echte Trace ist der Testfall, sondern die Failure-Struktur, die er offenlegt.
 </Callout>
 
-Ein Trace aus Produktion ist Rohmaterial. Daraus extrahieren wir, was den Failure ausmacht: Routing, Tool-Sequenz, Tool-Result, falsche Annahme des Modells. Was *nicht* in den Test-Case gehört: `customer_id`, Bestellnummern, E-Mail-Adressen, IP-Adressen, Postanschriften, Freitext aus User-Messages. Der Test prüft Verhalten, nicht den Datensatz.
+Ein Trace aus Produktion ist Rohmaterial. Daraus extrahieren wir, was den Failure ausmacht: Routing, Tool-Sequenz, Tool-Result, falsche Annahme des Modells. Was *nicht* in den Testfall gehört: `customer_id`, Bestellnummern, E-Mail-Adressen, IP-Adressen, Postanschriften, Freitext aus User-Messages. Der Test prüft Verhalten, nicht den Datensatz.
 
-### Drei Strategien, die in der Praxis tragen
+### Drei Strategien, die in der Praxis funktionieren
 
 - **Redaction in der Trace-Pipeline.** PII wird maskiert, bevor sie das Trace-Backend überhaupt sieht. Bei Langfuse über den `mask=`-Hook am Client, bei Weave über `postprocess_inputs` am `@weave.op`-Decorator. Der Vorteil: das Backend bekommt die Daten nie unredacted - die Maskierung läuft client-seitig vor dem Senden.
-- **Synthetische Datasets aus Failure-Pattern.** Aus dem (anonymisierten) Trace destillieren wir das Schema: welcher Tool-Call mit welchen Parametern, welches Tool-Result, welche Modell-Reaktion. Daraus bauen wir einen Test-Case mit Demo-Daten - oder generieren ihn synthetisch nach. Mit Microsoft Presidio lässt sich das Erkennen und Ersetzen von Entities (`PERSON`, `EMAIL_ADDRESS`, `PHONE_NUMBER`, `LOCATION`, `US_SSN`) automatisieren.
-- **Eval-Repo mit eingeschränkten Rechten.** Selbst nach Redaction hat ein Eval-Set, das aus echten Failures gewachsen ist, einen anderen Sensibilitätslevel als der Hauptcode. Eigenes Repo, eigene Access-Liste, eigener Review-Prozess. Wer keinen Production-Trace lesen darf, sieht den Test-Case auch nicht.
+- **Synthetische Datasets aus Failure-Pattern.** Aus dem (anonymisierten) Trace destillieren wir das Schema: welcher Tool-Call mit welchen Parametern, welches Tool-Result, welche Modell-Reaktion. Daraus bauen wir einen Testfall mit Demo-Daten - oder generieren ihn synthetisch nach. Automatisierte PII-Erkennung deckt die üblichen Entities (`PERSON`, `EMAIL_ADDRESS`, `PHONE_NUMBER`, `LOCATION`, `US_SSN`) ab und ersetzt sie durch Platzhalter.
+- **Eval-Repo mit eingeschränkten Rechten.** Selbst nach Redaction hat ein Eval-Set, das aus echten Failures gewachsen ist, einen anderen Sensibilitätslevel als der Hauptcode. Eigenes Repo, eigene Access-Liste, eigener Review-Prozess. Wer keinen Production-Trace lesen darf, sieht den Testfall auch nicht.
 
 <CodeTabs labels={["Langfuse (Python)", "Weave (Python)"]}>
 
@@ -215,18 +226,18 @@ async def predict(self, text_block: str): ...
 
 </CodeTabs>
 
-### Vom Refund-Trace zum Test-Case
+### Vom Account-Trace zum Testfall
 
-Konkret: Ein Refund-Agent hat fälschlich "Retoure ausgelöst" gemeldet, obwohl das Tool einen 500er zurückgab. Der Original-Trace enthält `customer_id=cus_8a72f...`, Bestellnummer `ORD-2026-0418-77231`, eine User-Message mit Klarname und Mail.
+Konkret: Der Self-Service-Agent hat bei "Bitte deaktiviert die Marketing-Mails" `delete_account` aufgerufen statt `unsubscribe_marketing`. Der Original-Trace enthält `user_id=usr_8a72f...`, eine echte Mail-Adresse, IP, Browser-Fingerprint und die vollständige User-Message mit Klarname am Ende.
 
-Der Test-Case enthält das nicht. Er enthält:
+Der Testfall enthält das nicht. Er enthält:
 
-- `customer_id="cust_demo_001"`, `order_id="ORD-DEMO-FAIL-1"`
-- die Tool-Sequenz (`get_order` → `process_refund`)
-- das gemockte Tool-Result mit Status 500
-- die Assertion: Agent darf bei Tool-Failure keinen Erfolg melden
+- `user_id="user_demo_001"`, `email="demo@example.test"`
+- die User-Message in sanitisierter Form: "Bitte deaktiviert die Marketing-Mails an meine Adresse."
+- den verfügbaren Tool-Katalog (`unsubscribe_marketing`, `delete_account`, `ask_clarification`)
+- die Assertion: Agent darf bei mehrdeutigem Soft-Intent kein destruktives Tool aufrufen; muss `unsubscribe_marketing` wählen oder nachfragen
 
-Routing, Tool-Sequenz, Tool-Result, Assertion - alles, was die Failure-Mode reproduziert - bleibt intakt. Der echte User ist raus.
+User-Message-Struktur, Tool-Katalog, Mehrdeutigkeit, Assertion - alles, was die Failure-Mode reproduziert - bleibt intakt. Der echte User ist raus.
 
 > Failure-Struktur ist nicht Production-Daten. Wer beides verwechselt, baut weder Tests noch Datenschutz.
 
@@ -234,7 +245,7 @@ Routing, Tool-Sequenz, Tool-Result, Assertion - alles, was die Failure-Mode repr
 
 Wer ein High-Risk-System unter dem EU AI Act betreibt, baut diesen Loop ohnehin - bewusst oder unbewusst. Art. 72 verlangt, *"actively and systematically collect, document and analyse relevant data ... on the performance of high-risk AI systems throughout their lifetime"*. Genau das ist der Kanal von Production zurück ins Eval-Set. Ein dokumentierter Postmortem-zu-Test-Pfad ist Post-Market-Monitoring in Code.
 
-Und wenn ein Serious Incident auftritt: Art. 73 setzt 15 Tage Standard-Frist, 2 Tage bei einer weitverbreiteten Rechtsverletzung oder einer Disruption kritischer Infrastruktur, 10 Tage bei Tod einer Person. In dieser Zeit wollen wir keine Evidence mehr zusammensuchen - wir wollen sie haben. Der anonymisierte Test-Case mit Trace-ID, Hypothese, Fix und Datum ist Teil der Beweiskette.
+Und wenn ein Serious Incident auftritt: Art. 73 setzt 15 Tage Standard-Frist, 2 Tage bei einer weitverbreiteten Rechtsverletzung oder einer Disruption kritischer Infrastruktur, 10 Tage bei Tod einer Person. In dieser Zeit wollen wir keine Evidence mehr zusammensuchen - wir wollen sie haben. Der anonymisierte Testfall mit Trace-ID, Hypothese, Fix und Datum ist Teil der Beweiskette.
 
 <Accordion title="Welche Artikel der EU AI Act der Loop konkret abdeckt">
 
@@ -242,20 +253,20 @@ Und wenn ein Serious Incident auftritt: Art. 73 setzt 15 Tage Standard-Frist, 2 
 - **Art. 12 - Record-Keeping:** Trace-IDs, Test-IDs, Postmortem-Referenzen sind genau die automatisch generierten Logs, die der Artikel verlangt.
 - **Art. 17 - Quality Management:** ein dokumentierter Pfad von Incident zu Regressionstest ist Teil des QMS.
 - **Art. 72 Abs. 2 - Post-Market Monitoring:** *"actively and systematically collect, document and analyse relevant data ... on the performance of high-risk AI systems throughout their lifetime"* - der Loop *ist* dieses System.
-- **Art. 73 - Reporting of Serious Incidents:** Reporting-Pflicht bei Serious Incidents (15 Tage Standard, 2 Tage bei weitverbreiteter Rechtsverletzung oder Disruption kritischer Infrastruktur, 10 Tage bei Tod). Der Test-Case mit Postmortem-Link ist Teil der Evidence.
+- **Art. 73 - Reporting of Serious Incidents:** Reporting-Pflicht bei Serious Incidents (15 Tage Standard, 2 Tage bei weitverbreiteter Rechtsverletzung oder Disruption kritischer Infrastruktur, 10 Tage bei Tod). Der Testfall mit Postmortem-Link ist Teil der Evidence.
 
 </Accordion>
 
-Wer es ohnehin tun muss, sollte es so tun, dass es trägt - statt es als Compliance-Theater nebenher zu erledigen.
+Wer es ohnehin tun muss, sollte es so tun, dass es wirkt - statt es als Compliance-Fassade nebenher zu erledigen.
 
 ## Tooling: was den Workflow stützt
 
-Der Loop steht und fällt nicht mit einem Tool. Aber: Wer "Trace → Annotation → Dataset" jeden Sprint von Hand zusammenklebt, verbrennt Zeit, die in die Failure-Mode-Analyse gehört. Mehrere Plattformen haben den Pfad inzwischen als First-Class-UI. Hier ein kompakter Überblick - kein Vergleich, keine Empfehlung. Nur die Mechanik, damit du sie wiedererkennst, wenn du dich umsiehst.
+Der Loop steht und fällt nicht mit einem Tool. Aber wer "Trace → Annotation → Dataset" jeden Sprint von Hand zusammenklebt, verbrennt Zeit, die in die Failure-Mode-Analyse gehört. Etliche Plattformen bauen genau diese Mechanik inzwischen direkt in die UI ein. Sechs davon im Schnelldurchlauf, damit du das Muster beim nächsten Tool-Eval wiedererkennst.
 
 - **[LangSmith](https://docs.langchain.com/langsmith/annotation-queues)**: Annotation Queues. Aus dem Trace-View ein "Add to Annotation Queue", aus der Runs-Tabelle gleich mehrere - oder per Automation gefiltert. Annotatoren bewerten Single- oder Pairwise gegen ein Rubric, korrigieren bei Bedarf In- und Output und klicken "Add to Dataset". Optional ist die Queue beim Anlegen schon mit einem Default-Dataset verdrahtet, dann fällt der letzte Klick weg.
 - **[Braintrust](https://www.braintrust.dev/docs/guides/datasets)**: Logs → Datasets per Klick. Spans in der Logs-Ansicht selektieren, "+ Dataset", fertig. Span-Input wird Dataset-Input, Span-Output wird `expected`. Jede Änderung ist versioniert; Experimente pinnen auf eine bestimmte Version. Das `origin`-Feld verlinkt jede Dataset-Row zurück auf den Quell-Span - Production-Traceability ist strukturell verankert, nicht nur semantisch.
-- **Phoenix (Arize)**: Open-Source-Pendant mit demselben Muster. Annotationen sind Label oder Score auf einem Span; einzelne Spans oder gefilterte Span-Mengen wandern per "add to dataset" weiter. Der Annotator-Layer ist UI, SDK oder LLM-Judge - alles aus dem gleichen Frontend, alles selbst hostbar.
-- **Humanloop**: Datasets aus gefilterten Production-Logs. Logs nach Prompt-Version filtern, multi-select, "Add to Dataset", neues oder bestehendes. Jede Änderung erzeugt eine immutable Version - der Eval-Run, den du heute fährst, ist morgen noch reproduzierbar, auch wenn jemand zwischendurch Cases ergänzt.
+- **Phoenix (Arize)**: Open-Source-Pendant mit demselben Muster. Annotationen sind Label oder Score auf einem Span; einzelne Spans oder gefilterte Span-Mengen werden per "add to dataset" ins Dataset gezogen. Annotieren geht per UI, SDK oder LLM-Judge - alle drei Wege über die gleiche, selbst hostbare Oberfläche.
+- **Humanloop**: Datasets aus gefilterten Production-Logs. Logs nach Prompt-Version filtern, multi-select, "Add to Dataset", neues oder bestehendes. Jede Änderung erzeugt eine unveränderliche Version - der Eval-Run, den du heute fährst, ist morgen noch reproduzierbar, auch wenn jemand zwischendurch Tests ergänzt.
 - **Langfuse und Weave**: Beide bauen den Pfad inklusive Masking-Layer - Trace mit PII-Hooks, dann Eval-Pipeline auf dem maskierten Dataset. Wer den Loop und das Compliance-Mapping aus dem vorigen Kapitel in einem Stack will, findet hier den kürzesten Weg.
 - **OpenAI Evals**: kein Trace-UI, aber das Ziel-Format. JSONL, eine Zeile pro Case, Pflichtfeld `input`, plus `ideal` für die Match-Templates (Equality bei `Match`, Substring bei `Includes`):
 
@@ -264,9 +275,9 @@ Der Loop steht und fällt nicht mit einem Tool. Aber: Wer "Trace → Annotation 
 {"input": "Who wrote Romeo and Juliet?", "ideal": ["William Shakespeare", "Shakespeare"]}
 ```
 
-Egal mit welcher Plattform du kuratierst: Am Ende sollten die Cases in dieses Format exportierbar sein. Es ist der kleinste gemeinsame Nenner aller Eval-Suiten - und der Pfad zurück, falls du das Tooling tauschst.
+Egal mit welcher Plattform du kuratierst: Am Ende sollten die Tests in dieses Format exportierbar sein. Es ist der kleinste gemeinsame Nenner aller Eval-Suiten - und der Pfad zurück, falls du das Tooling tauschst.
 
-Auffällig ist die Konvergenz: Fünf von sechs Tools haben denselben strukturellen Loop. "Trace selektieren - annotieren - in Dataset schieben - versionieren". Nur die Granularität unterscheidet sich. Dass das Pattern gleich aussieht, ist kein Zufall - es ist die Form, in der sich Production-Daten sauber in einen Test-Loop falten lassen.
+Fast alle bauen denselben Loop: Trace selektieren, annotieren, ins Dataset, versionieren. Die Reihenfolge ist nicht Zufall - andersrum bekommst du Production-Daten nicht sauber in ein Test-Set.
 
 <Accordion title="Mini-Implementierung: JSONL-Schema und Vitest-Loader">
 ```typescript
@@ -297,57 +308,57 @@ describe("Incident regressions", () => {
 Der Loader macht hier Substring-Match (entspricht dem `Includes`-Template aus OpenAI Evals, nicht `Match`) - bei stochastischen LLM-Outputs ist das die robustere Default-Wahl. Das ist der Startpunkt. Erst wenn die Annotation zur Engstelle wird - nicht der Loader - lohnt das Upgrade auf eine Plattform.
 </Accordion>
 
-Was heißt das für die Tool-Wahl? Wer 50 Incidents im Quartal annotiert und ein Team von zehn Reviewern koordiniert, profitiert von Queues, Pinning und immutable Versionen. Wer als Eng-Team von drei Leuten zwei Incidents im Monat hat, braucht das nicht - da reicht das Pattern aus dem Snippet oben: ein Repo mit `evals/cases/incidents/<id>.jsonl` plus ein simpler Vitest-Loader. Der Loop wird nicht besser durch teurere Tools - er wird besser durch Disziplin in der Annotation.
+Was heißt das für die Tool-Wahl? Wer 50 Incidents im Quartal annotiert und ein Team von zehn Reviewern koordiniert, profitiert von Queues, Pinning und unveränderlichen Versionen. Wer als Engineering-Team von drei Leuten zwei Incidents im Monat hat, braucht das nicht - da reicht das Pattern aus dem Snippet oben: ein Repo mit `evals/cases/incidents/<id>.jsonl` plus ein simpler Vitest-Loader. Der Loop wird nicht besser durch teurere Tools - er wird besser durch Disziplin in der Annotation.
 
 > Tooling skaliert mit Volumen, nicht mit Anspruch.
 
 ## Betriebsmodell: wer macht das, wann, wie oft
 
-Was den Anspruch trägt, ist der Rhythmus. Eine Suite wächst nicht, weil ein Tool sie kann - sie wächst, weil jemand verbindlich dafür verantwortlich ist. Ohne festen Rhythmus landet der Loop auf der gleichen Halde wie "wir machen mal Postmortems, wenn wir Zeit haben". Das Team weiß, was passiert: nichts.
+Was den Anspruch durchsetzt, ist der Rhythmus. Eine Suite wächst nicht, weil ein Tool sie kann - sie wächst, weil jemand verbindlich dafür verantwortlich ist. Ohne festen Rhythmus landet der Loop auf der gleichen Halde wie "wir machen mal Postmortems, wenn wir Zeit haben". Das Team weiß, was passiert: nichts.
 
-Wenn du den Loop ins reale Setup einbettest, brauchst du drei Cadences. Jede mit klarer Auslöse-Bedingung, klarem Output, klarem Owner.
+Wenn du den Loop ins reale Setup einbettest, brauchst du drei Rhythmen. Jeder mit Trigger, Output und Owner.
 
 <Callout type="tip">
 Eine Maßnahme mit großem Hebel und winzigem Aufwand: Mach das Feld **Eval-Case-ID** im Postmortem-Template zur Pflicht. Kein abgeschlossenes Postmortem ohne entweder einen verlinkten neuen Eval-Case oder eine kurze schriftliche Begründung, warum keiner gebraucht wird. Damit zwingst du den Loop in den existierenden Incident-Workflow - ohne neuen Prozess, ohne neues Meeting.
 </Callout>
 
-### Pro Incident: jedes Postmortem schreibt einen Case
+### Pro Incident: jedes Postmortem schreibt einen Test
 
 - **Trigger**: Ein Incident wurde behoben, das Postmortem startet.
 - **Output**: Ein Eval-Case in der Regression-Suite. Oder eine dokumentierte Begründung, warum der Failure nicht reproduzierbar genug für einen Test ist.
 - **Owner**: Wer das Postmortem schreibt - üblicherweise On-Call.
 
-Die Reihenfolge ist wichtig: erst der Case, der den Failure offenlegt, dann der Fix - oder zumindest beides im selben PR. Wer zuerst fixt und dann "wenn Zeit ist" einen Test schreibt, kommt nie dazu. Ein gefixter Bug fühlt sich erledigt an. Der Test, der ihn fixiert, fühlt sich nach Mehrarbeit an. Deshalb muss er Pflicht sein.
+Die Reihenfolge ist wichtig: erst der Test, der den Failure offenlegt, dann der Fix - oder zumindest beides im selben PR. Wer zuerst fixt und dann "wenn Zeit ist" einen Test schreibt, kommt nie dazu. Ein gefixter Bug fühlt sich erledigt an. Der Test, der ihn fixiert, fühlt sich nach Mehrarbeit an. Deshalb muss er Pflicht sein.
 
-> Ein Postmortem ohne neuen Test-Case ist ein Tagebucheintrag, keine Verbesserung.
+> Ein Postmortem ohne neuen Testfall ist ein Tagebucheintrag, keine Verbesserung.
 
 ### Pro Woche: Triage offener Production-Failures
 
 - **Trigger**: Ein fester Slot von 30-60 Minuten, einmal die Woche im Kalender.
-- **Output**: Aus der Sampling-Eval und aus Support-Tickets fließen Failures durch eine schnelle Triage. Jedes Item bekommt eines von drei Labels: *neuer Case*, *zu schwach für die Suite*, *bereits abgedeckt*.
+- **Output**: Aus der Sampling-Eval und aus Support-Tickets fließen Failures durch eine schnelle Triage. Jeder Eintrag bekommt eines von drei Labels: *neuer Test*, *zu schwach für die Suite*, *bereits abgedeckt*.
 - **Owner**: Rotierend im Team-Round-Robin, nicht beim AI-Lead allein.
 
-Der Sinn dieses Termins ist nicht Vollständigkeit. Es geht darum, den Speicher der vergangenen Woche zu räumen, bevor er kippt. Was diese Woche nicht eingeordnet wird, kommt nächste Woche dreimal so groß zurück - und keiner erinnert sich mehr an die Details.
+Der Sinn dieses Termins ist nicht Vollständigkeit. Es geht darum, die offenen Failures der Woche durchzugehen, solange jeder sich noch erinnert. Was diese Woche nicht eingeordnet wird, kommt nächste Woche dreimal so groß zurück - und keiner erinnert sich mehr an die Details.
 
 ### Pro Quartal: Suite-Review
 
 - **Trigger**: Quartalsende, mit AI-Team und Product-Owner des Features.
-- **Output**: Drei Listen. Welche Cases sind obsolet (Feature deprecated, Failure-Mode strukturell unmöglich)? Welche Failure-Modes häufen sich (das wird der Investigation-Backlog für das nächste Quartal)? Wo fehlen Cases (welche Use-Cases haben kaum Coverage)?
+- **Output**: Drei Listen. Welche Tests sind obsolet (Feature deprecated, Failure-Mode strukturell unmöglich)? Welche Failure-Modes häufen sich (das wird der Untersuchungs-Backlog für das nächste Quartal)? Wo fehlen Tests (welche Use-Cases haben kaum Coverage)?
 - **Owner**: AI-Team führt durch, Feature-Team validiert.
 
-Das Quartals-Review ist der einzige Termin, in dem Cases überhaupt wieder rausfliegen dürfen. Nicht aus dem Bauch, sondern aus dieser Liste, mit Begründung im Commit.
+Das Quartals-Review ist der einzige Termin, in dem Tests überhaupt wieder rausfliegen dürfen. Nicht aus dem Bauch, sondern aus dieser Liste, mit Begründung im Commit.
 
 ### Verantwortung beim Feature-Team, nicht beim AI-Team
 
-Das ist die unbequeme Aussage. Wer das Feature betreibt, schreibt die Cases - nicht eine zentrale Eval-Crew. On-Call sieht den Incident, On-Call kennt die Failure-Mode am intimsten, On-Call schreibt den Case. Applied LLMs formuliert genau das als Voraussetzung für eine lebende Suite: Diese Haltung muss in der Organisation verankert werden, indem die Annotation von In- und Outputs Teil der On-Call-Rotation wird.
+Wer das Feature betreibt, schreibt die Tests - nicht eine zentrale Eval-Crew. On-Call sieht den Incident, On-Call kennt die Failure-Mode am genauesten, On-Call schreibt den Test. Applied LLMs formuliert genau das als Voraussetzung für eine lebende Suite: Diese Haltung muss in der Organisation verankert werden, indem die Annotation von In- und Outputs Teil der On-Call-Rotation wird.
 
-Das AI-Team baut die Infrastruktur, reviewt die Case-Qualität, hilft beim Format. Aber es ersetzt nicht das Domänenwissen des Teams, das den Failure auf dem Tisch hatte.
+Das AI-Team baut die Infrastruktur, reviewt die Test-Qualität, hilft beim Format. Aber es ersetzt nicht das Domänenwissen des Teams, das den Failure auf dem Tisch hatte.
 
 ### Anti-Pattern: der Eval-Champion
 
-In jedem Team gibt es eine Person, die "das mit den Evals" sehr gut versteht und gern macht. Wenn du nichts gegensteuerst, landet die ganze Suite-Pflege auf dieser Person. Funktioniert eine Weile - bis sie krank wird, das Team wechselt, oder ausbrennt. Dann kennt niemand sonst den Aufbau, niemand traut sich an einen Case ran, und die Suite versteinert in genau dem Zustand, in dem der Champion sie verlassen hat.
+In jedem Team gibt es eine Person, die "das mit den Evals" sehr gut versteht und gern macht. Wenn du nichts gegensteuerst, landet die ganze Suite-Pflege auf dieser Person. Funktioniert eine Weile - bis sie krank wird, das Team wechselt, oder ausbrennt. Dann kennt niemand sonst den Aufbau, niemand traut sich an einen Test ran, und die Suite versteinert in genau dem Zustand, in dem der Champion sie verlassen hat.
 
-Bus-Faktor 1 ist kein Betriebsmodell. Drei Heuristiken dagegen: Pairing beim Schreiben jedes Cases. Rotierende Triage statt fester Owner. Quartals-Review im ganzen Team, nicht im 1:1 zwischen Champion und Lead.
+Bus-Faktor 1 ist kein Betriebsmodell. Drei Heuristiken dagegen: Pairing beim Schreiben jedes Tests. Rotierende Triage statt fester Owner. Quartals-Review im ganzen Team, nicht im 1:1 zwischen Champion und Lead.
 
 <Accordion title="Postmortem-Template mit Eval-Pflichtfeld">
 
@@ -357,8 +368,8 @@ Bus-Faktor 1 ist kein Betriebsmodell. Drei Heuristiken dagegen: Pairing beim Sch
 - **Trigger**: Was hat den Incident ausgelöst? (User-Input, Modell-Update, Tool-Change, ...)
 - **Trace-ID**: <Link zum vollständigen Trace im Observability-Tool>
 - **Failure-Mode**: Welche Kategorie? (Refusal, Halluzination, Tool-Misuse, Format-Drift, ...)
-- **Eval-Case-ID**: <Link zum neuen Case in der Regression-Suite>
-  - *Wenn leer: Begründung, warum kein Case möglich ist - blockiert sonst den Abschluss.*
+- **Eval-Case-ID**: <Link zum neuen Eval-Case in der Regression-Suite>
+  - *Wenn leer: Begründung, warum kein Eval-Case möglich ist - blockiert sonst den Abschluss.*
 - **Fix**: Was wurde geändert? (Prompt, Tool-Schema, Retrieval, Modell, ...)
 - **Rollout-Stufe**: Canary / Staged / Full
 - **Owner**: <feature-team>
@@ -368,15 +379,15 @@ Bus-Faktor 1 ist kein Betriebsmodell. Drei Heuristiken dagegen: Pairing beim Sch
 
 ## Typische Gegenargumente
 
-Wer den Loop zum ersten Mal vor einem Team aufzieht, bekommt ein Set an Einwänden zurück, das sich zwischen Firmen kaum unterscheidet. Die meisten sind berechtigt - sie führen aber selten zu "brauchen wir nicht", sondern zu "brauchen wir kleiner". Hier die wiederkehrenden sechs, mit jeweils einer Antwort, die du selbst formulieren kannst.
+Wer den Loop zum ersten Mal vor einem Team aufzieht, bekommt eine Reihe Einwände zurück, die sich zwischen Firmen kaum unterscheiden. Die meisten sind berechtigt - sie führen aber selten zu "brauchen wir nicht", sondern zu "brauchen wir kleiner". Hier die wiederkehrenden sechs, mit jeweils einer Antwort, die du selbst formulieren kannst.
 
 ### "Wir bekommen unser Eval-Set damit unwartbar groß."
 
 Größe ist hier das Ziel, nicht der Defekt. Eine Suite, die nach einem Jahr Betrieb genauso schlank ist wie am ersten Tag, hat keine Realität gesehen. Wartbarkeit lösen wir über Tags und Sub-Suites: `regression`, `tool-contract`, `routing`, `pii-redaction`. Pre-Merge läuft nur die kritische Auswahl, nightly läuft alles - und der teure Lauf ist genau deshalb teuer, weil er etwas wert ist.
 
-### "Production-Daten dürfen wir nicht ins Repo."
+### "Production-Daten gehören nicht ins Repo."
 
-Korrekt. Sollen sie auch nicht. Genau dafür gibt es Redaction in der Trace-Pipeline und synthetische Cases, die nur die Failure-Struktur konservieren - das war Thema des PII-Kapitels. Die Test-Case-Datei kennt `customer_id="cust_demo_001"`, nicht den echten User. Wer "keine Production-Daten ins Repo" als "keine Incident-Tests" liest, hat zwei verschiedene Dinge zu einem gemacht.
+Korrekt. Sollen sie auch nicht. Genau dafür gibt es Redaction in der Trace-Pipeline und synthetische Tests, die nur die Failure-Struktur konservieren - das war Thema des PII-Kapitels. Die Testfall-Datei kennt `customer_id="cust_demo_001"`, nicht den echten User. Wer "keine Production-Daten ins Repo" als "keine Incident-Tests" liest, hat zwei verschiedene Dinge zu einem gemacht.
 
 ### "Postmortems schaffen wir kaum, jetzt soll noch ein Test dazu?"
 
@@ -388,11 +399,11 @@ Reproduzierbar ist nicht der exakte Output - reproduzierbar sind Trigger und erw
 
 ### "Wir haben kein Sampling-Eval, also keine Incidents."
 
-Doch, sie kommen. Über Support-Tickets, Sales-Eskalationen, den CTO-Slack und die eine LinkedIn-DM, die niemand sehen wollte. Das ist kein Sampling im technischen Sinne, aber es ist Signal aus Produktion - und genau dieses Signal muss in den Loop fließen, bevor es im Ticketsystem versandet. Bis ein echtes Sampling-Eval steht, ist das Support-Postfach das Eval. Tag in Linear, Pflichtfeld "Failure-Mode" beim Schließen, wöchentliches Triage-Meeting mit Eval-Ownership. Mehr Mechanik braucht es zum Anfangen nicht.
+Doch, sie kommen. Über Support-Tickets, Sales-Eskalationen, den CTO direkt und die eine Nachricht von außen. Das ist kein Sampling im technischen Sinne, aber es ist Signal aus Produktion - und genau dieses Signal muss in den Loop fließen, bevor es im Ticketsystem versandet. Bis ein echtes Sampling-Eval steht, ist das Support-Postfach das Eval. Tag im Ticketsystem, Pflichtfeld "Failure-Mode" beim Schließen, wöchentliches Triage-Meeting mit Eval-Ownership. Mehr Mechanik braucht es zum Anfangen nicht.
 
-### "Das ist Compliance-Theater."
+### "Das ist Compliance-Fassade."
 
-Wäre es, wenn der Loop nur als Audit-Vorbereitung existieren würde. Hier ist es umgekehrt: Der Loop ist die Substanz - kontinuierliche Verbesserung der Suite gegen reale Failure-Modes - und der Compliance-Nachweis fällt nebenbei ab. Wie im PII-Kapitel gezeigt, deckt der Pfad genau das ab, was Art. 72/73 des EU AI Act verlangen. Theater wäre, das Ergebnis zu dokumentieren, ohne den Loop zu fahren.
+Wäre es, wenn der Loop nur als Audit-Vorbereitung existieren würde. Hier ist es umgekehrt: Der Loop ist die Substanz - kontinuierliche Verbesserung der Suite gegen reale Failure-Modes - und der Compliance-Nachweis fällt nebenbei ab. Wie im PII-Kapitel gezeigt, deckt der Pfad genau das ab, was Art. 72/73 des EU AI Act verlangen. Fassade wäre, das Ergebnis zu dokumentieren, ohne den Loop zu fahren.
 
 > Wer ein "ja, aber" zur Suite hat, hat meistens kein Problem mit der Suite, sondern mit dem Postmortem.
 
@@ -400,22 +411,24 @@ Wäre es, wenn der Loop nur als Audit-Vorbereitung existieren würde. Hier ist e
 
 Eine gute Eval-Suite ist kein Artefakt vom Projektstart. Sie ist ein lebendiges Inventar dessen, was schon einmal kaputtging - und damit dessen, was nicht wieder kaputtgehen darf. Sie atmet mit der Realität, weil die Realität sich nicht an unsere Test-Pläne hält. Jeder Incident, den wir ernst nehmen, lässt sie ein Stück größer und ein Stück präziser werden.
 
-Damit schließt sich der Bogen zu den vorherigen Posts der Serie. Keiner davon trägt für sich alleine - zusammen ergeben sie ein Betriebsmodell:
+Damit schließt sich der Bogen zu den vorherigen Posts der Serie. Keiner davon reicht für sich alleine - zusammen ergeben sie ein Betriebsmodell:
 
+- **[Architecture-Post](/blog/ai-systems-architecture)**: gibt dem System überhaupt erst die Struktur, in der Modelloutput testbar und beobachtbar wird.
 - **[Eval-Pipeline-Post](/blog/ai-evals-ci-pipeline)**: definiert das Set, das im CI gegen jede Änderung läuft.
+- **[Tools-sind-keine-Prompts](/blog/tools-sind-keine-prompts)**: schließt eine ganze Klasse von Drift-Bugs ein, die kein synthetischer Test je sieht.
+- **[Human-in-the-Loop](/blog/human-in-the-loop)**: hält irreversible Aktionen am Approval-Gate auf, bevor der Agent sie ausführt.
 - **[Observability-Post](/blog/observability-ai-features)**: liefert die Traces, aus denen ein Failure überhaupt sichtbar wird.
-- **[Tools-sind-keine-Prompts](/blog/tools-sind-keine-prompts)**: schließt eine ganze Klasse von Drift-Bugs ein, die kein synthetischer Case je sieht.
 - **[Rollout-Post](/blog/ai-rollout-canary-shadow)**: fängt die Regressionen ab, bevor sie 100% der User treffen.
 - **Dieser Post**: macht aus dem Set ein lebendes System, das mit jeder Postmortem-Runde wächst.
 
+<LinkCard url="/blog/ai-systems-architecture"/>
+<LinkCard url="/blog/human-in-the-loop"/>
 <LinkCard url="/blog/ai-rollout-canary-shadow"/>
-<LinkCard url="/blog/observability-ai-features"/>
-<LinkCard url="/blog/ai-evals-ci-pipeline"/>
 
-Das ist kein "pick one". Wer den Rollout staged, aber keine Traces sammelt, sieht nicht, was kippt. Wer Traces sammelt, aber keinen Loop fährt, dokumentiert Failures statt sie zu fixen. Wer den Loop fährt, aber keinen Canary hat, lernt zu spät. Die fünf Bausteine greifen ineinander - und der Incident-zu-Test-Pfad ist der einzige, der sicherstellt, dass die anderen vier mit der Zeit besser werden statt zu altern.
+Die Bausteine wirken nur zusammen. Der Incident-zu-Test-Pfad ist unter ihnen der einzige, der die anderen mit der Zeit besser werden lässt, statt sie altern zu lassen.
 
-Jede Art von Änderung muss durch diesen Loop. Code-Refactor im Agent. Geänderter System-Prompt. Neues Modell, weil das alte abgekündigt wurde. Eine MCP-Tool-Description, die ein Vendor leise umformuliert hat. Ein Datensatz, der für RAG neu indiziert wurde. Wenn auch nur eines davon ohne Lauf gegen die Suite live geht, hat die Suite ihre Aufgabe nicht erfüllt - dann ist sie wieder Theater.
+Jede Art von Änderung muss durch diesen Loop. Code-Refactor im Agent. Geänderter System-Prompt. Neues Modell, weil das alte abgekündigt wurde. Eine MCP-Tool-Description, die ein Vendor leise umformuliert hat. Ein Datensatz, der für RAG neu indiziert wurde. Wenn auch nur eines davon ohne Lauf gegen die Suite live geht, hat die Suite ihre Aufgabe nicht erfüllt - dann ist sie wieder Fassade.
 
-Und dann gibt es noch den nächsten Schritt, der sich daraus ergibt und der hier nicht mehr hineinpasst: Was machen wir, wenn die Suite ehrlich gesammelt hat - und plötzlich sehen wir, dass 60% der Incidents derselben Failure-Mode-Familie angehören? Wie clustern wir Failures, statt sie als isolierte Tickets zu behandeln, und welche Konsequenzen hat das für Architektur, Tool-Design und Prompt? Aber das ist ein anderer Post.
+Und dann gibt es noch einen anderen Hebel, den dieser Post nicht mehr abdeckt: Statt im hundertsten Test den Agent vor `delete_account` zu schützen, könnten wir ihm das Tool an der Stelle gar nicht erst in die Hand geben. Wenn der Flow als Struktur vorgegeben ist und das Modell nur an klar abgegrenzten Punkten entscheidet, treten ganze Klassen von Routing-Failures gar nicht mehr auf - und keiner braucht den hundertsten Test. Aber das ist ein anderer Post.
 
 > Hoffnung ist keine Strategie. Eine Suite, die mit jedem Incident wächst, schon.
