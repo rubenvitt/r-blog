@@ -1,0 +1,287 @@
+Finn: Stell dir vor, du schreibst einem Support-Bot: "Bitte deaktiviert die Marketing-Mails an meine Adresse." Drei Tage später willst du deine Rechnungshistorie ansehen - die ist weg. Komplett weg.
+
+Mara: [überrascht] Warte. Weil...?
+
+Finn: Weil der Agent statt `unsubscribe_marketing` direkt `delete_account` aufgerufen hat. Tool-Call ist sauber durchgelaufen, `success: true`, Agent antwortet "Ich habe deinen Wunsch umgesetzt", Punkt.
+
+Mara: Und alle Gates vorher waren grün?
+
+Finn: Pre-Merge-Eval grün - also der Test im CI vor dem Merge. Shadow-Run grün - das Modell läuft parallel zur Produktion mit, ohne User-Impact. Canary mit ein paar Prozent Traffic, auch grün. Zwei Wochen nach hundert Prozent Rollout knallt es trotzdem.
+
+Mara: Okay, das ist genau der Fall, den ich an AI-Systemen so... unheimlich finde. Niemand hat dieses Eval *vorher* geschrieben. Niemand wäre auf die Idee gekommen, dass jemand "Mail abbestellen" sagt und der Agent löscht den Account.
+
+Finn: Genau. Und das ist der Aufhänger für unser Thema heute. Wir reden über einen Loop, der genau solche Fälle wieder zurück ins System bringt - vom Incident in die Eval-Suite. Ich bin Finn.
+
+Mara: Und ich bin Mara. Und ich würde gern bei diesem Beispiel kurz bleiben, weil das so schön klar macht, was hier eigentlich kaputt ist. Was passiert nach so einem Incident *normalerweise*?
+
+Finn: Hotfix in den Prompt. Ticket geschlossen. Weiter.
+
+Mara: Und was wäre die andere Variante?
+
+Finn: Erst der Test, der den Bug reproduziert. Dann der Fix. Genau wie bei klassischen Bugs eigentlich. Sonst kommt derselbe Failure beim nächsten Modell-Update wieder. Beim nächsten Prompt-Refactor wieder. Beim nächsten Tool-Schema-Wechsel wieder.
+
+Mara: Das ist eigentlich Martin Fowler 2005, oder?
+
+Finn: Wortwörtlich. Fowler hat das für Codebases formuliert: erst den Test schreiben, der den Bug zeigt, dann fixen. Damit der Bug, einmal weg, weg bleibt. Eugene Yan hat das für LLM-Systeme aufgegriffen - er nennt das Eval-Driven Development. Observe, Annotate, Hypothesize, Experiment, Measure. Derselbe Rhythmus, anderer Kontext.
+
+Mara: Und du sagst - bei AI-Systemen haben wir das irgendwie vergessen.
+
+Finn: Wir hatten es nie so richtig. Eval-Suites sind in den meisten Teams aus dem Workshop entstanden, in dem sich ein paar Leute hingesetzt haben und überlegt haben, was User fragen könnten. Das ist ein kuratierter, ausgedachter Datensatz.
+
+Mara: Und Production ist halt nicht kuratiert.
+
+Finn: Production ist Long Tail. Du siehst die Mitte deiner Verteilung in der Eval - du siehst die Ränder erst, wenn echte User sich am System abarbeiten.
+
+Mara: [nachdenklich] Synthetisch sehen wir nur das, was wir uns ausdenken können. Den Rest sehen wir erst, wenn echte Menschen ran dürfen.
+
+Finn: Und das eine wächst, das andere altert. Wenn du es lässt.
+
+Mara: Bevor wir tiefer gehen - ist das Account-Beispiel exotisch, oder gibt es Muster, die in keinem Eval-Set drinstehen, bevor sie passieren?
+
+Finn: Drei Klassen, die ich immer wieder sehe. Erste: Tool-Description-Drift. Ein Vendor ändert leise das Tool-Description-Feld eines MCP-Tools, der Approval-Flow ist längst durch - aber das Modell liest jetzt eine andere Anleitung als der Mensch beim Approval gelesen hat.
+
+Mara: Also stille Updates an einer Stelle, an der niemand mehr hinguckt.
+
+Finn: Zweite: False Success bei Tool-Failures. Der Agent bestätigt eine Hotelreservierung, obwohl der API-Call ein 503 zurückgegeben hat. Der User taucht am Check-in auf, das System kennt ihn nicht. Wer testet routinemäßig den Fall "Tool antwortet kaputt, Modell tut so, als wäre alles in Ordnung"?
+
+Mara: Niemand, vermute ich.
+
+Finn: Niemand. Und drittens: Halluzinationen aus Wissenslücken. Der Cursor-Support-Bot, "Sam", hat im April 2025 eine Single-Device-Login-Policy halluziniert, die nie existiert hat. User haben daraufhin ihre Subscriptions gekündigt.
+
+Mara: Au.
+
+Finn: Au. Im Eval-Set hätte niemand diese Frage je formuliert - bis ein realer User sie gestellt hat. Das ist die Gemeinsamkeit aller drei Klassen: im Nachhinein trivial in einen Test zu gießen. Vorher denkt niemand daran.
+
+Mara: Okay, ich verstehe jetzt das *Problem*. Und ich verstehe das Prinzip - der Bug wird ein Test, bevor er ein Fix wird. Aber wie sieht das *konkret* aus? Vom "User hat sich beschwert" bis "wir haben einen neuen Regressionstest" - was ist dazwischen?
+
+Finn: Im Post sind das sieben Schritte. Ich erspare uns das Durchnummerieren und nehme dich einfach an unserem Account-Fall entlang mit.
+
+Mara: Danke.
+
+Finn: Es fängt damit an, dass der Incident überhaupt erkannt wird. Das Signal kann von überall kommen - Support-Ticket, jemand postet einen Screenshot, eine Sampling-Eval schlägt aus...
+
+Mara: Was ist eine Sampling-Eval?
+
+Finn: Wenn du in Produktion regelmäßig ein Sample echter Traces durch deine Grader laufen lässt - also durch deine Bewertungslogik. Anders als die geschriebene Suite, die fixe Fälle prüft.
+
+Mara: Okay.
+
+Finn: Egal woher das Signal kommt - was zählt, ist eine Trace-ID. Also der vollständige Mitschnitt vom Agent-Run, mit allen Tool-Calls, allen Outputs. Ohne Trace ist es eine Anekdote. Anekdoten kannst du nicht in eine Suite schreiben.
+
+Mara: Im Account-Fall...
+
+Finn: Support hat den Trace zur Beschwerde gezogen. Conversation-ID matcht. Wir sehen die User-Message, wir sehen den `delete_account`-Call, wir sehen das `success: true`. Reproduzierbar falsch.
+
+Mara: Und dann?
+
+Finn: Snapshot von allem. Vollständiger Trace, Prompt-Version, Modell-Pin, Tool-Description-Snapshot, Retrieval-Hits. Alles. Sofort.
+
+Mara: Warum so streng?
+
+Finn: Weil in zwei Wochen, wenn du den Fall reproduzieren willst, der Prompt schon dreimal weiterentwickelt wurde. Das Modell hat ein automatisches Update bekommen. Die Tool-Description wurde leise umformuliert. Wenn du es heute nicht festhältst, hast du morgen nichts mehr zum Anschauen.
+
+Mara: [trocken] Also: das Beweisstück mitnehmen, bevor der Tatort umgeräumt wird.
+
+Finn: Genau. Und der Tatort wird in unserem Fall in Stunden umgeräumt, nicht in Tagen.
+
+Mara: Was kommt als nächstes? Den Bug irgendwie kategorisieren?
+
+Finn: Ja, und das ist anstrengender als es klingt. "Der Agent war komisch" ist keine Failure-Mode. Failure-Mode meint hier nicht den einzelnen Bug - es meint die Klasse, die Kategorie. Im Account-Fall wäre das sowas wie "destruktives Tool aufgerufen bei reversiblem Intent". Du brauchst eine kurze, kategorische Bezeichnung, die du als Tag in der Suite wiederfindest.
+
+Mara: Warum so pingelig mit der Benennung?
+
+Finn: Weil du sechs Monate später einen ähnlichen Trace siehst und in Sekunden wissen willst: kenne ich das schon? Habe ich Tests dafür? Häuft sich das? Ohne konsistentes Vokabular wird deine Suite ein Friedhof.
+
+Mara: Klingt aber nach einem Wiki, das niemand pflegt. Wer hält das Vokabular kohärent?
+
+Finn: Das ist tatsächlich Disziplin. Im Quartals-Review schaut man drauf - welche Failure-Modes häufen sich, welche sind doppelt benannt. Wenn es nicht im Rhythmus passiert, verwildert es.
+
+Mara: Okay. Jetzt haben wir einen Trace und eine Failure-Mode. Aber - das ist *was* falsch war. Was ist mit *was* hätte passieren sollen?
+
+Finn: Genau, das ist der nächste Schritt - und der kommt erstaunlich oft zu kurz. Die Frage ist nicht "war das gut" oder "schlecht", sondern: wie genau hätte sich das System verhalten müssen?
+
+Mara: Im Account-Fall?
+
+Finn: Erstens, der Agent ruft `unsubscribe_marketing` auf statt `delete_account`.
+
+Mara: Zweitens?
+
+Finn: Wenn die User-Message mehrdeutig ist zwischen reversibel und destruktiv, fragt er nach.
+
+Mara: Und?
+
+Finn: Destruktive Tools werden niemals ohne explizite User-Bestätigung getriggert. Selbst wenn der User sie scheinbar bestellt hat.
+
+Mara: Drei prüfbare Bedingungen, alle aus dem Trace ableitbar.
+
+Finn: Das ist deine Eval-Spezifikation. Wenn du die nicht in zwei, drei Sätzen aufschreiben kannst, hast du die Failure-Mode noch nicht verstanden.
+
+Mara: Bevor wir weitergehen - was ist eigentlich mit den PII-Daten in dem Trace, den du da snapshottest? Echte E-Mail, echte User-ID, alles drin.
+
+Finn: Sehr wichtige Frage. Das ist der Schritt, an dem viele Leute aussteigen.
+
+Mara: [skeptisch] Warum?
+
+Finn: Weil der Reflex ist: "Production-Daten gehören nicht ins Repo, also keine Incident-Tests." Und der Reflex ist halb richtig. Du *willst* keine Production-Daten im Repo. Du *willst* aber die Failure-Struktur konservieren. Das sind zwei verschiedene Dinge.
+
+Mara: Wie hältst du die auseinander?
+
+Finn: Du fragst dich: welcher Aspekt dieses Traces löst den Bug aus? Im Account-Fall ist es die Mehrdeutigkeit der User-Message kombiniert mit der Existenz eines destruktiven Tools im Katalog. Das ist die Failure-Struktur. Und die hat keine `customer_id` und keinen Klarnamen.
+
+Mara: Also aus `usr_8a72f...` wird `user_demo_001`, aus der echten Mail wird `demo@example.test`. Aber die User-Message bleibt strukturell gleich.
+
+Finn: Genau. Und es gibt einen einfachen Test, ob du das richtig gemacht hast: Reproduziert die sanitisierte Version den Fehler immer noch? Wenn der Test plötzlich grün ist, hast du zu viel rausgenommen.
+
+Mara: [nachdenklich] "Wenn es nicht mehr kaputt geht, hast du das Wesentliche entfernt." Schöne Heuristik.
+
+Finn: Übrigens - das ist genau der Schritt, den der EU AI Act als Post-Market-Monitoring sehen will. Anonymisierte Failure-Daten, dokumentiert, analysiert. Wer Art. 72 lesen muss, baut hier Compliance fast nebenbei mit.
+
+Mara: Interessant. Aber zurück - wie kommt das jetzt in die Suite? Welche Art Test?
+
+Finn: Da wird es technisch. Du hast grob drei Optionen: einen Code-Grader, einen LLM-Judge, oder eine Workflow-Eval über mehrere Schritte.
+
+Mara: Was prüft jeder davon?
+
+Finn: Code-Grader: deterministisch, schnell, billig. Gut für Tool-Use - prüfe: "Im Tool-Call-Array darf `delete_account` nicht vorkommen." Schwarz oder weiß.
+
+Mara: LLM-Judge?
+
+Finn: Ein zweites Modell bewertet den Output gegen eine Rubric. "Ist die Antwort empathisch?" "Wurde die richtige Rückfrage gestellt?" Brauchst du, wo Stil oder Begründung zählt - was Code nicht messen kann.
+
+Mara: Und Workflow-Eval?
+
+Finn: Beurteilt den ganzen Trace, nicht den einzelnen Schritt. Wichtig für mehrstufige Agent-Flows. Im Account-Fall reichen Code-Grader plus LLM-Judge.
+
+Mara: Und *dann* fängt der Fix an.
+
+Finn: Erst dann. Test ist rot. Das ist gut. Genau jetzt fixt du - so lange, bis der Test grün ist, und zwar nicht zufällig grün, sondern weil das System den Bug strukturell verhindert.
+
+Mara: [denkt nach] Was mir an dieser Reihenfolge gefällt: erst rot, dann grün - das ist genau die Disziplin, die wir aus Test-Driven Development kennen. Bei Code völlig normal. Bei LLM-Features irgendwie nicht.
+
+Finn: Weil ein gefixter LLM-Bug sich erledigt anfühlt. Du änderst den Prompt, testest einmal manuell, sieht gut aus, fertig.
+
+Mara: Und der Test danach fühlt sich nach Mehrarbeit an.
+
+Finn: Genau deshalb muss er Pflicht sein. Und das ist der Punkt, an dem wir aus dem "Was tut man" rauskommen und ins "Wie zwingt man das im Team durch" reingehen.
+
+Mara: Weil "Disziplin" als einzige Antwort ist halt eine schwache Antwort.
+
+Finn: Stimmt. Es gibt da eine sehr konkrete kleine Hebel-Maßnahme: Das Postmortem-Template kriegt ein Pflichtfeld "Eval-Case-ID". Kein Postmortem schließt, ohne entweder einen Link zum neuen Test - oder eine schriftliche Begründung, warum kein Test möglich war.
+
+Mara: Das ist... fast schon trivial.
+
+Finn: Klingt trivial. Aber damit hast du einen Mechanismus, der es erzwingt - ohne neues Meeting, ohne neuen Workflow. Du nimmst das Artefakt, das eh produziert wird, und sagst: hier fehlt ein Feld.
+
+Mara: Wer schreibt die Tests dann eigentlich?
+
+Finn: [bestimmt] Das Feature-Team. Wer das Feature betreibt, wer On-Call war, wer den Trace zuerst gesehen hat. Die Person hat das Domänenwissen. Applied LLMs - das Sammelwerk von Yan, Husain und anderen - formuliert genau das: Annotation und Eval-Schreiben gehören in die On-Call-Rotation.
+
+Mara: Nicht eine zentrale Eval-Crew?
+
+Finn: Das AI-Team baut Infrastruktur, Tooling, reviewt Test-Qualität. Aber es schreibt nicht die Tests für andere Teams. Das skaliert nicht.
+
+Mara: Apropos "skaliert nicht" - es gibt da auch ein Anti-Pattern, oder?
+
+Finn: [lacht kurz] Ja, und ich war jahrelang dieses Anti-Pattern. Der Eval-Champion. In jedem Team gibt es eine Person, die das mit den Evals besonders gut versteht und gerne macht. Wenn du nichts gegensteuerst, landet die komplette Suite-Pflege auf dieser Person.
+
+Mara: Und dann?
+
+Finn: Funktioniert eine Weile. Bis sie krank wird. Oder das Team wechselt. Oder ausbrennt. Dann kennt niemand sonst die Suite, und sie versteinert.
+
+Mara: Bus-Faktor 1.
+
+Finn: Genau. Drei Gegenmittel: Tests im Pairing schreiben. Triage rotieren statt fest vergeben. Quartals-Review im ganzen Team, nicht im 1:1 zwischen Champion und Lead.
+
+Mara: [überlegt] Ich möchte einen Schritt zurück gehen. Wir haben jetzt viel über *den Test* und über *wer ihn schreibt* geredet. Aber was macht eigentlich einen *guten* Incident-Test aus? Versus einen, der nach drei Modell-Updates wieder rausfliegt, weil er flaky geworden ist?
+
+Finn: Das ist der wichtigste Punkt der ganzen Folge.
+
+Mara: Hört man gerne.
+
+Finn: Wenn du unvorsichtig bist, schreibst du einen Test, der den exakten Output prüft. Der fällt um, sobald das Modell anfängt mit "Klar, gerne!" statt mit "Hier sind die Informationen".
+
+Mara: Du prüfst Stil, nicht Verhalten.
+
+Finn: Genau. Und im Post gibt es ein schönes Beispiel: ein Support-Agent verweigert die Antwort auf eine harmlose Frage zu Kündigungsmodalitäten - "Das darf ich nicht beantworten", obwohl die Info öffentlich ist.
+
+Mara: Also der Agent hat sich geweigert, obwohl er dürfte. Das ist mit Refusal gemeint?
+
+Finn: Genau. Refusal ist der Bug. Wie testest du den jetzt?
+
+Mara: Sag du es mir.
+
+Finn: Zu eng wäre: "Response ist gleich dem perfekten Antwort-String." Funktioniert beim ersten Modell, kippt beim nächsten Update. Zu weit wäre: "Response ist nicht leer." Fängt nichts. Genau richtig sind drei Checks zusammen.
+
+Mara: Welche drei?
+
+Finn: Erstens, der Tool-Call-Trace muss `lookup_cancellation_terms` enthalten - der Agent muss tatsächlich nachgeschaut haben. Zweitens, die Response darf keinen Refusal-Marker enthalten - das ist eine Liste von Phrasen wie "darf ich nicht beantworten", die du dir aus dem Postmortem destillierst. Drittens, ein LLM-Judge mit einer klaren Rubric: "Beantwortet die Antwort die konkrete Frage und bleibt empathisch?"
+
+Mara: [zustimmend] Du testest die Failure-Mode, nicht ihre damalige Ausprägung. Das überlebt Modell-Updates.
+
+Finn: Genau dieser Unterschied entscheidet, ob deine Suite mit dem System wächst oder ob sie die Vergangenheit konserviert.
+
+Mara: Was mich da noch beschäftigt: LLM-Outputs sind ja nicht-deterministisch. Wie reproduzierst du überhaupt einen Failure, wenn der Agent beim zweiten Lauf vielleicht etwas anderes sagt?
+
+Finn: Reproduzierbar ist nicht der exakte Output. Reproduzierbar sind Trigger und Failure-Mode. Der Test fragt nicht "kommt Token für Token dasselbe raus", sondern "tritt die Failure-Klasse noch auf". Statt eines einzelnen Laufs nimmst du eine Pass-Rate über mehrere Läufe und definierst eine Schwelle.
+
+Mara: Acht von zehn grün heißt grün, zwei von zehn grün heißt rot?
+
+Finn: Sowas in der Art. Nicht-Determinismus ist ein Argument für mehr Statistik im Eval, nicht für weniger Eval.
+
+Mara: Schön. Ich höre auf Konferenzen oft das Argument "Wir haben gar keine Sampling-Eval, also haben wir keine Incidents."
+
+Finn: [lacht kurz] Doch. Du hast Incidents. Du nennst sie nur anders.
+
+Mara: Wie zum Beispiel?
+
+Finn: Support-Tickets. Sales-Eskalationen. Die direkte Nachricht vom CTO. Der Screenshot von einem User auf LinkedIn. Bis ein richtiges Sampling steht, ist das Support-Postfach das Eval.
+
+Mara: Also: Tag im Ticketsystem, Pflichtfeld "Failure-Mode" beim Schließen, einmal die Woche Triage.
+
+Finn: Mehr Mechanik brauchst du nicht, um anzufangen. Und das ist auch das, was ich Teams immer mitgebe: wartet nicht auf das richtige Tooling. Der Loop ist tool-agnostic.
+
+Mara: Wann braucht man dann doch eine Plattform wie LangSmith, Braintrust oder Phoenix?
+
+Finn: Wenn du fünfzig Incidents im Quartal annotierst und zehn Reviewer koordinierst, lohnen sich Eval-Plattformen mit Annotation-Queues und versionierten Datasets. Aber für drei Personen mit zwei Incidents im Monat reicht ein Verzeichnis mit JSONL-Dateien und ein simpler Test-Loader.
+
+Mara: Tool skaliert mit Volumen, nicht mit Anspruch.
+
+Finn: Genau.
+
+Mara: Was ich mich ehrlich gefragt habe, während wir reden: Wenn dieser Loop richtig läuft - was ist eigentlich der Failure-Mode des Vorgehens selbst? Wo geht das schief?
+
+Finn: [denkt nach] Gute Frage. Zwei Sachen. Erstens: wenn du das mechanisch machst und jeder Incident reflexartig in die Suite wandert, erstickst du irgendwann in flaky Tests und Karteileichen. Eine Suite, die alles reinnimmt, ist genauso schlecht wie eine, die nichts reinnimmt.
+
+Mara: Und das zweite?
+
+Finn: Du brauchst einen Mechanismus, in dem Tests auch wieder rausfliegen können. Aber nur mit Begründung im Commit. Quartals-Review, nicht aus dem Bauch. "Test ist flaky" ist kein Grund zum Löschen - dann ist der Test schlecht geschrieben, nicht der Incident irrelevant.
+
+Mara: Sonst optimierst du auf grüne CI statt auf richtige Aussagen.
+
+Finn: Genau. Und das ist eine Versuchung, die ist sehr real.
+
+Mara: Ich glaube, wir kommen zum Ende. Eine Sache lässt mich aber nicht los. Der Account-Fall vom Anfang - der User mit der Marketing-Mail-Abmeldung. Was wäre anders gelaufen, wenn das Team diesen Loop schon gehabt hätte?
+
+Finn: Vielleicht hätte ein ähnlicher Routing-Bug bei `cancel_subscription` Monate vorher einen Eval-Case erzeugt. Mit Tag `routing/destructive-on-soft-intent`. Beim Modell-Update wäre der `delete_account`-Case dann automatisch mitgetestet worden, weil er strukturell ähnlich ist. Pre-Merge hätte rot geschlagen, das Update wäre nie live gegangen.
+
+Mara: Eine Suite, die mit der Realität atmet.
+
+Finn: Wenn du sie atmen lässt. Eine Eval-Suite ist kein Artefakt vom Projektstart. Sie ist ein lebendes Inventar dessen, was schon einmal kaputtging - und damit dessen, was nicht wieder kaputtgehen darf.
+
+Mara: Was ist der eine Satz, den jemand mitnehmen sollte, der morgen anfangen will?
+
+Finn: Pflichtfeld "Eval-Case-ID" im Postmortem-Template. Ein Satz, eine Änderung, kein neues Meeting. Wenn jedes Postmortem verbindlich entweder einen Test produziert oder eine schriftliche Begründung, warum keiner geht - dann hast du den Loop. Der Rest ist Verfeinerung.
+
+Mara: Und alles andere folgt daraus.
+
+Finn: Übrigens - es gibt noch einen ganz anderen Hebel, den dieser Loop gar nicht abdeckt. Statt im hundertsten Test den Agent vor `delete_account` zu schützen, könntest du ihm das Tool an der Stelle einfach gar nicht erst in die Hand geben. Wenn der Flow als Struktur vorgegeben ist und das Modell nur an klar abgegrenzten Punkten entscheidet, treten ganze Klassen von Routing-Failures gar nicht mehr auf.
+
+Mara: Und dann braucht keiner den hundertsten Test.
+
+Finn: Genau. Aber das ist ein anderer Post - und vermutlich eine andere Folge.
+
+Mara: Wenn euch das gepackt hat: der vollständige Artikel mit allen Details, mit Code-Beispielen und mit den typischen Gegenargumenten steht auf rubeen.dev. Feedback sehr gern - insbesondere wenn ihr ein Beispiel habt, das einen Incident-Test bei euch ausgelöst hat. Diese Geschichten sind die besten Lernquellen.
+
+Finn: Bis zum nächsten Mal.
+
+Mara: Bis dann.

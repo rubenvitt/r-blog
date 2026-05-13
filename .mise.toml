@@ -1,0 +1,5 @@
+[env]
+# sharp baut sonst from source gegen Homebrew-libvips, statt die mitgelieferte
+# Prebuilt-Binary aus @img/sharp-darwin-arm64 zu nutzen — und scheitert dann
+# am fehlenden node-addon-api.
+SHARP_IGNORE_GLOBAL_LIBVIPS = "1"
