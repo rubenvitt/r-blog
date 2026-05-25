@@ -33,6 +33,7 @@ const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !d
                                 date={post.data.date}
                                 tags={post.data.tags}
                                 slug={post.id}
+                                image={post.data.image}
                         />
                 ))}
             </div>
