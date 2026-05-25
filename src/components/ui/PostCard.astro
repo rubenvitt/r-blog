@@ -1,13 +1,16 @@
 ---
+import { Image } from 'astro:assets';
+
 interface Props {
     title: string;
     description: string;
     date: Date;
     tags: string[];
     slug: string;
+    image?: ImageMetadata;
 }
 
-const {title, description, date, tags, slug} = Astro.props;
+const {title, description, date, tags, slug, image} = Astro.props;
 
 const formattedDate = date.toLocaleDateString('de-DE', {
     year: 'numeric',
@@ -18,11 +21,30 @@ const formattedDate = date.toLocaleDateString('de-DE', {
 
 <a href={`/blog/${slug}`} class="group block">
     <article class="py-5 border-b border-(--color-border) transition-colors">
-        <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-                <h3 class="font-semibold text-(--color-text) group-hover:text-(--color-accent) transition-colors tracking-tight">
-                    {title}
-                </h3>
+        <div class="flex items-start gap-4">
+            {image && (
+                    <div class="hidden sm:block shrink-0 overflow-hidden rounded-xl border border-(--color-border)">
+                        <Image
+                            src={image}
+                            alt=""
+                            widths={[160, 320]}
+                            sizes="160px"
+                            class="block h-20 w-32 object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                        />
+                    </div>
+            )}
+            <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-4">
+                    <h3 class="font-semibold text-(--color-text) group-hover:text-(--color-accent) transition-colors tracking-tight">
+                        {title}
+                    </h3>
+                    <time
+                            datetime={date.toISOString()}
+                            class="shrink-0 text-sm text-(--color-text-muted) pt-0.5"
+                    >
+                        {formattedDate}
+                    </time>
+                </div>
                 <p class="mt-1 text-sm text-(--color-text-secondary) line-clamp-2">
                     {description}
                 </p>
@@ -36,12 +58,6 @@ const formattedDate = date.toLocaleDateString('de-DE', {
                         </div>
                 )}
             </div>
-            <time
-                    datetime={date.toISOString()}
-                    class="shrink-0 text-sm text-(--color-text-muted) pt-0.5"
-            >
-                {formattedDate}
-            </time>
         </div>
     </article>
 </a>
