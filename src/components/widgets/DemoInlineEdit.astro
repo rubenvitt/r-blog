@@ -1,0 +1,126 @@
+---
+// Interaktive Demo: Inline-Edit eines generierten Plans (gemockt, keine KI).
+// Klick auf eine Zeile -> direkt editierbar. Demonstriert "Artefakt direkt
+// bearbeiten statt Re-Prompt". State lebt rein clientseitig.
+const steps = [
+    'Feature-Flag `new_auth` anlegen und auf 0% stellen',
+    'User-Model um das Feld `mfa_enabled` erweitern',
+    'Migration schreiben - erst nach dem Backup ausführen',
+    'Auth-Middleware auf das Flag umstellen',
+];
+---
+
+<div class="not-prose my-6 demo-inline-edit overflow-hidden rounded-xl border border-(--color-border)">
+    <div class="flex items-center gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-4 py-2.5">
+        <span class="flex gap-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-(--color-border)"></span>
+            <span class="h-2.5 w-2.5 rounded-full bg-(--color-border)"></span>
+            <span class="h-2.5 w-2.5 rounded-full bg-(--color-border)"></span>
+        </span>
+        <span class="text-xs font-medium text-(--color-text-muted)">Umsetzungsplan · Editor</span>
+    </div>
+
+    <div class="divide-y divide-(--color-border) bg-(--color-bg)">
+        {steps.map((text, i) => (
+            <div class="demo-step group flex items-start gap-3 px-4 py-3" data-step>
+                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-(--color-bg-secondary) text-xs font-medium text-(--color-text-muted)">
+                    {i + 1}
+                </span>
+                <div class="demo-step-body min-w-0 flex-1">
+                    <button type="button" class="demo-step-text w-full cursor-text text-left text-sm leading-relaxed text-(--color-text) hover:text-(--color-accent)">
+                        {text}
+                    </button>
+                    <span class="demo-edit-hint mt-0.5 block text-[11px] text-(--color-text-muted) opacity-0 transition-opacity group-hover:opacity-100">
+                        Klick zum Bearbeiten
+                    </span>
+                </div>
+            </div>
+        ))}
+    </div>
+
+    <div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
+        Du editierst das Artefakt direkt - kein Re-Prompt, der Rest des Plans bleibt unangetastet.
+    </div>
+</div>
+
+<script is:inline>
+    document.querySelectorAll('.demo-inline-edit').forEach(function (root) {
+        root.querySelectorAll('[data-step]').forEach(function (step) {
+            var body = step.querySelector('.demo-step-body');
+            var textBtn = step.querySelector('.demo-step-text');
+            var hint = step.querySelector('.demo-edit-hint');
+            if (!body || !textBtn) return;
+
+            textBtn.addEventListener('click', function () {
+                if (body.dataset.editing === 'true') return;
+                body.dataset.editing = 'true';
+
+                var current = textBtn.textContent.trim();
+
+                var editor = document.createElement('div');
+
+                var ta = document.createElement('textarea');
+                ta.value = current;
+                ta.rows = 2;
+                ta.className =
+                    'w-full resize-none rounded-md border border-(--color-accent) bg-(--color-bg) px-2 py-1.5 text-sm leading-relaxed text-(--color-text) outline-none';
+
+                var actions = document.createElement('div');
+                actions.className = 'mt-2 flex items-center gap-2';
+
+                var save = document.createElement('button');
+                save.type = 'button';
+                save.textContent = 'Speichern';
+                save.className =
+                    'rounded-md bg-(--color-accent) px-2.5 py-1 text-xs font-medium text-white';
+
+                var cancel = document.createElement('button');
+                cancel.type = 'button';
+                cancel.textContent = 'Abbrechen';
+                cancel.className =
+                    'rounded-md border border-(--color-border) px-2.5 py-1 text-xs font-medium text-(--color-text-muted)';
+
+                var note = document.createElement('span');
+                note.className = 'text-[11px] text-(--color-text-muted)';
+                note.textContent = 'Enter speichert · Esc bricht ab';
+
+                actions.appendChild(save);
+                actions.appendChild(cancel);
+                actions.appendChild(note);
+                editor.appendChild(ta);
+                editor.appendChild(actions);
+
+                textBtn.style.display = 'none';
+                if (hint) hint.style.display = 'none';
+                body.appendChild(editor);
+                ta.focus();
+                ta.select();
+
+                function restore() {
+                    editor.remove();
+                    textBtn.style.display = '';
+                    if (hint) hint.style.display = '';
+                    body.dataset.editing = 'false';
+                }
+
+                function commit() {
+                    var next = ta.value.trim();
+                    if (next.length > 0) textBtn.textContent = next;
+                    restore();
+                }
+
+                save.addEventListener('click', commit);
+                cancel.addEventListener('click', restore);
+                ta.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        commit();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        restore();
+                    }
+                });
+            });
+        });
+    });
+</script>

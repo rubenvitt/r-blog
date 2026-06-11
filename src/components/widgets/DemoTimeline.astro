@@ -1,0 +1,96 @@
+---
+// Interaktive Demo: Trace-Waterfall einer angewendeten Refund-Aktion (gemockt).
+// Filter: Alle / nur Tool-Calls / nur Fehler. Zeigt Spans, Approval-Pause,
+// fehlgeschlagenen Tool-Call trotz "Erfolgs"-Meldung (False Success).
+const total = 43500;
+const rows = [
+    { label: 'orchestrator', sub: 'routing · LLM', type: 'llm', status: 'ok', start: 0, dur: 600, durLabel: '0,6s' },
+    { label: 'lookup_order', sub: 'tool', type: 'tool', status: 'ok', start: 600, dur: 90, durLabel: '90ms' },
+    { label: 'verify_customer', sub: 'tool', type: 'tool', status: 'ok', start: 690, dur: 50, durLabel: '50ms' },
+    { label: 'approval', sub: 'refund_order · wartet auf Mensch', type: 'approval', status: 'pause', start: 740, dur: 42000, durLabel: '42s' },
+    { label: 'refund_order', sub: 'tool · timeout', type: 'tool', status: 'error', start: 42740, dur: 600, durLabel: '0,6s', note: 'Agent meldete dennoch „Erstattung raus"' },
+];
+const pct = (n: number) => `${((n / total) * 100).toFixed(2)}%`;
+const barClass: Record<string, string> = {
+    llm: 'bg-(--color-text-muted)',
+    tool: 'bg-cyan-500/70 dark:bg-cyan-400/70',
+    approval: 'bg-amber-500/70 dark:bg-amber-400/70',
+};
+const icon: Record<string, string> = { ok: '✓', pause: '⏸', error: '✗' };
+const iconClass: Record<string, string> = {
+    ok: 'text-emerald-600 dark:text-emerald-400',
+    pause: 'text-amber-600 dark:text-amber-400',
+    error: 'text-red-600 dark:text-red-400',
+};
+---
+
+<div class="not-prose my-6 demo-timeline overflow-hidden rounded-xl border border-(--color-border)">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-3 py-2">
+        <span class="text-xs font-medium text-(--color-text-muted)">Trace · refund-flow</span>
+        <div class="flex gap-1">
+            <button type="button" class="demo-tl-filter rounded-md px-2.5 py-1 text-xs font-medium" data-filter="all" data-active="true">Alle</button>
+            <button type="button" class="demo-tl-filter rounded-md px-2.5 py-1 text-xs font-medium" data-filter="tool">Tool-Calls</button>
+            <button type="button" class="demo-tl-filter rounded-md px-2.5 py-1 text-xs font-medium" data-filter="error">Fehler</button>
+        </div>
+    </div>
+
+    <div class="bg-(--color-bg) px-3 py-3">
+        {rows.map((r) => (
+            <div class="demo-tl-row grid grid-cols-[120px_1fr_50px] items-center gap-2 rounded-md px-1 py-1.5 hover:bg-(--color-bg-secondary)" data-type={r.type} data-status={r.status}>
+                <div class="min-w-0">
+                    <div class="truncate text-xs font-medium text-(--color-text)">
+                        <span class={iconClass[r.status]}>{icon[r.status]}</span> {r.label}
+                    </div>
+                    <div class="truncate text-[10px] text-(--color-text-muted)">{r.sub}</div>
+                </div>
+                <div class="relative h-4">
+                    <div
+                        class={`absolute top-1/2 h-2.5 -translate-y-1/2 rounded-sm ${r.status === 'error' ? 'bg-red-500/70 dark:bg-red-400/70' : barClass[r.type]}`}
+                        style={`left:${pct(r.start)};width:${pct(r.dur)};min-width:4px`}
+                    />
+                </div>
+                <div class="text-right text-[10px] tabular-nums text-(--color-text-muted)">{r.durLabel}</div>
+                {r.note && (
+                    <div class="col-start-2 col-end-4 -mt-0.5 text-[10px] text-red-600 dark:text-red-400">→ {r.note}</div>
+                )}
+            </div>
+        ))}
+    </div>
+
+    <div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
+        „Was geschah zwischen Minute 30 und 45?" ist hier eine Bereichsauswahl - im Chatverlauf eine Sucharbeit.
+    </div>
+</div>
+
+<style>
+    .demo-tl-filter {
+        color: var(--color-text-muted);
+    }
+    .demo-tl-filter[data-active] {
+        color: var(--color-accent);
+        background: var(--color-bg);
+    }
+</style>
+
+<script is:inline>
+    document.querySelectorAll('.demo-timeline').forEach(function (root) {
+        var filters = root.querySelectorAll('.demo-tl-filter');
+        var rows = root.querySelectorAll('.demo-tl-row');
+        filters.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var f = btn.getAttribute('data-filter');
+                filters.forEach(function (b) {
+                    if (b === btn) b.setAttribute('data-active', 'true');
+                    else b.removeAttribute('data-active');
+                });
+                rows.forEach(function (row) {
+                    var show =
+                        f === 'all' ||
+                        (f === 'tool' && row.getAttribute('data-type') === 'tool') ||
+                        (f === 'error' && row.getAttribute('data-status') === 'error');
+                    row.style.display = show ? '' : 'none';
+                });
+            });
+        });
+    });
+</script>

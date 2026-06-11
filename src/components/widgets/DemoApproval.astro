@@ -1,0 +1,120 @@
+---
+// Interaktive Demo: Approval-Panel als State-Machine (gemockt, keine KI).
+// ausstehend -> in Bestätigung (Begründung erzwungen) -> freigegeben.
+// Demonstriert Cognitive Forcing gegen Rubber-Stamping.
+---
+
+<div class="not-prose my-6 demo-approval overflow-hidden rounded-xl border border-(--color-border)">
+    <div class="flex items-center justify-between gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-4 py-2.5">
+        <span class="text-xs font-medium text-(--color-text-muted)">Freigabe erforderlich · Tool-Call</span>
+        <span class="rounded-full bg-red-500/12 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:bg-red-400/15 dark:text-red-400">
+            high-risk · irreversibel
+        </span>
+    </div>
+
+    <div class="bg-(--color-bg) px-4 py-3">
+        <pre class="overflow-x-auto rounded-lg bg-(--color-bg-secondary) px-3 py-2.5 text-xs leading-relaxed text-(--color-text)"><code>run_migration({'{'}
+  table: "users",
+  statement: "ALTER TABLE users DROP COLUMN legacy_token",
+  reversible: false
+{'}'})</code></pre>
+
+        <div class="demo-approval-state mt-3" data-state="pending">
+            <!-- pending -->
+            <div data-view="pending" class="flex items-center justify-between gap-3">
+                <span class="text-sm text-(--color-text-secondary)">
+                    Dieser Schritt verändert das Schema unwiderruflich.
+                </span>
+                <button type="button" class="demo-ap-review shrink-0 rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white">
+                    Prüfen &amp; freigeben
+                </button>
+            </div>
+
+            <!-- confirming -->
+            <div data-view="confirming" style="display:none">
+                <label class="block text-xs font-medium text-(--color-text)">
+                    Womit hast du das geprüft? <span class="text-(--color-text-muted)">(Pflicht)</span>
+                </label>
+                <textarea class="demo-ap-reason mt-1.5 w-full resize-none rounded-md border border-(--color-border) bg-(--color-bg) px-2 py-1.5 text-sm text-(--color-text) outline-none focus:border-(--color-accent)" rows="2" placeholder="z.B. Backup von 14:02 verifiziert, Spalte seit v3 ungenutzt"></textarea>
+                <div class="mt-2 flex items-center gap-2">
+                    <button type="button" class="demo-ap-confirm rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white opacity-50" disabled>
+                        Freigeben
+                    </button>
+                    <button type="button" class="demo-ap-cancel rounded-md border border-(--color-border) px-3 py-1.5 text-xs font-medium text-(--color-text-muted)">
+                        Abbrechen
+                    </button>
+                    <span class="text-[11px] text-(--color-text-muted)">Ohne Begründung kein Freigeben.</span>
+                </div>
+            </div>
+
+            <!-- approved -->
+            <div data-view="approved" style="display:none">
+                <div class="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    <span aria-hidden="true">✓</span> Freigegeben von dir
+                </div>
+                <p class="demo-ap-shown-reason mt-1 text-xs text-(--color-text-secondary)"></p>
+                <div class="mt-2 flex items-center gap-2">
+                    <span class="text-[11px] text-(--color-text-muted)">
+                        Der Tool-Call würde jetzt laufen - hier nur angedeutet, keine echte Migration.
+                    </span>
+                    <button type="button" class="demo-ap-reset rounded-md border border-(--color-border) px-2 py-0.5 text-[11px] font-medium text-(--color-text-muted)">
+                        Zurücksetzen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script is:inline>
+    document.querySelectorAll('.demo-approval').forEach(function (root) {
+        var state = root.querySelector('.demo-approval-state');
+        if (!state) return;
+        var views = {
+            pending: state.querySelector('[data-view="pending"]'),
+            confirming: state.querySelector('[data-view="confirming"]'),
+            approved: state.querySelector('[data-view="approved"]'),
+        };
+        var reviewBtn = root.querySelector('.demo-ap-review');
+        var reason = root.querySelector('.demo-ap-reason');
+        var confirmBtn = root.querySelector('.demo-ap-confirm');
+        var cancelBtn = root.querySelector('.demo-ap-cancel');
+        var resetBtn = root.querySelector('.demo-ap-reset');
+        var shownReason = root.querySelector('.demo-ap-shown-reason');
+
+        function show(name) {
+            state.dataset.state = name;
+            Object.keys(views).forEach(function (k) {
+                if (views[k]) views[k].style.display = k === name ? '' : 'none';
+            });
+        }
+
+        function syncConfirm() {
+            var ok = reason && reason.value.trim().length > 0;
+            confirmBtn.disabled = !ok;
+            confirmBtn.classList.toggle('opacity-50', !ok);
+        }
+
+        reviewBtn.addEventListener('click', function () {
+            show('confirming');
+            if (reason) reason.focus();
+        });
+        if (reason) reason.addEventListener('input', syncConfirm);
+        cancelBtn.addEventListener('click', function () {
+            if (reason) reason.value = '';
+            syncConfirm();
+            show('pending');
+        });
+        confirmBtn.addEventListener('click', function () {
+            if (confirmBtn.disabled) return;
+            if (shownReason && reason) shownReason.textContent = '„' + reason.value.trim() + '"';
+            show('approved');
+        });
+        if (resetBtn)
+            resetBtn.addEventListener('click', function () {
+                if (reason) reason.value = '';
+                syncConfirm();
+                show('pending');
+            });
+    });
+</script>
