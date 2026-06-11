@@ -1,0 +1,84 @@
+---
+// Interaktive Demo: Compare-View mit zwei Diff-Spielarten (gemockt, keine KI).
+// Toggle: Issue<->Plan (verschluckte Anforderung) und Behauptung<->System-State (False Success).
+---
+
+<div class="not-prose my-6 demo-compare overflow-hidden rounded-xl border border-(--color-border)">
+    <div class="flex flex-wrap items-center gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-3 py-2">
+        <button type="button" class="demo-cmp-tab rounded-md px-3 py-1 text-xs font-medium" data-mode="issue" data-active="true">
+            Issue ↔ Plan
+        </button>
+        <button type="button" class="demo-cmp-tab rounded-md px-3 py-1 text-xs font-medium" data-mode="state">
+            Behauptung ↔ System-State
+        </button>
+    </div>
+
+    <!-- Mode: issue <-> plan -->
+    <div class="demo-cmp-panel grid grid-cols-1 gap-px bg-(--color-border) sm:grid-cols-2" data-mode="issue">
+        <div class="bg-(--color-bg) p-4">
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Issue · Anforderung</div>
+            <ul class="space-y-1.5 text-sm text-(--color-text)">
+                <li class="rounded px-1.5 py-1">Login per E-Mail + Passwort</li>
+                <li class="rounded px-1.5 py-1">MFA über TOTP</li>
+                <li class="rounded bg-red-500/10 px-1.5 py-1 text-red-700 dark:bg-red-400/12 dark:text-red-300">Rate-Limiting für Fehlversuche</li>
+            </ul>
+        </div>
+        <div class="bg-(--color-bg) p-4">
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Generierter Plan</div>
+            <ul class="space-y-1.5 text-sm text-(--color-text)">
+                <li class="rounded px-1.5 py-1">Schritt: E-Mail/Passwort-Flow</li>
+                <li class="rounded px-1.5 py-1">Schritt: TOTP-Setup + Verify</li>
+                <li class="rounded border border-dashed border-red-500/30 px-1.5 py-1 text-(--color-text-muted)">— nicht im Plan —</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Mode: claim <-> state -->
+    <div class="demo-cmp-panel grid grid-cols-1 gap-px bg-(--color-border) sm:grid-cols-2" style="display:none" data-mode="state">
+        <div class="bg-(--color-bg) p-4">
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Agent · Behauptung</div>
+            <div class="rounded bg-emerald-500/8 px-2 py-2 text-sm text-(--color-text)">
+                „Rückerstattung veranlasst, der Betrag ist in wenigen Tagen zurück." <span class="text-emerald-600 dark:text-emerald-400">✓ success</span>
+            </div>
+        </div>
+        <div class="bg-(--color-bg) p-4">
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Ledger · System-State</div>
+            <div class="rounded bg-red-500/10 px-2 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-300">
+                Keine Transaktion zu <code class="text-xs">order_8842</code> gefunden. Saldo unverändert.
+            </div>
+        </div>
+    </div>
+
+    <div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
+        Links der Anspruch, rechts die Wirkung. Die Differenz fällt im Fließtext nicht auf - nebeneinander schon.
+    </div>
+</div>
+
+<style>
+    .demo-cmp-tab {
+        color: var(--color-text-muted);
+    }
+    .demo-cmp-tab[data-active] {
+        color: var(--color-accent);
+        background: var(--color-bg);
+    }
+</style>
+
+<script is:inline>
+    document.querySelectorAll('.demo-compare').forEach(function (root) {
+        var tabs = root.querySelectorAll('.demo-cmp-tab');
+        var panels = root.querySelectorAll('.demo-cmp-panel');
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var mode = tab.getAttribute('data-mode');
+                tabs.forEach(function (t) {
+                    if (t === tab) t.setAttribute('data-active', 'true');
+                    else t.removeAttribute('data-active');
+                });
+                panels.forEach(function (p) {
+                    p.style.display = p.getAttribute('data-mode') === mode ? '' : 'none';
+                });
+            });
+        });
+    });
+</script>
