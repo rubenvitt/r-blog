@@ -13,10 +13,10 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/mdx": "^5.0.3",
-    "@astrojs/sitemap": "^3.7.2",
+    "@astrojs/mdx": "^6.0.3",
+    "@astrojs/sitemap": "^3.7.3",
     "@tailwindcss/vite": "^4.2.2",
-    "astro": "^6.1.0",
+    "astro": "^6.4.5",
     "pagefind": "^1.4.0",
     "tailwindcss": "^4.2.2"
   },
