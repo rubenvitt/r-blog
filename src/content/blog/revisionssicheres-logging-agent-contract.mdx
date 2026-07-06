@@ -424,7 +424,7 @@ Art. 17 Abs. 4 erklärt das Qualitätsmanagementsystem für Finanzinstitute "mit
 - **Buchst. h → Art. 72** - das Post-Market-Monitoring.
 - **Buchst. i → Art. 73** - die Meldung schwerwiegender Vorfälle.
 
-Analog behandeln Art. 18 Abs. 3 und Art. 19 Abs. 2 die technische Dokumentation und die Logs als Teil der finanzaufsichtsrechtlichen Dokumentation. Ein Artefakt, zwei Adressaten. Die Bußgelddrohung dahinter ist real: bis 15 Mio. € oder 3% des Jahresumsatzes bei Betreiberpflichten (Art. 99).
+Analog behandeln Art. 18 Abs. 3 und Art. 19 Abs. 2 die technische Dokumentation und die Logs als Teil der finanzaufsichtsrechtlichen Dokumentation. Ein Artefakt, zwei Adressaten. Die Bußgelddrohung dahinter: bis 15 Mio. € oder 3% des Jahresumsatzes bei Betreiberpflichten (Art. 99).
 
 </Accordion>
 
@@ -446,7 +446,7 @@ Aus der Omnibus-Verschiebung lässt sich leicht der falsche Schluss ziehen: AI A
 
 ### Aufbewahren gegen Löschen
 
-Ein Konflikt bleibt, und er ist echt. Die Aufbewahrungspflichten aus § 257 HGB und § 147 AO sagen: behalten. Die DSGVO sagt für personenbezogene Daten, und ein Kredit-Score ist hochgradig personenbezogen: löschen, sobald der Zweck entfällt. Aus einem unveränderbaren, append-only Log lässt sich aber nichts selektiv herauslöschen, ohne die Unveränderbarkeit selbst zu zerstören.
+Ein Konflikt bleibt. Die Aufbewahrungspflichten aus § 257 HGB und § 147 AO sagen: behalten. Die DSGVO sagt für personenbezogene Daten, und ein Kredit-Score ist hochgradig personenbezogen: löschen, sobald der Zweck entfällt. Aus einem unveränderbaren, append-only Log lässt sich aber nichts selektiv herauslöschen, ohne die Unveränderbarkeit selbst zu zerstören.
 
 <Callout type="info">
 Die Auflösung heißt Sperren statt Löschen. Art. 18 DSGVO kennt die "Einschränkung der Verarbeitung" als Alternative zur Löschung: Der Datensatz bleibt bestehen, wird für die reguläre Nutzung aber gesperrt. Im Log übersetzt sich das in ein Hold-Flag statt einer kalendarischen Löschautomatik. Steuerlich gestützt wird das durch die Ablaufhemmung in § 147 Abs. 3 S. 5 AO: Die Aufbewahrungsfrist läuft nicht ab, solange der Vorgang steuerlich relevant ist.
@@ -498,7 +498,7 @@ Beide Begriffe sind unser Framing, kein Gesetzestext. "Revisionssicher" steht in
 
 Nimm den Score, der über die Kreditwürdigkeit einer Person entscheidet, oder das Modell, das eine Kranken- oder Lebensversicherung bepreist - nach EU AI Act die Hochrisiko-Fälle aus Anhang III. Widerspricht diese Person ein halbes Jahr später und fragt, warum, dann ist "unser Contract sah Modell X in Version Y vor" keine Antwort. Die Antwort ist der Log-Eintrag, der zeigt, dass Modell X in Version Y die Entscheidung getroffen hat und dass niemand ihn seither angefasst hat. Dass du das Modell bei einem Provider eingekauft hast, entlastet dich dabei nicht: Nach Art. 28 DORA bleibst du in vollem Umfang verantwortlich.
 
-Das ist keine Kür. DORA gilt seit dem 17. Januar 2025 unmittelbar, und Art. 12 der RTS RMF, dem technischen Standard zum IKT-Risikomanagement, verlangt, Datenaufzeichnungen vor Manipulation, Löschung und unbefugtem Zugriff zu schützen; die Speicherfrist legst du risikobasiert selbst fest, eine feste Zahl steht dort nicht. Die GoBD verlangen für die steuerlich relevante Spur Unveränderbarkeit, und ein Dateisystem allein genügt dafür ausdrücklich nicht. Die 9. MaRisk-Novelle, noch Konsultationsentwurf und nicht in Kraft, würde mit AT 4.3.4 die Verwendung von Modellen in diesen Rahmen ziehen: Annahmen nachvollziehbar begründen, regelmäßig validieren, erklärbar halten. Ob dir das Wort "revisionssicher" gefällt oder nicht, ändert an dieser Pflichtenlage nichts.
+DORA gilt seit dem 17. Januar 2025 unmittelbar, und Art. 12 der RTS RMF, dem technischen Standard zum IKT-Risikomanagement, verlangt, Datenaufzeichnungen vor Manipulation, Löschung und unbefugtem Zugriff zu schützen; die Speicherfrist legst du risikobasiert selbst fest, eine feste Zahl steht dort nicht. Die GoBD verlangen für die steuerlich relevante Spur Unveränderbarkeit, und ein Dateisystem allein genügt dafür ausdrücklich nicht. Die 9. MaRisk-Novelle, noch Konsultationsentwurf und nicht in Kraft, würde mit AT 4.3.4 die Verwendung von Modellen in diesen Rahmen ziehen: Annahmen nachvollziehbar begründen, regelmäßig validieren, erklärbar halten. Ob dir das Wort "revisionssicher" gefällt oder nicht, ändert an dieser Pflichtenlage nichts.
 
 Neu erfunden ist an alldem wenig. Dieser Post benennt ein Artefakt, das die Serie längst umkreist hat, und gibt ihm den regulatorischen Rahmen. Jeder Vorgänger hat ein Stück davon gebaut:
 
