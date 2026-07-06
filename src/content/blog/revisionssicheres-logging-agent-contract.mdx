@@ -16,7 +16,7 @@ import InfoBox from '../../components/widgets/InfoBox.astro';
 
 Diese Serie hat Stück für Stück ein AI-System zusammengesetzt, das man verantworten kann: Contracts statt Freitext, Evals statt Hoffnung, auditierbare Tool-Calls, Observability, Release-Disziplin. Was bisher gefehlt hat, ist der Moment, in dem jemand von außen den Nachweis verlangt - dass all das nicht nur im Wiki steht, sondern für jeden einzelnen Vorgang tatsächlich gegriffen hat.
 
-Nirgends wird dieser Moment so scharf wie in der Finanzregulatorik. Eine BaFin-beaufsichtigte Bank, ein Kredit-Score, ein Versicherungstarif - und Monate später die Frage, welches Modell in welcher Version das entschieden hat und ob man das beweisen kann. DORA gilt seit Anfang 2025 unmittelbar, die GoBD sowieso, die MaRisk zieht bei den Modellen nach. Der EU AI Act ist gerade verschoben worden, was viele zum falschen Schluss verleitet, es sei noch Zeit.
+Nirgends wird dieser Moment so scharf wie in der Finanzregulatorik. Eine BaFin-beaufsichtigte Bank, ein Kredit-Score, ein Versicherungstarif - und Monate später die Frage, welches Modell in welcher Version das entschieden hat und ob man das beweisen kann. DORA gilt seit Anfang 2025 unmittelbar, die GoBD sowieso, die MaRisk zieht bei den Modellen nach. Die Verschiebung des EU AI Act ist gerade beschlossen worden - veröffentlicht ist sie noch nicht -, was viele zum falschen Schluss verleitet, es sei noch Zeit.
 
 Dieser Post bündelt die Serie zu einem Kernartefakt und stellt ihm das Log an die Seite, das seine Einhaltung beweist. Zwei Artefakte, ein Nachweis - und ein Wort im Titel, das in keinem einzigen Gesetz steht.
 
@@ -44,7 +44,7 @@ Ein Wort in dieser These trägt allerdings mehr Gewicht, als es zugibt: "revisio
 
 ## Was "revisionssicher" wirklich heißt - und was nicht
 
-Fangen wir mit etwas Unbequemem an. Das Wort "revisionssicher", mit dem wir eben noch so selbstverständlich hantiert haben, steht in keinem einzigen Gesetz. Ich habe die Volltexte durchgegrept: GoBD, AO, HGB, DORA samt aller drei technischen RTS, den EU AI Act, sogar die ZPO. Null Treffer. Es ist ein Begriff aus der Archivierungs- und DMS-Welt, ein Sammelwort der Praxis, das dir kein Prüfer als Norm vorhalten kann.
+Fangen wir mit etwas Unbequemem an. Das Wort "revisionssicher", mit dem wir eben noch so selbstverständlich hantiert haben, steht in keinem einzigen Gesetz. Ich habe die Volltexte durchgegrept: GoBD, AO, HGB, DORA samt der einschlägigen technischen RTS, den EU AI Act, sogar die ZPO. Null Treffer. Es ist ein Begriff aus der Archivierungs- und DMS-Welt, ein Sammelwort der Praxis, das dir kein Prüfer als Norm vorhalten kann.
 
 Vorhalten kann er dir etwas anderes, und das heißt Unveränderbarkeit: § 146 Abs. 4 AO für die Steuer, § 239 Abs. 3 HGB fürs Handelsrecht. Das ist die bindende Pflicht. "Revisionssicher" ist die umgangssprachliche Verpackung dafür. Wer sie in einen DORA- oder BaFin-Kontext trägt, ohne das zu markieren, macht sich fachlich angreifbar.
 
@@ -69,11 +69,11 @@ Diese Ehrlichkeit stelle ich bewusst nach vorne. Der naheliegende Konter gegen d
 Die GoBD ist eine Verwaltungsvorschrift, kein Gesetz - aber die Finanzverwaltung wendet sie an, und § 146 AO / § 239 HGB dahinter sind bindend.
 </Accordion>
 
-Was das Soll konkret ausmacht, woraus so ein Contract besteht, damit er mehr wird als ein hübsches Wort, klären wir im nächsten Kapitel.
+Bleibt die Frage, woraus so ein Contract konkret besteht, damit er mehr wird als ein hübsches Wort.
 
 ## Der Agent Contract: das Soll als ein versioniertes Artefakt
 
-Kapitel 2 hat 'revisionssicher' und 'Agent Contract' als meine Engineering-Sprache markiert und die eigentliche Rechtspflicht auf ihren Kern gebracht: Unveränderbarkeit. Das beantwortet aber noch nicht, was da unveränderbar festgehalten werden soll. Was ist das Soll, dessen Einhaltung das Log später beweisen muss?
+Das letzte Kapitel hat 'revisionssicher' und 'Agent Contract' als meine Engineering-Sprache markiert und die eigentliche Rechtspflicht auf ihren Kern gebracht: Unveränderbarkeit. Das beantwortet aber noch nicht, was da unveränderbar festgehalten werden soll. Was ist das Soll, dessen Einhaltung das Log später beweisen muss?
 
 Wenn du die Serie mitgelesen hast, kennst du die fünf Bausteine längst, nur verstreut über mehrere Posts. Das Output-Schema ist der Vertrag zwischen Modell und Anwendung. Dazu kommen der Prompt, die Menge der Tools, die der Agent aufrufen darf, und das Modell samt Provider. Der fünfte Baustein ist das Eval-Set, das darüber entscheidet, ob eine Version gut genug ist. Zusammen legen sie fest, wie sich ein AI-Feature verhält.
 
@@ -81,7 +81,7 @@ Wenn du die Serie mitgelesen hast, kennst du die fünf Bausteine längst, nur ve
 
 <LinkCard url="/blog/ai-evals-ci-pipeline"/>
 
-In ai-rollout-canary-shadow habe ich dieses Bündel schon einmal zusammengeführt, als Release-Manifest: alle Artefakte mit Hashes und Pins an einem Git-Tag, damit ein Rollback atomar wird. Hier gebe ich dem Bündel einen Namen und eine Rolle. Ich nenne es den Agent Contract. Das ist mein Begriff aus der Engineering-Praxis, kein Rechtsbegriff - in DORA, den RTS, der GoBD oder dem AI Act steht er nirgends. Für mich beschreibt er das vollständige Soll eines AI-Features in einem versionierten Artefakt.
+In ai-rollout-canary-shadow habe ich dieses Bündel schon einmal zusammengeführt, als Release-Manifest: alle Artefakte mit Hashes und Pins an einem Git-Tag, damit ein Rollback atomar wird. Hier gebe ich dem Bündel einen Namen und eine Rolle. Ich nenne es den Agent Contract - mein Begriff aus der Engineering-Praxis für das vollständige Soll eines AI-Features in einem versionierten Artefakt.
 
 <LinkCard url="/blog/ai-rollout-canary-shadow"/>
 
@@ -129,25 +129,25 @@ So sieht das als Soll-Artefakt aus, dasselbe Muster wie das Release-Manifest, er
 
 <CodeTabs labels={["YAML"]}>
 ```yaml
-contract: bonitaets-agent@2026.06.30
+contract: credit-scoring@4.2.0
 output_schema:
-  ref: schemas/bonitaet-v4.json
+  ref: schemas/credit-score-v4.json
   sha256: 7c4a9e...
 prompt:
-  version: prompts/bonitaet-v11
+  version: score-explainer@17
   sha256: 3a1f7d...
 allowed_tools:
-  manifest: tools.pinned.json          # nur schufa_lookup, income_verify
+  manifest: tools.pinned.json          # fetch_schufa_report, compute_dti_ratio, fetch_income_history
   sha256: 9e8b21...
 model:
   provider: anthropic
-  id: claude-sonnet-4-7                 # datierter Snapshot, kein -latest
+  id: claude-sonnet-4-6-20260215        # datierter Snapshot, kein -latest
   pinned_at: 2026-06-15
 eval_baseline:
-  set: evals/bonitaet-baseline-2026-06.jsonl
+  set: evals/credit-eval-2026-02.jsonl
   version: v7
-  gate: thresholds/bonitaet-v3.yaml
-signature: sigstore/bonitaets-agent-2026.06.30.bundle   # DSSE + in-toto, Rekor
+  gate: thresholds/credit-score-v3.yaml
+signature: sigstore/credit-scoring-4.2.0.bundle   # DSSE + in-toto, Rekor
 approved_by:
   gremium: model-risk-committee/2026-06-28
   owner: head-of-credit-risk
@@ -158,7 +158,7 @@ Der Aufwand für diese eine YAML-Datei rechtfertigt sich über ein Prinzip, das 
 
 Der Contract braucht aber mehr als eine Versionsnummer. Er braucht jemanden, der ihn freigibt. DORA ist hier seit dem 17. Januar 2025 unmittelbar bindend und in Art. 5 Abs. 2 Buchst. a unmissverständlich: "Das Leitungsorgan trägt die letztendliche Verantwortung für das Management der IKT-Risiken des Finanzunternehmens." Diese Verantwortung muss im Artefakt landen, deshalb steht im contract.yaml ein approved_by mit einem benannten Gremium und einem Owner. "Owner" ist mein Wort, nicht das der Verordnung, DORA spricht vom Leitungsorgan. Die Konsequenz bleibt dieselbe: Eine Contract-Version, die durch keinen Freigabepfad gelaufen ist, taugt nicht als Soll. Sie ist ein Entwurf, der aus Versehen in Produktion gelandet ist.
 
-Damit lässt sich fast alles festzurren, was das Verhalten des Agenten ausmacht. Das Schema, der Prompt, die erlaubten Tools, das Eval-Set: alles wird gehasht, signiert und an eine Freigabe gebunden. Sogar die Modellgewichte, sofern du sie selbst betreibst, denn Model Signing hasht auch die Gewichts-Datei und legt sie in denselben Nachweis. Fast alles. Ein Baustein im contract.yaml trägt keinen sha256, nur einen Versionsstring - das Modell hinter der API. Ob das eine Lücke ist oder eine Grenze, die sich technisch nicht schließen lässt, klärt das nächste Kapitel.
+Damit lässt sich fast alles festzurren, was das Verhalten des Agenten ausmacht. Das Schema, der Prompt, die erlaubten Tools, das Eval-Set: Alles wird gehasht, signiert und an eine Freigabe gebunden. Sogar die Modellgewichte, sofern du sie selbst betreibst, denn Model Signing hasht auch die Gewichts-Datei und legt sie in denselben Nachweis. Fast alles. Ein Baustein im contract.yaml trägt keinen sha256, nur einen Versionsstring - das Modell hinter der API.
 
 ## Warum der Contract das Modell nicht signieren kann - und was daraus folgt
 
@@ -199,7 +199,7 @@ Das ist meine Schlussfolgerung, kein Herstellerzitat: Für den gehosteten Modell
 <text x="490" y="222" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">Das Log ist der</text>
 <text x="490" y="238" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">einzige Ist-Nachweis.</text>
 </svg>
-<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Prompt, Schema, Tools, Parameter, Eval-Set und selbstgehostete Gewichte lassen sich hashen und signieren. Das gehostete Modell nicht: hier bleibt nur der Versionsstring, und die Gewichte liegen beim Provider. Genau diese Lücke füllt das Log.</figcaption>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Prompt, Schema, Tools, Parameter, Eval-Set und selbstgehostete Gewichte lassen sich hashen und signieren. Das gehostete Modell nicht: Hier bleibt nur der Versionsstring, und die Gewichte liegen beim Provider. Diese Lücke füllt das Log.</figcaption>
 </figure>
 
 Wenn der String das Einzige ist, was du festhalten kannst, dann musst du ihn wenigstens richtig setzen. Nie den floating alias, immer den datierten Snapshot. Dass Modelle überhaupt gepinnt werden müssen, weil ein stilles Provider-Update sonst das Verhalten über Nacht verschiebt, habe ich an anderer Stelle schon angerissen.
@@ -208,7 +208,7 @@ Wenn der String das Einzige ist, was du festhalten kannst, dann musst du ihn wen
 
 Anthropic formuliert das unmissverständlich: "Every Claude model ID is a pinned snapshot", jede Model-ID ist ein festgezurrter Snapshot und kein Evergreen-Pointer. Der wichtigere Halbsatz steht direkt daneben: "weights are fixed for a given ID, but the serving infrastructure ... can change." Die Gewichte sind für eine ID fix, die Serving-Infrastruktur ist es nicht. Ein Pin garantiert dir feste Gewichte, nicht aber bit-identisches Verhalten.
 
-Bei OpenAI läuft dieselbe Trennung unter anderen Namen: datierte Snapshots gegen das floating `-latest`. Wer `-latest` in den Contract schreibt, hat einen Alias gepinnt und nichts festgezurrt. Wenigstens bleibt Reaktionszeit, denn für GA-Modelle kündigt OpenAI eine Deprecation mindestens sechs Monate im Voraus an.
+Bei OpenAI läuft dieselbe Trennung unter anderen Namen: datierte Snapshots gegen das floating `-latest`. Wer `-latest` in den Contract schreibt, hat einen Alias gepinnt und nichts festgezurrt. Wenigstens bleibt Reaktionszeit, denn für GA-Modelle kündigt OpenAI eine Deprecation mindestens 6 Monate im Voraus an.
 
 Azure OpenAI ist die eigentliche Falle, weil hier der Default gegen dich arbeitet. Ein Deployment mit der Policy "Upgrade once new default version becomes available" wird, im Wortlaut der Doku, "automatically update to use the new default version". Das dokumentierte Beispiel: gpt-4o wandert von 2024-08-06 auf 2024-11-20, angekündigt mit mindestens zwei Wochen Vorlauf. Zwei Wochen. Wer diese Policy stehen lässt, betreibt kein Pinning, sondern ein Modell, das sich unter dem laufenden Contract selbst austauscht. Im Extremfall bepreist am Montag eine andere Modellversion den Lebensversicherungstarif als die, gegen die dein Eval-Set am Freitag noch grün war.
 
@@ -222,9 +222,9 @@ Hier trennt sich das Soll vom Ist. Der Contract kann Prompt, Schema, Tools und E
 
 ## Das revisionssichere Log: der Ist-Nachweis
 
-Kapitel 4 hat den unbequemen Teil offengelegt: Der Modellteil des Contracts lässt sich nicht signieren. Gehostete Gewichte kann niemand hashen, wer eine API anspricht, besitzt sie nicht, und der einzige Anker, der bleibt, ist der Versionsstring. Bleibt eine Frage offen: Wenn ich das Soll nicht kryptografisch an das ausgelieferte Modell binden kann - wie beweise ich dann, was tatsächlich lief?
+Das letzte Kapitel hat den unbequemen Teil offengelegt: Der Modellteil des Contracts lässt sich nicht signieren. Gehostete Gewichte kann niemand hashen, wer eine API anspricht, besitzt sie nicht, und der einzige Anker, der bleibt, ist der Versionsstring. Bleibt eine Frage offen: Wenn ich das Soll nicht kryptografisch an das ausgelieferte Modell binden kann - wie beweise ich dann, was tatsächlich lief?
 
-Der Contract, wie ich ihn hier nenne (ein Engineering-Framing, kein Rechtsbegriff), beschreibt das Soll: welches Modell, welcher Prompt, welche Tools, welche Freigabe gegen welche Eval-Baseline. Das Log ist der Ist-Nachweis. Ohne das zweite ist das erste eine Behauptung. Und ein Log, das diesen Nachweis tragen soll, ist mehr als ein Trace fürs Debugging.
+Der Contract, wie ich ihn hier nenne (ein Engineering-Framing, kein Rechtsbegriff), beschreibt das Soll: welches Modell, welcher Prompt, welche Tools, welche Freigabe gegen welche Eval-Baseline. Das Log ist der Ist-Nachweis. Steht im Contract Modell X und im Log Modell Y, zählt vor dem Prüfer das Log. Und ein Log, das diesen Nachweis tragen soll, ist mehr als ein Trace fürs Debugging.
 
 ### Conformance ist eine Log-Frage
 
@@ -261,11 +261,11 @@ Nehmen wir das laufende Beispiel: ein Agent, der die Kreditwürdigkeit eines Ant
 
 Die meisten Felder sind Buchhaltung: wer (`actor`), an wessen Datensatz (`subject`), mit welchem Ergebnis (`outcome`). Dass `tools_called` eine Teilmenge von `tools_allowed` ist, beantwortet schon eine der Conformance-Fragen. Interessant wird eine andere Zeile. `resolved_model` liest sich `claude-sonnet-4-6-20260520`, ein datierter Snapshot vom Mai. Die `eval_baseline` nennt den Snapshot, gegen den 4.2.0 freigegeben wurde: `claude-sonnet-4-6-20260215`, Februar. Das Modell, das die Baseline bestanden hat, ist ein anderes als das, das geantwortet hat.
 
-Das ist der still gewechselte Modellstring. Die Model-ID ist ein pinned snapshot, aber der Alias darüber (ein "production"-Zeiger, ein Azure-Default) ist beweglich und kann unter dir umziehen. Hätte das Log nur "production" gespeichert, wäre die Drift unsichtbar. Weil es den aufgelösten, datierten Wert pro Call festhält, fällt der Bruch zwischen Soll und Ist auf. Das ist die Caching-Staleness-Falle: Ein Label ist bequem und lügt nicht, es sagt nur nichts darüber, worauf es gestern zeigte.
+Das ist der still gewechselte Modellstring. Die Model-ID ist ein pinned snapshot, aber der Alias darüber (ein "production"-Zeiger, ein Azure-Default) ist beweglich und kann unter dir umziehen. Hätte das Log nur "production" gespeichert, wäre die Drift unsichtbar. Weil es den aufgelösten, datierten Wert pro Call festhält, fällt der Bruch zwischen Soll und Ist auf. Das ist, was ich die Caching-Staleness-Falle nenne: Ein Label ist bequem und lügt nicht, es sagt nur nichts darüber, worauf es gestern zeigte.
 
 Für die Prompt-Seite gibt es dasselbe Muster als fertiges Werkzeug. Langfuse hängt an jede Generation ein `langfuse_prompt`-Handle, das im Wortlaut der Doku "links this generation to the prompt version". Gemeint ist die konkrete, unveränderliche Version, kein beweglicher Name. `resolved_prompt_version` im Log ist derselbe Rückzeiger, ausgeschrieben als Versionsnummer plus Hash.
 
-### Vollständig, nicht gesampelt
+### Warum eine Stichprobe nicht reicht
 
 Jetzt der Teil, an dem sich Debugging-Logging und Conformance-Log scheiden. Ein revisionssicheres Log darf kein gesampeltes Subset sein. "Wir loggen 1% zum Debuggen" ist für Traces ein völlig legitimer Satz, für den Ist-Nachweis ist er tödlich. Eine Stichprobe belegt nichts über den einen Kreditantrag, der später auf dem Tisch der Prüfer landet.
 
@@ -279,11 +279,11 @@ Bis hierhin ist das Engineering. Der bindende Teil kommt aus DORA, genauer aus d
 
 Was Art. 12 nicht sagt: irgendetwas über Modelle, Modellversionen oder Inferenz. Der RTS-Text ist technologieneutral. Dass daraus "protokolliere die Modellversion" wird, ist Auslegung - die BaFin nimmt sie in ihrer Orientierungshilfe vor, wenn sie eine "lückenlose Protokollierung von KI-Entscheidungen, Modellversionen und Trainingsdaten" nahelegt. Und sie legt nur nahe, sie verlangt nichts: Die Orientierungshilfe bezeichnet sich selbst als "nicht verpflichtende Hilfestellung" und "keine verbindliche DORA-Auslegung". Die Felder oben operationalisieren also ein bindendes Schutz- und Zeitgebot; ein Gesetzeszitat sind sie nicht.
 
-Eine feste Aufbewahrungsfrist nennt Art. 12 bewusst nicht. Das Finanzunternehmen legt die Speicherfrist selbst fest und begründet sie risiko- und zweckbasiert. Was das für die gerichtsfeste Haltbarkeit heißt, klärt Kapitel 6.
+Eine feste Aufbewahrungsfrist nennt Art. 12 bewusst nicht. Das Finanzunternehmen legt die Speicherfrist selbst fest und begründet sie risiko- und zweckbasiert. Was das für die gerichtsfeste Haltbarkeit heißt, kommt gleich.
 
 ### Was nicht ins Log gehört
 
-Ein letzter Zug, bevor es weitergeht. Vollständigkeit der Conformance-Metadaten heißt nicht, dass alles hineingehört. Die SCHUFA-Auskunft, das Einkommen, der Name des Antragstellers - das sind genau die Daten, die im Trace nichts verloren haben. Ich habe in "Observability für AI-Features" beschrieben, was nicht in den Trace gehört; dieselbe Grenze gilt hier. Der Conformance-Nachweis braucht die `contract_version` und das aufgelöste Modell, nicht den Klartext der Kreditakte. Dieses Spannungsfeld zwischen Nachweispflicht und Datenschutz (DSGVO) löst Kapitel 7 auf.
+Ein letzter Zug, bevor es weitergeht. Vollständigkeit der Conformance-Metadaten heißt nicht, dass alles hineingehört. Die SCHUFA-Auskunft, das Einkommen, der Name des Antragstellers - das sind die Daten, die im Trace nichts verloren haben. Ich habe in "Observability für AI-Features" beschrieben, was nicht in den Trace gehört; dieselbe Grenze gilt hier. Der Conformance-Nachweis braucht die `contract_version` und das aufgelöste Modell, nicht den Klartext der Kreditakte. Dieses Spannungsfeld zwischen Nachweispflicht und Datenschutz (DSGVO) lösen wir später auf, wenn die Regime-Landkarte steht.
 
 <LinkCard url="/blog/observability-ai-features"/>
 
@@ -329,12 +329,12 @@ Hier lohnt Präzision, denn das Wort im Titel dieses Kapitels verspricht mehr, a
 
 Dasselbe Muster findet sich in der Zivilprozessordnung. § 371a Abs. 1 ZPO gewährt qualifiziert signierten elektronischen Dokumenten den Anscheinsbeweis der Echtheit. Auch das ist eine Beweiserleichterung, ausdrücklich kein Vollbeweis. Was wir hier bauen, ist die stärkste Beweisposition, die sich technisch herstellen lässt. Sie kann angegriffen werden, sie kann im Einzelfall auch fallen. Die Ausgangslage ist trotzdem eine andere als bei einem editierbaren Logfile, dessen Echtheit ich vor Gericht von Grund auf selbst belegen müsste.
 
-Zwei Fußnoten, die über die Jahre entscheiden. Erstens ist ein Zeitstempel nicht ewig gültig. Signaturalgorithmen altern, Zertifikate laufen ab. RFC 4998 (Evidence Record Syntax) beschreibt, wie der Beweiswert über lange Aufbewahrungsfristen erhalten bleibt: durch rechtzeitige Erneuerung der Zeitstempel, bevor das alte Verfahren kryptografisch schwach wird. Bei zehn Jahren Aufbewahrung wird daraus ein Dauerprozess, den jemand aktiv betreiben muss. Zweitens gibt es in Deutschland dafür einen dokumentierten Stand der Technik: Die BSI TR-03125 (TR-ESOR) beschreibt die Architektur für beweiswerterhaltende Langzeitspeicherung. Wer sich daran hält, muss nicht selbst begründen, dass seine Aufbewahrung dem aktuellen Stand entspricht.
+Zwei Fußnoten, die über die Jahre entscheiden. Erstens ist ein Zeitstempel nicht ewig gültig. Signaturalgorithmen altern, Zertifikate laufen ab. RFC 4998 (Evidence Record Syntax) beschreibt, wie der Beweiswert über lange Aufbewahrungsfristen erhalten bleibt: durch rechtzeitige Erneuerung der Zeitstempel, bevor das alte Verfahren kryptografisch schwach wird. Bei 10 Jahren Aufbewahrung wird daraus ein Dauerprozess, den jemand aktiv betreiben muss. Zweitens gibt es in Deutschland dafür einen dokumentierten Stand der Technik: Die BSI TR-03125 (TR-ESOR) beschreibt die Architektur für beweiswerterhaltende Langzeitspeicherung. Wer sich daran hält, muss nicht selbst begründen, dass seine Aufbewahrung dem aktuellen Stand entspricht.
 
 <Accordion title="Aufbewahrungsfristen und der BaFin-Carve-out">
-Die Aufbewahrungsdauer staffelt § 257 Abs. 4 HGB: Handelsbücher, Inventare und Bilanzen zehn Jahre, Buchungsbelege acht Jahre, empfangene Handelsbriefe sechs Jahre. Satz 2 enthält den für uns entscheidenden Carve-out: Für Institute im Sinne des § 1 Abs. 1b KWG, des § 1 Abs. 1 VAG und des § 2 Abs. 1 WpIG bleiben Buchungsbelege bei zehn Jahren. Wer eine BaFin-regulierte Bank oder Versicherung baut, kalkuliert also mit zehn statt acht Jahren.
+Die Aufbewahrungsdauer staffelt § 257 Abs. 4 HGB: Handelsbücher, Inventare und Bilanzen 10 Jahre, Buchungsbelege 8 Jahre, empfangene Handelsbriefe 6 Jahre. Satz 2 enthält den für uns entscheidenden Carve-out: Für Institute im Sinne des § 1 Abs. 1b KWG, des § 1 Abs. 1 VAG und des § 2 Abs. 1 WpIG bleiben Buchungsbelege bei 10 Jahren. Wer eine BaFin-regulierte Bank oder Versicherung baut, kalkuliert also mit 10 statt 8 Jahren.
 
-Und die Frist ist nach oben offen. § 147 Abs. 3 S. 5 AO kennt eine Ablaufhemmung: Solange die Unterlagen für eine noch nicht abgelaufene Festsetzungsfrist von Bedeutung sind, etwa in einer laufenden Betriebsprüfung, läuft die Aufbewahrungsfrist nicht ab. Ein Log, das ich für einen Kredit-Score aus 2026 führe, kann mich deutlich länger als zehn Jahre begleiten. Damit ist RFC 4998 kein akademisches Detail.
+Und die Frist ist nach oben offen. § 147 Abs. 3 S. 5 AO kennt eine Ablaufhemmung: Solange die Unterlagen für eine noch nicht abgelaufene Festsetzungsfrist von Bedeutung sind, etwa in einer laufenden Betriebsprüfung, läuft die Aufbewahrungsfrist nicht ab. Ein Log, das ich für einen Kredit-Score aus 2026 führe, kann mich deutlich länger als 10 Jahre begleiten. Damit ist RFC 4998 kein akademisches Detail.
 </Accordion>
 
 <figure class="not-prose my-8">
@@ -367,7 +367,7 @@ Und die Frist ist nach oben offen. § 147 Abs. 3 S. 5 AO kennt eine Ablaufhemmun
 <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Vom Log-Eintrag zum gerichtsfesten Nachweis: Der Zeitstempel sitzt auf der Merkle-Root eines ganzen Batches, nicht auf jeder einzelnen Zeile. eIDAS und § 371a ZPO machen aus technischer Unveränderbarkeit eine widerlegbare Vermutung der Echtheit - keinen Vollbeweis, aber die stärkste Beweisposition.</figcaption>
 </figure>
 
-Damit steht der Stack: append-only, Merkle-Root, qualifizierter Zeitstempel, WORM darunter. Technisch ist das die belastbarste Form, ein Kredit-Log über ein Jahrzehnt beweisbar zu halten. Bleibt die Frage, die dieses Kapitel bewusst offengelassen hat: Wer schreibt einer Bank eigentlich vor, so etwas zu führen - und warum ausgerechnet jetzt? Was davon ist heute bindend, was bloß Empfehlung, und was verschiebt sich gerade im Kalender? Das ordnet das nächste Kapitel.
+Damit steht der Stack: append-only, Merkle-Root, qualifizierter Zeitstempel, WORM darunter. Technisch ist das die belastbarste Form, ein Kredit-Log über ein Jahrzehnt beweisbar zu halten. Bleibt die Frage, die dieses Kapitel bewusst offengelassen hat: Wer schreibt einer Bank eigentlich vor, so etwas zu führen - und warum ausgerechnet jetzt? Was davon ist heute bindend, was bloß Empfehlung, und was verschiebt sich gerade im Kalender?
 
 ## Die Regulatorik-Landkarte für BaFin-Klientel - und warum jetzt
 
@@ -383,20 +383,19 @@ Für unser laufendes Beispiel, ein KI-Feature in einer BaFin-regulierten Bank od
 | MaRisk AT 4.3.4 "Verwendung von Modellen" | Nachvollziehbare Annahmen (Tz. 2), Validierung (Tz. 5), Erklärbarkeit (Tz. 6), Regelung von Überschreibungen (Tz. 4) | Konsultationsentwurf, nicht in Kraft (aktuell RS 06/2024) | Contract dokumentiert Annahmen und Overrides, Log belegt die Validierung |
 | BaFin-Orientierungshilfe (18.12.2025) | "lückenlose Protokollierung von KI-Entscheidungen, Modellversionen und Trainingsdaten" (Empfehlung) | unverbindlich | konkretisiert Log und Contract, bindet aber nicht |
 
-Zur Erinnerung aus Kapitel 2: "revisionssicher" und "Agent Contract" sind mein Framing, kein Wortlaut dieser Regime - ich trage sie hier bewusst in den regulatorischen Kontext, als Übertragung, nicht als Zitat.
 
 ### DORA ist der Anker, nicht VAIT
 
-DORA gilt seit dem 17. Januar 2025, unmittelbar in jedem Mitgliedstaat, ohne nationale Umsetzung (Art. 64). Das ist der Boden, auf dem für Finanzunternehmen alles andere steht. Aufzeichnung verlangt die Verordnung allerdings nicht dort, wo wir zuerst suchen: Der Anker sitzt eine Ebene tiefer, im technischen Regulierungsstandard Del. VO 2024/1774 (RTS RMF). Dessen Art. 12 "Datenaufzeichnung" fordert "Maßnahmen zum Schutz von Datenaufzeichnungssystemen und -informationen vor Manipulation, Löschung und unbefugtem Zugriff", und zwar für gespeicherte, übermittelte und gerade verwendete Daten. Das Schutzprofil, das unser Log technisch bereits erfüllt.
+DORA gilt seit dem 17. Januar 2025, unmittelbar in jedem Mitgliedstaat, ohne nationale Umsetzung (Art. 64). Das ist der Boden, auf dem für Finanzunternehmen alles andere steht. Aufzeichnung verlangt die Verordnung allerdings nicht dort, wo wir zuerst suchen: Der Anker sitzt eine Ebene tiefer, im technischen Regulierungsstandard Del. VO 2024/1774 (RTS RMF). Dessen Art. 12 "Datenaufzeichnung" verlangt den Schutz vor Manipulation, Löschung und unbefugtem Zugriff, für gespeicherte, übermittelte und gerade verwendete Daten - das Schutzprofil, das unser Log technisch bereits erfüllt.
 
-Zwei Details sind für unseren Fall zentral. Das erste ist die Uhr: Art. 12 verlangt die "Synchronisierung der Uhren jedes IKT-Systems … auf der Grundlage einer dokumentierten zuverlässigen Referenzzeitquelle", der Zeitstempel im Log ist also keine Kür. Das zweite ist die Retention: Eine feste Frist schreibt DORA nicht vor; das Finanzunternehmen legt die "Speicherfrist" risiko- und zweckbasiert selbst fest und begründet sie. Wer 6 Monate wählt, muss das begründen können, wer 10 Jahre wählt, ebenso.
+Zwei Details sind für unseren Fall zentral. Das erste ist die Uhr: Art. 12 verlangt die Synchronisierung aller Systemuhren gegen eine dokumentierte, zuverlässige Referenzzeitquelle - der Zeitstempel im Log ist also keine Kür. Das zweite ist die Retention: Eine feste Frist schreibt DORA nicht vor; das Finanzunternehmen legt die "Speicherfrist" risiko- und zweckbasiert selbst fest und begründet sie. Wer 6 Monate wählt, muss das begründen können, wer 10 Jahre wählt, ebenso.
 
 Der LLM-Provider ist in dieser Architektur ein IKT-Drittdienstleister im Sinne von DORA, mit allem, was daran hängt. Die Verantwortung bleibt bei uns: Das Finanzunternehmen "bleibt jederzeit in vollem Umfang für die Einhaltung … verantwortlich" (Art. 28 Abs. 1). Auslagern lässt sich die Funktion, die Rechenschaft bleibt. Der Vertrag mit dem Provider gehört ins Informationsregister (Art. 28 Abs. 3), das die Aufsicht auf Verlangen einsehen kann. Und Art. 30 diktiert die Pflichtinhalte: Auditrechte (Abs. 3 Buchst. e), festgelegte Datenorte mit Vorab-Benachrichtigung bei Änderung (Abs. 2 Buchst. b), eine Exit-Strategie mit Übergangszeitraum (Abs. 3 Buchst. f) und die Regelung des Sub-Outsourcings (Abs. 2 Buchst. a), womit die Kette vom LLM-Provider bis zum Hyperscaler abgedeckt ist.
 
 Und wenn etwas schiefgeht, läuft eine Uhr. DORA Art. 19 regelt die Meldekette für schwerwiegende IKT-Vorfälle, die konkreten Fristen stehen in der Del. VO 2025/301. Diese Uhr tickt heute schon, nicht erst ab 2027.
 
 <Callout type="warning">
-Wer 2026 noch VAIT, BAIT, KAIT oder ZAIT zitiert, arbeitet mit einer veralteten Landkarte. VAIT, KAIT und ZAIT wurden aufgehoben, BAIT ist ausgelaufen. Der Anker für die IKT- und Auslagerungsanforderungen heißt jetzt DORA samt der zugehörigen RTS. Für die Modellebene kommt die MaRisk hinzu, deren KI-Modul allerdings noch in Konsultation ist.
+Wer 2026 noch VAIT, BAIT, KAIT oder ZAIT zitiert, arbeitet mit einer veralteten Landkarte. VAIT, BAIT, KAIT und ZAIT sind mit der DORA-Geltung entfallen. Der Anker für die IKT- und Auslagerungsanforderungen heißt jetzt DORA samt der zugehörigen RTS. Für die Modellebene kommt die MaRisk hinzu, deren KI-Modul allerdings noch in Konsultation ist.
 </Callout>
 
 <Accordion title="Die relevanten DORA-Artikel im Detail">
@@ -413,7 +412,7 @@ Die konkreteste Auslegung dieser DORA-Pflichten liefert die BaFin-Orientierungsh
 
 ### Wenn das Feature zum High-Risk-System wird
 
-Der zweite große Block ist der EU AI Act, und hier wird unser Beispiel zur Lehrbuchvorlage. Anhang III Nr. 5(b) nennt KI-Systeme zur Bewertung der "Kreditwürdigkeit natürlicher Personen", Nr. 5(c) solche für die "Risikobewertung und Preisgestaltung … im Falle von Lebens- und Krankenversicherungen". Kredit-Scoring und Versicherungs-Pricing, genau unsere zwei Fälle, sind damit High-Risk-Systeme. Daraus folgen konkrete Aufzeichnungspflichten: automatisches Event-Logging über die Lebensdauer des Systems (Art. 12), Aufbewahrung der Logs über mindestens 6 Monate (Art. 19), technische Dokumentation über 10 Jahre (Art. 18).
+Der zweite große Block ist der EU AI Act, und hier wird unser Beispiel zur Lehrbuchvorlage. Anhang III Nr. 5(b) nennt KI-Systeme zur Bewertung der "Kreditwürdigkeit natürlicher Personen", Nr. 5(c) solche für die "Risikobewertung und Preisgestaltung … im Falle von Lebens- und Krankenversicherungen". Kredit-Scoring und Versicherungs-Pricing, unsere zwei Fälle, sind damit High-Risk-Systeme. Daraus folgen konkrete Aufzeichnungspflichten: automatisches Event-Logging über die Lebensdauer des Systems (Art. 12), Aufbewahrung der Logs über mindestens 6 Monate (Art. 19), technische Dokumentation über 10 Jahre (Art. 18).
 
 Für Finanzinstitute kommt hier der wertvollste Befund dieses Kapitels. Der AI Act zwingt nicht zu einem zweiten Governance-Apparat neben der Finanzaufsicht. Art. 17 Abs. 4 lässt das Qualitätsmanagementsystem als erfüllt gelten, soweit ein Institut die entsprechenden Pflichten schon über seine finanzaufsichtsrechtliche Governance abdeckt, mit drei ausdrücklichen Ausnahmen (Buchst. g, h, i), die eigenständig bleiben. Dieselbe Behörde beaufsichtigt beides: Art. 74 Abs. 6 macht die nationale Finanzaufsicht zur Marktüberwachungsbehörde für Hochrisiko-KI von Finanzinstituten, in Deutschland also die BaFin. Der versionierte Contract und das Log zahlen damit auf beide Regime gleichzeitig ein. Doppelte Bücher braucht nur, was unter die drei Ausnahmen fällt.
 
@@ -459,11 +458,11 @@ Das ist eine Menge Regulatorik für ein einzelnes Feature: viele Artefakte, mehr
 
 ## Typische Gegenargumente
 
-Die Kostenfrage aus dem letzten Kapitel kommt selten allein. Sobald ich Contract und revisionssicheres Log als Pflichtprogramm auf den Tisch lege (beides mein Engineering-Framing, kein Begriff aus DORA oder dem AI Act), kommen die Einwände zuverlässig. Ein paar davon höre ich in fast jeder Diskussion. Sie sind gut genug, um sie ernst zu nehmen.
+Die Kostenfrage aus dem letzten Kapitel kommt selten allein. Sobald ich Contract und revisionssicheres Log als Pflichtprogramm auf den Tisch lege, kommen die Einwände zuverlässig. Ein paar davon höre ich in fast jeder Diskussion. Sie sind gut genug, um sie ernst zu nehmen.
 
 ### "Revisionssicherheit ist reine Compliance-Fassade."
 
-Der Verdacht ist berechtigt: Vieles, was unter "Compliance" läuft, ist ein Ordner, den nie jemand öffnet. Nur trifft es hier nicht zu. Das Log ist die einzige Fläche, gegen die sich der Contract überhaupt diffen lässt - der einzige Mechanismus, mit dem du einen stillen Modell-Swap, driftende Prompts, einen out-of-scope Tool-Call oder eine gebrochene Schema-Zusage überhaupt bemerkst. Ein Soll ohne Ist bleibt eine Behauptung. Denselben Einwand habe ich beim Eval-Loop schon gehört, und die Antwort ist dieselbe: Die Substanz entsteht im Betrieb, der Nachweis fällt nebenbei ab.
+Der Verdacht ist berechtigt: Vieles, was unter "Compliance" läuft, ist ein Ordner, den nie jemand öffnet. Nur trifft es hier nicht zu. Das Log ist die einzige Fläche, gegen die sich der Contract überhaupt diffen lässt - der einzige Mechanismus, mit dem du einen stillen Modell-Swap, driftende Prompts, einen out-of-scope Tool-Call oder eine gebrochene Schema-Zusage überhaupt bemerkst. Denselben Einwand habe ich beim Eval-Loop schon gehört, und die Antwort ist dieselbe: Die Substanz entsteht im Betrieb, der Nachweis fällt nebenbei ab.
 
 <LinkCard url="/blog/incident-zu-regressionstest"/>
 
@@ -487,7 +486,7 @@ Andere Schicht. Ein SIEM sammelt Infrastruktur- und Security-Events, meist mutab
 
 ### "Der Provider ändert das Modell still, ich kann nichts pinnen."
 
-Teilweise falsch. Bei Anthropic ist jede Model-ID ein gepinnter Snapshot; bei OpenAI sind die datierten Snapshots stabil, das Risiko sitzt im floating Alias oder im Azure-Default, der sich beim nächsten Release automatisch hochzieht. Wer auf `-latest` zeigt, hat sich das Problem selbst gebaut. Pinnen geht - und die tatsächlich bediente ID gehört ins Log, weil ein Pin nicht ewig hält. Dass ein Snapshot irgendwann zurückgezogen wird, ist ein Argument für das Log, nicht gegen das Pinnen.
+Teilweise falsch. Bei Anthropic ist jede Model-ID ein gepinnter Snapshot; bei OpenAI gelten die datierten Snapshots als stabile Referenz, das Risiko sitzt im floating Alias oder im Azure-Default, der sich beim nächsten Release automatisch hochzieht. Wer auf `-latest` zeigt, hat sich das Problem selbst gebaut. Pinnen geht - und die tatsächlich bediente ID gehört ins Log, weil ein Pin nicht ewig hält. Dass ein Snapshot irgendwann zurückgezogen wird, ist ein Argument für das Log, nicht gegen das Pinnen.
 
 ## Schluss: Soll ohne Ist ist eine Behauptung
 
@@ -499,7 +498,7 @@ Beide Begriffe sind mein Framing, kein Gesetzestext. "Revisionssicher" steht in 
 
 Nimm den Score, der über die Kreditwürdigkeit einer Person entscheidet, oder das Modell, das eine Kranken- oder Lebensversicherung bepreist - nach EU AI Act die Hochrisiko-Fälle aus Anhang III. Widerspricht diese Person ein halbes Jahr später und fragt, warum, dann ist "unser Contract sah Modell X in Version Y vor" keine Antwort. Die Antwort ist der Log-Eintrag, der zeigt, dass Modell X in Version Y die Entscheidung getroffen hat und dass niemand ihn seither angefasst hat. Dass du das Modell bei einem Provider eingekauft hast, entlastet dich dabei nicht: Nach Art. 28 DORA bleibst du in vollem Umfang verantwortlich.
 
-Das ist keine Kür. DORA gilt seit dem 17. Januar 2025 unmittelbar, und Art. 12 der RTS RMF, dem technischen Standard zum IKT-Risikomanagement, verlangt, Datenaufzeichnungen vor Manipulation, Löschung und unbefugtem Zugriff zu schützen; die Speicherfrist legst du risikobasiert selbst fest, eine feste Zahl steht dort nicht. Die GoBD verlangen für die steuerlich relevante Spur Unveränderbarkeit, und ein Dateisystem allein genügt dafür ausdrücklich nicht. Die 9. MaRisk-Novelle, noch Konsultationsentwurf und nicht in Kraft, würde mit AT 4.3.4 die Verwendung von Modellen in genau diesen Rahmen ziehen: Annahmen nachvollziehbar begründen, regelmäßig validieren, erklärbar halten. Ob dir das Wort "revisionssicher" gefällt oder nicht, ändert an dieser Pflichtenlage nichts.
+Das ist keine Kür. DORA gilt seit dem 17. Januar 2025 unmittelbar, und Art. 12 der RTS RMF, dem technischen Standard zum IKT-Risikomanagement, verlangt, Datenaufzeichnungen vor Manipulation, Löschung und unbefugtem Zugriff zu schützen; die Speicherfrist legst du risikobasiert selbst fest, eine feste Zahl steht dort nicht. Die GoBD verlangen für die steuerlich relevante Spur Unveränderbarkeit, und ein Dateisystem allein genügt dafür ausdrücklich nicht. Die 9. MaRisk-Novelle, noch Konsultationsentwurf und nicht in Kraft, würde mit AT 4.3.4 die Verwendung von Modellen in diesen Rahmen ziehen: Annahmen nachvollziehbar begründen, regelmäßig validieren, erklärbar halten. Ob dir das Wort "revisionssicher" gefällt oder nicht, ändert an dieser Pflichtenlage nichts.
 
 Neu erfunden ist an alldem wenig. Dieser Post benennt ein Artefakt, das die Serie längst umkreist hat, und gibt ihm den regulatorischen Rahmen. Jeder Vorgänger hat ein Stück davon gebaut:
 
@@ -522,10 +521,13 @@ Zwei Fäden aus früheren Posts bleiben offen, und beide hängen an diesem Log. 
 > Der Contract ist das Soll, das Log der Ist-Nachweis. Ohne das zweite ist das erste nur eine Behauptung.
 
 <InfoBox>
-  **Primärquellen (Stand Juli 2026, Regulatorik in Bewegung):**<br />
+  **Primärquellen (Auswahl, Stand Juli 2026 - Regulatorik in Bewegung):**<br />
   DORA - VO (EU) 2022/2554: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)<br />
   RTS IKT-Risikomanagement - Del. VO (EU) 2024/1774: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)<br />
+  RTS Incident-Meldefristen - Del. VO (EU) 2025/301: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2025/301/oj)<br />
   EU AI Act - VO (EU) 2024/1689: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)<br />
-  BaFin - Orientierungshilfe "IKT-Risiken beim Einsatz von KI" (18.12.2025): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2025/meldung_2025_12_18_orientierungshilfe_ikt_risiken.html)<br />
-  BaFin - 9. MaRisk-Novelle, Konsultation 02/2026: [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2026/meldung_2026_04_01_konsultation_02_2026_marisk-novelle.html)
+  eIDAS - VO (EU) 910/2014 (Art. 41 f.): [eur-lex.europa.eu](https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:02014R0910-20241018)<br />
+  §§ 146, 147 AO / § 257 HGB / § 371a ZPO: [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__146.html)<br />
+  BaFin - Orientierungshilfe "IKT-Risiken beim Einsatz von KI" (18.12.2025, unverbindlich): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2025/meldung_2025_12_18_orientierungshilfe_ikt_risiken.html)<br />
+  BaFin - 9. MaRisk-Novelle, Konsultation 02/2026 (Entwurf): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2026/meldung_2026_04_01_konsultation_02_2026_marisk-novelle.html)
 </InfoBox>
