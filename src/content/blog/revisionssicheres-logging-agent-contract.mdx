@@ -32,7 +32,7 @@ Diese Lücke habe ich im Vorgängerpost schon aufgemacht: Ohne eine Beweiskette 
 
 <LinkCard url="/blog/tools-sind-keine-prompts"/>
 
-Damit sind wir bei der These, die diesen ganzen Post trägt. Ich nenne das Bündel aus Modell, Version, Prompt, Tools und Datengrenzen den Agent Contract - das Soll, gegen das ein Feature laufen darf. Das ist mein Engineering-Framing, kein Begriff aus einem Gesetzestext. Der Contract beschreibt, was passieren soll. Das revisionssichere Log ist der Ist-Nachweis: die Aufzeichnung, dass es zu diesem Zeitpunkt, für diesen Fall, wirklich so passiert ist. Ohne das zweite ist das erste unbeweisbar.
+Damit sind wir bei der These, die diesen ganzen Post trägt. Ich nenne das Bündel aus Modell, Version, Prompt, Tools und Datengrenzen den Agent Contract - das Soll, gegen das ein Feature laufen darf. Das ist ein Engineering-Framing, kein Begriff aus einem Gesetzestext. Der Contract beschreibt, was passieren soll. Das revisionssichere Log ist der Ist-Nachweis: die Aufzeichnung, dass es zu diesem Zeitpunkt, für diesen Fall, wirklich so passiert ist. Ohne das zweite ist das erste unbeweisbar.
 
 Warum ausgerechnet Kreditwürdigkeit und Versicherungstarife? Weil das die Fälle sind, an denen der Gesetzgeber am kritischsten hinschaut.
 
@@ -44,19 +44,19 @@ Ein Wort in dieser These trägt allerdings mehr Gewicht, als es zugibt: "revisio
 
 ## Was "revisionssicher" wirklich heißt - und was nicht
 
-Fangen wir mit etwas Unbequemem an. Das Wort "revisionssicher", mit dem wir eben noch so selbstverständlich hantiert haben, steht in keinem einzigen Gesetz. Ich habe die Volltexte durchgegrept: GoBD, AO, HGB, DORA samt der einschlägigen technischen RTS, den EU AI Act, sogar die ZPO. Null Treffer. Es ist ein Begriff aus der Archivierungs- und DMS-Welt, ein Sammelwort der Praxis, das dir kein Prüfer als Norm vorhalten kann.
+Fangen wir mit etwas Unbequemem an. Das Wort "revisionssicher", mit dem wir eben noch so selbstverständlich hantiert haben, steht in keinem einzigen Gesetz. Ich habe die Volltexte durchsucht: GoBD, AO, HGB, DORA samt der einschlägigen technischen RTS, den EU AI Act, sogar die ZPO. Null Treffer. Es ist ein Begriff aus der Archivierungs- und DMS-Welt, ein Sammelwort der Praxis, das dir kein Prüfer als Norm vorhalten kann.
 
 Vorhalten kann er dir etwas anderes, und das heißt Unveränderbarkeit: § 146 Abs. 4 AO für die Steuer, § 239 Abs. 3 HGB fürs Handelsrecht. Das ist die bindende Pflicht. "Revisionssicher" ist die umgangssprachliche Verpackung dafür. Wer sie in einen DORA- oder BaFin-Kontext trägt, ohne das zu markieren, macht sich fachlich angreifbar.
 
 <Callout type="warning">
-Zwei zentrale Begriffe dieses Posts sind keine Rechtsbegriffe: "revisionssicher" und "Agent Contract". Beide tauchen in keinem der einschlägigen Texte auf - weder in GoBD, AO, HGB, DORA, den RTS, dem EU AI Act noch in der ZPO. Die bindende Pflicht heißt Unveränderbarkeit (§ 146 Abs. 4 AO, § 239 Abs. 3 HGB). Wo ich "revisionssicher" oder "Agent Contract" schreibe, meine ich mein eigenes Engineering-Framing für diese Pflicht, nicht ein Zitat der Aufsicht.
+Zwei zentrale Begriffe dieses Posts sind keine Rechtsbegriffe: "revisionssicher" und "Agent Contract". Beide tauchen in keinem der einschlägigen Texte auf - weder in GoBD, AO, HGB, DORA, den RTS, dem EU AI Act noch in der ZPO. Die bindende Pflicht heißt Unveränderbarkeit (§ 146 Abs. 4 AO, § 239 Abs. 3 HGB). Wo ich "revisionssicher" oder "Agent Contract" schreibe, meine ich unser Engineering-Framing für diese Pflicht, nicht ein Zitat der Aufsicht.
 </Callout>
 
-Der Unterschied ist keine Wortklauberei, er entscheidet, was dein Log leisten muss. "Append-only" ist eine Eigenschaft des Speichermediums: einmal geschrieben, nicht mehr überschreibbar. Unveränderbarkeit im Sinne der GoBD ist eine Eigenschaft des Verfahrens. Randziffer 110 sagt das ausdrücklich, sie sei "hardwaremäßig ... als auch softwaremäßig ... als auch organisatorisch" zu gewährleisten. Und dann der Satz, den ich jedem zeige, der glaubt, eine Logdatei genüge: "Die Ablage von Daten ... in einem Dateisystem erfüllt die Anforderungen der Unveränderbarkeit regelmäßig nicht, soweit nicht zusätzliche Maßnahmen ergriffen werden."
+Der Unterschied ist keine Wortklauberei, er entscheidet, was dein Log leisten muss. "Append-only" ist eine Eigenschaft des Speichermediums: einmal geschrieben, nicht mehr überschreibbar. Unveränderbarkeit im Sinne der GoBD ist eine Eigenschaft des Verfahrens. Randziffer 110 sagt das ausdrücklich, sie sei "hardwaremäßig ... als auch softwaremäßig ... als auch organisatorisch" zu gewährleisten. Und dann der Satz, der die Vorstellung erledigt, eine Logdatei genüge: "Die Ablage von Daten ... in einem Dateisystem erfüllt die Anforderungen der Unveränderbarkeit regelmäßig nicht, soweit nicht zusätzliche Maßnahmen ergriffen werden."
 
 Ein append-only-File ist damit ein Baustein, kein Nachweis. Und nein, du kaufst dich da auch nicht frei. Ein amtlich "GoBD-zertifiziertes" Produkt gibt es nicht; Rz 180/181 stellt klar, dass Zertifikate und Testate Dritter gegenüber der Finanzbehörde keine Bindungswirkung entfalten. Der Aufkleber "revisionssicher" auf einer Vendor-Landingpage ist eine Marketingaussage. Den Nachweis, dass dein Verfahren die Unveränderbarkeit trägt, führst am Ende du.
 
-Bleibt der zweite Begriff, den ich in diesem Post groß mache: "Agent Contract". Auch er steht in keinem Rechtsakt. Ich habe ihn eingeführt, die Aufsicht kennt ihn nicht. DORA nennt seine Verträge "vertragliche Vereinbarungen über die Nutzung von IKT-Dienstleistungen", und das trifft eine Agenten-Entscheidung nicht recht. Ich brauche ein Wort für das Soll, und "Contract" ist meines. Die Architektur dahinter löst die bindenden Pflichten ein: Unveränderbarkeit, Protokollierung, Nachvollziehbarkeit, für ein Feature wie unser Kreditscoring aus dem letzten Kapitel.
+Bleibt der zweite Begriff, den ich in diesem Post groß mache: "Agent Contract". Auch er steht in keinem Rechtsakt. Michael und ich haben ihn für unsere Arbeit eingeführt, die Aufsicht kennt ihn nicht. DORA nennt seine Verträge "vertragliche Vereinbarungen über die Nutzung von IKT-Dienstleistungen", und das trifft eine Agenten-Entscheidung nicht recht. Wir brauchen ein Wort für das Soll, und "Agent Contract" ist unseres. Die Architektur dahinter löst die bindenden Pflichten ein: Unveränderbarkeit, Protokollierung, Nachvollziehbarkeit, für ein Feature wie unser Kreditscoring aus dem letzten Kapitel.
 
 Diese Ehrlichkeit stelle ich bewusst nach vorne. Der naheliegende Konter gegen diesen ganzen Post lautet "ihr erfindet euch eine Anforderung". Für die beiden Wörter stimmt das sogar. Die Pflichten dahinter habe ich nicht erfunden - die stehen im Gesetz, ich habe ihnen nur einen brauchbaren Namen gegeben.
 
@@ -81,7 +81,7 @@ Wenn du die Serie mitgelesen hast, kennst du die fünf Bausteine längst, nur ve
 
 <LinkCard url="/blog/ai-evals-ci-pipeline"/>
 
-In ai-rollout-canary-shadow habe ich dieses Bündel schon einmal zusammengeführt, als Release-Manifest: alle Artefakte mit Hashes und Pins an einem Git-Tag, damit ein Rollback atomar wird. Hier gebe ich dem Bündel einen Namen und eine Rolle. Ich nenne es den Agent Contract - mein Begriff aus der Engineering-Praxis für das vollständige Soll eines AI-Features in einem versionierten Artefakt.
+In ai-rollout-canary-shadow habe ich dieses Bündel schon einmal zusammengeführt, als Release-Manifest: alle Artefakte mit Hashes und Pins an einem Git-Tag, damit ein Rollback atomar wird. Hier gebe ich dem Bündel einen Namen und eine Rolle. Ich nenne es den Agent Contract - unser Begriff aus der Engineering-Praxis für das vollständige Soll eines AI-Features in einem versionierten Artefakt.
 
 <LinkCard url="/blog/ai-rollout-canary-shadow"/>
 
@@ -458,11 +458,11 @@ Das ist eine Menge Regulatorik für ein einzelnes Feature: viele Artefakte, mehr
 
 ## Typische Gegenargumente
 
-Die Kostenfrage aus dem letzten Kapitel kommt selten allein. Sobald ich Contract und revisionssicheres Log als Pflichtprogramm auf den Tisch lege, kommen die Einwände zuverlässig. Ein paar davon höre ich in fast jeder Diskussion. Sie sind gut genug, um sie ernst zu nehmen.
+Die Kostenfrage aus dem letzten Kapitel kommt selten allein. Sobald ich Contract und revisionssicheres Log als Pflichtprogramm auf den Tisch lege, kommen die Einwände zuverlässig. Ein paar davon kommen in fast jeder Diskussion auf. Sie sind gut genug, um sie ernst zu nehmen.
 
 ### "Revisionssicherheit ist reine Compliance-Fassade."
 
-Der Verdacht ist berechtigt: Vieles, was unter "Compliance" läuft, ist ein Ordner, den nie jemand öffnet. Nur trifft es hier nicht zu. Das Log ist die einzige Fläche, gegen die sich der Contract überhaupt diffen lässt - der einzige Mechanismus, mit dem du einen stillen Modell-Swap, driftende Prompts, einen out-of-scope Tool-Call oder eine gebrochene Schema-Zusage überhaupt bemerkst. Denselben Einwand habe ich beim Eval-Loop schon gehört, und die Antwort ist dieselbe: Die Substanz entsteht im Betrieb, der Nachweis fällt nebenbei ab.
+Der Verdacht ist berechtigt: Vieles, was unter "Compliance" läuft, ist ein Ordner, den nie jemand öffnet. Nur trifft es hier nicht zu. Das Log ist die einzige Fläche, gegen die sich der Contract überhaupt diffen lässt - der einzige Mechanismus, mit dem du einen stillen Modell-Swap, driftende Prompts, einen out-of-scope Tool-Call oder eine gebrochene Schema-Zusage überhaupt bemerkst. Denselben Einwand habe ich beim Eval-Loop schon einmal entkräftet, und die Antwort ist dieselbe: Die Substanz entsteht im Betrieb, der Nachweis fällt nebenbei ab.
 
 <LinkCard url="/blog/incident-zu-regressionstest"/>
 
@@ -494,7 +494,7 @@ Die härtesten Einwände liegen hinter uns, und keiner hat den Kern umgeworfen. 
 
 Der Agent Contract ist das Soll: welches Modell in welcher Version, mit welchem Prompt, welchen Tools, welchen Parametern und welchem erlaubten Ausgaberaum. Das revisionssichere Log ist der Ist-Nachweis: was davon zum Zeitpunkt der Entscheidung tatsächlich lief, unveränderbar festgehalten. Fehlt das Log, ist der Contract eine Behauptung. Ein Dokument im Wiki, das beschreibt, wie das System sich verhalten sollte, ohne einen einzigen Beleg, dass es sich so verhalten hat. Fehlt der Contract, ist das Log Rauschen ohne Maßstab: Millionen Zeilen, gegen die niemand prüfen kann, weil das Soll nie definiert wurde. Erst zusammen ergeben sie einen Nachweis.
 
-Beide Begriffe sind mein Framing, kein Gesetzestext. "Revisionssicher" steht in keinem der Rechtsakte, "Agent Contract" erst recht nicht. Was die Regulierung verlangt, trägt nüchternere Namen: Unveränderbarkeit, Nachvollziehbarkeit, Protokollierung. Die Sache dahinter ist dieselbe.
+Beide Begriffe sind unser Framing, kein Gesetzestext. "Revisionssicher" steht in keinem der Rechtsakte, "Agent Contract" erst recht nicht. Was die Regulierung verlangt, trägt nüchternere Namen: Unveränderbarkeit, Nachvollziehbarkeit, Protokollierung. Die Sache dahinter ist dieselbe.
 
 Nimm den Score, der über die Kreditwürdigkeit einer Person entscheidet, oder das Modell, das eine Kranken- oder Lebensversicherung bepreist - nach EU AI Act die Hochrisiko-Fälle aus Anhang III. Widerspricht diese Person ein halbes Jahr später und fragt, warum, dann ist "unser Contract sah Modell X in Version Y vor" keine Antwort. Die Antwort ist der Log-Eintrag, der zeigt, dass Modell X in Version Y die Entscheidung getroffen hat und dass niemand ihn seither angefasst hat. Dass du das Modell bei einem Provider eingekauft hast, entlastet dich dabei nicht: Nach Art. 28 DORA bleibst du in vollem Umfang verantwortlich.
 
