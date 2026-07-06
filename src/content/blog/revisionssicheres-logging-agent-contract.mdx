@@ -267,7 +267,7 @@ Für die Prompt-Seite gibt es dasselbe Muster als fertiges Werkzeug. Langfuse h�
 
 ### Warum eine Stichprobe nicht reicht
 
-Jetzt der Teil, an dem sich Debugging-Logging und Conformance-Log scheiden. Ein revisionssicheres Log darf kein gesampeltes Subset sein. "Wir loggen 1% zum Debuggen" ist für Traces ein völlig legitimer Satz, für den Ist-Nachweis ist er tödlich. Eine Stichprobe belegt nichts über den einen Kreditantrag, der später auf dem Tisch der Prüfer landet.
+Hier scheiden sich Debugging-Logging und Conformance-Log. Ein revisionssicheres Log darf kein gesampeltes Subset sein. "Wir loggen 1% zum Debuggen" ist für Traces ein völlig legitimer Satz, für den Ist-Nachweis ist er tödlich. Eine Stichprobe belegt nichts über den einen Kreditantrag, der später auf dem Tisch der Prüfer landet.
 
 Das Prinzip ist nicht neu, es steht seit Jahren im Steuerrecht. Die GoBD verlangen in Rz 36 die Einzelaufzeichnung: Geschäftsvorfälle sind "vollzählig und lückenlos" aufzuzeichnen. Ich trage diesen Grundsatz bewusst als Engineering-Haltung in den Conformance-Kontext - ob eine Bonitätsbewertung steuerlich ein Geschäftsvorfall ist, ist dabei nicht der Punkt. Der Punkt ist: Ein Nachweis, der nur jeden hundertsten Lauf kennt, ist keiner.
 
@@ -283,11 +283,11 @@ Eine feste Aufbewahrungsfrist nennt Art. 12 bewusst nicht. Das Finanzunternehmen
 
 ### Was nicht ins Log gehört
 
-Ein letzter Zug, bevor es weitergeht. Vollständigkeit der Conformance-Metadaten heißt nicht, dass alles hineingehört. Die SCHUFA-Auskunft, das Einkommen, der Name des Antragstellers - das sind die Daten, die im Trace nichts verloren haben. Ich habe in "Observability für AI-Features" beschrieben, was nicht in den Trace gehört; dieselbe Grenze gilt hier. Der Conformance-Nachweis braucht die `contract_version` und das aufgelöste Modell, nicht den Klartext der Kreditakte. Dieses Spannungsfeld zwischen Nachweispflicht und Datenschutz (DSGVO) lösen wir später auf, wenn die Regime-Landkarte steht.
+Vollständigkeit der Conformance-Metadaten heißt aber nicht, dass alles hineingehört. Die SCHUFA-Auskunft, das Einkommen, der Name des Antragstellers - das sind die Daten, die im Trace nichts verloren haben. Ich habe in "Observability für AI-Features" beschrieben, was nicht in den Trace gehört; dieselbe Grenze gilt hier. Der Conformance-Nachweis braucht die `contract_version` und das aufgelöste Modell, nicht den Klartext der Kreditakte. Dieses Spannungsfeld zwischen Nachweispflicht und Datenschutz (DSGVO) lösen wir später auf, wenn die Regime-Landkarte steht.
 
 <LinkCard url="/blog/observability-ai-features"/>
 
-Bleibt der Riss, den dieses Kapitel offenlässt. Ein vollständiges, korrekt verknüpftes, sauber getimtes Log ist der Ist-Nachweis - vorausgesetzt, es stimmt noch. Aber ein Log, das man nachträglich editieren kann, beweist gar nichts.
+Ein vollständiges, korrekt verknüpftes, sauber getimtes Log ist der Ist-Nachweis - vorausgesetzt, es stimmt noch. Aber ein Log, das man nachträglich editieren kann, beweist gar nichts.
 
 ## Vom append-only zum gerichtsfesten Log
 
@@ -303,7 +303,7 @@ Daneben steht der Governance Mode: technisch fast dasselbe, aber mit einer Hinte
 
 Der Legal Hold kennt dagegen keine Frist. Er hält ein Objekt unbefristet fest, bis jemand ihn aktiv aufhebt - nützlich, wenn ein konkreter Rechtsstreit läuft und die reguläre Aufbewahrungsfrist längst abgelaufen wäre. Die anderen Hyperscaler haben dieselbe Mechanik unter anderem Namen. Azures Immutable Blob Storage unterscheidet locked und unlocked; ein gelockter Container lässt sich nur noch verlängern, "not even by users with account administrative privileges". Google Clouds Bucket Lock ist noch kompromissloser: "Locking a bucket's retention policy is an irreversible action." Einmal gelockt, gibt es kein Zurück, auch nicht für dich.
 
-Hier muss ich ehrlich sein, weil viele Anbieterseiten es nicht sind. S3 Object Lock und Azure Immutable Blob tragen Testate, die nach etwas klingen, das sie nicht sind. Die Bewertungen stammen von Cohasset Associates, einem privaten, vom Hersteller beauftragten Assessor, und sie prüfen die Konformität mit US-amerikanischem Wertpapierrecht: SEC Rule 17a-4, FINRA, CFTC. Das ist ein realer Standard. Aber es ist nicht GoBD-Konformität, nicht DORA-Konformität und schon gar kein deutsches "revisionssicher" - ein Begriff, der ohnehin aus dem Handels- und Steuerrecht stammt und in keinem der Gesetzestexte als Norm auftaucht. Ein SEC-17a-4-Testat beweist, dass ein Medium für US-Broker-Aufzeichnungen taugt. Über die Anforderungen aus § 146 AO oder der RTS RMF sagt es nichts. Wer das eine als das andere verkauft, verkauft eine Fassade.
+Viele Anbieterseiten sind hier nicht ehrlich: S3 Object Lock und Azure Immutable Blob tragen Testate, die nach etwas klingen, das sie nicht sind. Die Bewertungen stammen von Cohasset Associates, einem privaten, vom Hersteller beauftragten Assessor, und sie prüfen die Konformität mit US-amerikanischem Wertpapierrecht: SEC Rule 17a-4, FINRA, CFTC. Das ist ein realer Standard. Aber es ist nicht GoBD-Konformität, nicht DORA-Konformität und schon gar kein deutsches "revisionssicher" - ein Begriff, der ohnehin aus dem Handels- und Steuerrecht stammt und in keinem der Gesetzestexte als Norm auftaucht. Ein SEC-17a-4-Testat beweist, dass ein Medium für US-Broker-Aufzeichnungen taugt. Über die Anforderungen aus § 146 AO oder der RTS RMF sagt es nichts. Wer das eine als das andere verkauft, verkauft eine Fassade.
 
 ### Tamper-evident: der Nachweis, dass niemand dazwischen war
 
@@ -325,7 +325,7 @@ Merkle-Root und WORM sichern das Was und das Ob. Offen bleibt das Wann. Ein Log,
 
 Der Mechanismus dahinter ist RFC 3161. Zum Zeitstempeldienst wandert nur der Hash, die message imprint. Das Dokument selbst verlässt das Haus nie. Der Dienst signiert den Hash zusammen mit der aktuellen Zeit und schickt ein Token zurück. Für unser Kredit-Log heißt das konkret: Die Merkle-Root eines Batches geht an die Timestamping Authority, der Inhalt der Einträge bleibt drin. Rechtlich interessant wird es durch eIDAS. Artikel 41 Absatz 2 der Verordnung (EU) Nr. 910/2014 knüpft an qualifizierte Zeitstempel eine gesetzliche Vermutung: die "Vermutung der Richtigkeit des Datums und der Zeit" sowie der "Unversehrtheit der ... verbundenen Daten".
 
-Hier lohnt Präzision, denn das Wort im Titel dieses Kapitels verspricht mehr, als die Technik einlöst. Die Vermutung aus eIDAS ist widerlegbar. Sie verschiebt die Beweislast: Nicht ich muss die Echtheit des Logs beweisen, sondern die Gegenseite muss sie erschüttern. Vor Gericht ist das ein enormer Vorteil, ein unumstößlicher Vollbeweis ist es nicht.
+Das Wort im Titel dieses Kapitels verspricht mehr, als die Technik einlöst. Die Vermutung aus eIDAS ist widerlegbar. Sie verschiebt die Beweislast: Nicht ich muss die Echtheit des Logs beweisen, sondern die Gegenseite muss sie erschüttern. Vor Gericht ist das ein enormer Vorteil, ein unumstößlicher Vollbeweis ist es nicht.
 
 Dasselbe Muster findet sich in der Zivilprozessordnung. § 371a Abs. 1 ZPO gewährt qualifiziert signierten elektronischen Dokumenten den Anscheinsbeweis der Echtheit. Auch das ist eine Beweiserleichterung, ausdrücklich kein Vollbeweis. Was wir hier bauen, ist die stärkste Beweisposition, die sich technisch herstellen lässt. Sie kann angegriffen werden, sie kann im Einzelfall auch fallen. Die Ausgangslage ist trotzdem eine andere als bei einem editierbaren Logfile, dessen Echtheit ich vor Gericht von Grund auf selbst belegen müsste.
 
