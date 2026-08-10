@@ -1,3 +1,15 @@
 /.well-known/webfinger
   Content-Type: application/jrd+json
   Access-Control-Allow-Origin: *
+
+# Bildmarke: wird von fremden Seiten und Mail-Clients (BIMI) geladen.
+# Kein immutable — die URL ist stabil, der Inhalt darf sich aendern.
+/bimi.svg
+  Content-Type: image/svg+xml
+  Cache-Control: public, max-age=86400
+  Access-Control-Allow-Origin: *
+
+/favicon.svg
+  Content-Type: image/svg+xml
+  Cache-Control: public, max-age=86400
+  Access-Control-Allow-Origin: *
