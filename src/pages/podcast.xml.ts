@@ -3,13 +3,14 @@ import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
+import { EDITORIAL_RESPONSIBILITY } from '../lib/site';
 
 export async function GET(context: APIContext) {
   const site = context.site!.toString().replace(/\/$/, '');
 
-  const posts = (
-    await getCollection('blog', ({ data }) => !data.draft && !!data.podcast)
-  ).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+  const posts = (await getCollection('blog', ({ data }) => !data.draft && !!data.podcast)).sort(
+    (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+  );
 
   return rss({
     xmlns: {
@@ -38,9 +39,7 @@ export async function GET(context: APIContext) {
       }
 
       const itemCustomData = [
-        podcast.duration
-          ? `<itunes:duration>${podcast.duration}</itunes:duration>`
-          : '',
+        podcast.duration ? `<itunes:duration>${podcast.duration}</itunes:duration>` : '',
         `<itunes:image href="${site}/logo.png"/>`,
       ]
         .filter(Boolean)
@@ -51,7 +50,7 @@ export async function GET(context: APIContext) {
       return {
         title: post.data.title,
         pubDate: post.data.date,
-        description: `${post.data.description}\n\n🔗 Zum Blogpost: ${postUrl}\n🌐 Blog: ${site}`,
+        description: `${post.data.description}\n\n🤖 Dialog und Stimmen dieser Folge sind vollständig KI-generiert. Redaktionelle Verantwortung: ${EDITORIAL_RESPONSIBILITY}. Mehr dazu: ${site}/ki-transparenz\n\n🔗 Zum Blogpost: ${postUrl}\n🌐 Blog: ${site}`,
         link: `/blog/${post.id}/`,
         enclosure: {
           url: audioUrl,

@@ -4,6 +4,7 @@ import BaseLayout from './BaseLayout.astro';
 import TagBadge from '../components/ui/TagBadge.astro';
 import ReadingProgress from '../components/ui/ReadingProgress.astro';
 import PodcastPlayer from '../components/widgets/PodcastPlayer.astro';
+import AiDisclosure from '../components/ui/AiDisclosure.astro';
 
 interface Props {
     title: string;
@@ -13,9 +14,10 @@ interface Props {
     tags?: string[];
     image?: ImageMetadata;
     podcast?: {audioFile: string; transcript?: string};
+    ai?: 'generated' | 'assisted' | 'none';
 }
 
-const {title, description, date, updatedDate, tags = [], image, podcast} = Astro.props;
+const {title, description, date, updatedDate, tags = [], image, podcast, ai = 'generated'} = Astro.props;
 
 const formattedDate = date.toLocaleDateString('de-DE', {
     year: 'numeric',
@@ -110,9 +112,14 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
         </div>
     )}
 
+    <AiDisclosure level={ai} />
+
     {podcast && (
         <div class="mx-auto max-w-(--content-width) px-6 pt-8">
             <PodcastPlayer audioFile={podcast.audioFile} transcript={podcast.transcript} title={title} />
+            <p class="mt-2 text-xs text-(--color-text-muted)">
+                Dialog und Stimmen dieser Audio-Fassung sind vollständig KI-generiert.
+            </p>
         </div>
     )}
 

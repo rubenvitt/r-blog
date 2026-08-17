@@ -14,3 +14,13 @@ export const ABOUT_PAGE = {
   title: 'Über mich — rubeen.dev',
   description: 'Über Ruben – Consultant, Softwareentwickler und Engagierter im Katastrophenschutz.',
 } as const;
+
+/** Natürliche Person, die die redaktionelle Verantwortung i.S.d. Art. 50 Abs. 4 KI-VO trägt. */
+export const EDITORIAL_RESPONSIBILITY = 'Ruben Vitt';
+
+export const AI_TRANSPARENCY_PAGE = {
+  path: '/ki-transparenz',
+  title: 'KI-Transparenz — rubeen.dev',
+  description:
+    'Wie auf rubeen.dev generative KI eingesetzt wird, wie Inhalte gekennzeichnet sind und wer die redaktionelle Verantwortung trägt.',
+} as const;

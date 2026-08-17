@@ -1,0 +1,84 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import {AI_TRANSPARENCY_PAGE, EDITORIAL_RESPONSIBILITY} from '../lib/site';
+---
+
+<BaseLayout title={AI_TRANSPARENCY_PAGE.title} description={AI_TRANSPARENCY_PAGE.description}>
+    <div class="mx-auto max-w-(--content-width) px-6">
+        <section class="py-16">
+            <h1 class="text-3xl font-bold tracking-tight">KI-Transparenz</h1>
+
+            <div class="mt-8 space-y-6 leading-relaxed text-(--color-text-secondary)">
+                <p>
+                    Ich schreibe auf diesem Blog über AI Systems Engineering – und benutze die Werkzeuge, über die ich schreibe, auch selbst. Diese Seite sagt, wo genau. Nicht als
+                    Kleingedrucktes, sondern weil du wissen sollst, was du hier liest.
+                </p>
+
+                <h2 class="pt-4 text-xl font-semibold tracking-tight text-(--color-text)">Was von der KI kommt</h2>
+
+                <ul class="list-disc space-y-2 pl-5">
+                    <li>
+                        <strong class="text-(--color-text)">Artikeltexte</strong> – Der Fließtext der Beiträge wird von einem Sprachmodell erzeugt. Themenwahl, These, Struktur, Beispiele
+                        und Quellen kommen von mir.
+                    </li>
+                    <li>
+                        <strong class="text-(--color-text)">Bilder</strong> – Hero- und Illustrationsbilder sind KI-generiert. Sie sind bewusst illustrativ gehalten und zeigen keine
+                        realen Personen, Orte oder Ereignisse. Screenshots aus echten Anwendungen sind echt.
+                    </li>
+                    <li>
+                        <strong class="text-(--color-text)">Podcast-Folgen</strong> – Dialogskript und Stimmen der Audio-Fassungen sind vollständig synthetisch. Die Sprecher sind keine
+                        realen Personen. Wie diese Pipeline gebaut ist, steht in
+                        <a href="/blog/ai-werkzeuge-eigener-blog" class="text-(--color-accent) hover:underline">AI-Werkzeuge für den eigenen Blog</a>.
+                    </li>
+                </ul>
+
+                <h2 class="pt-4 text-xl font-semibold tracking-tight text-(--color-text)">Wer verantwortlich ist</h2>
+
+                <p>
+                    Die redaktionelle Verantwortung für alle hier veröffentlichten Inhalte trägt <strong class="text-(--color-text)">{EDITORIAL_RESPONSIBILITY}</strong>. Kein Text geht
+                    ungelesen online: Ich prüfe jeden Beitrag vor der Veröffentlichung inhaltlich, korrigiere, kürze und verwerfe, was nicht stimmt. Fehler, die trotzdem stehen bleiben,
+                    sind meine – nicht die des Modells.
+                </p>
+
+                <p>
+                    Wenn dir etwas auffällt, das sachlich falsch ist oder erfunden wirkt:
+                    <a href="mailto:hello@rubeen.dev" class="text-(--color-accent) hover:underline">schreib mir</a>. Ich korrigiere das und weise die Änderung im Beitrag aus.
+                </p>
+
+                <h2 class="pt-4 text-xl font-semibold tracking-tight text-(--color-text)">Wie gekennzeichnet wird</h2>
+
+                <p>
+                    Jeder Beitrag trägt oberhalb des Textes einen Hinweis. Er unterscheidet zwei Stufen:
+                </p>
+
+                <ul class="list-disc space-y-2 pl-5">
+                    <li>
+                        <strong class="text-(--color-text)">Mit KI erstellt</strong> – Text und Bilder wurden von generativer KI erzeugt. Das ist auf diesem Blog der Regelfall.
+                    </li>
+                    <li>
+                        <strong class="text-(--color-text)">Mit KI-Unterstützung</strong> – Der Text stammt von mir, KI wurde nur für Lektorat oder Recherche eingesetzt.
+                    </li>
+                </ul>
+
+                <p>
+                    Beiträge ohne generative KI tragen keinen Hinweis. Der Hinweis steht immer vor dem Artikeltext und nicht versteckt am Seitenende – wer den Beitrag öffnet, sieht ihn,
+                    bevor er zu lesen anfängt.
+                </p>
+
+                <h2 class="pt-4 text-xl font-semibold tracking-tight text-(--color-text)">Rechtlicher Rahmen</h2>
+
+                <p>
+                    Seit dem 2. August 2026 gelten die Transparenzpflichten aus <span class="whitespace-nowrap">Art. 50</span> der KI-Verordnung (EU) 2024/1689. Für veröffentlichte
+                    KI-generierte Texte verlangt <span class="whitespace-nowrap">Art. 50 Abs. 4</span> eine Offenlegung, sofern sie die Öffentlichkeit über Angelegenheiten von öffentlichem
+                    Interesse informieren; die Pflicht entfällt, wenn der Inhalt einer menschlichen Überprüfung unterzogen wurde und eine benannte Person die redaktionelle Verantwortung
+                    trägt. <span class="whitespace-nowrap">Art. 50 Abs. 5</span> verlangt, dass Hinweise klar, eindeutig und spätestens bei der ersten Wahrnehmung erfolgen.
+                </p>
+
+                <p>
+                    Ob dieser Blog überhaupt unter die Norm fällt, ist im Einzelfall diskutabel – die Ausnahme für redaktionell verantwortete Inhalte würde hier greifen. Ich kennzeichne
+                    trotzdem, und zwar durchgängig. Nicht weil ich muss, sondern weil ein Blog über KI-Systeme schlecht dabei mauern kann, wie er selbst entsteht.
+                </p>
+            </div>
+        </section>
+    </div>
+</BaseLayout>

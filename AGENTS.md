@@ -31,9 +31,15 @@ pnpm format:check # oxfmt --check
 
 ### Content Collection
 
-Einzige Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `description`, `date`, `updatedDate?`, `tags[]`, `aliases[]`, `image?`, `draft`. Posts sind MDX-Dateien in `src/content/blog/`.
+Einzige Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `description`, `date`, `updatedDate?`, `tags[]`, `aliases[]`, `image?`, `draft`, `ai`. Posts sind MDX-Dateien in `src/content/blog/`.
 
 `aliases` ermöglicht alte URLs als 301-Redirects (generiert in `[...slug].astro`). Zusätzlich existieren manuelle Redirects in `astro.config.mjs`.
+
+### KI-Kennzeichnung
+
+Das Frontmatter-Feld `ai` steuert den Transparenzhinweis nach Art. 50 KI-VO — `generated` (Default), `assisted` oder `none`. `BlogPost.astro` rendert daraus über `AiDisclosure.astro` einen Hinweis **oberhalb** des Artikeltextes (Art. 50 Abs. 5: spätestens bei erster Wahrnehmung, nicht im Footer). Derselbe Hinweis geht in `rss.xml.ts`; der Podcast-Feed und der Player weisen zusätzlich auf die synthetischen Stimmen hin. Details und die benannte redaktionelle Verantwortung stehen auf `/ki-transparenz`.
+
+Keine manuellen Transparenz-Callouts in Posts — das Feld ist die einzige Quelle.
 
 ### Layouts
 
