@@ -1,0 +1,66 @@
+---
+// Transparenzhinweis fuer KI-erzeugte Inhalte (Art. 50 Abs. 4 KI-VO).
+// Art. 50 Abs. 5 verlangt "klar und eindeutig, spaetestens zum Zeitpunkt der ersten
+// Wahrnehmung" — deshalb steht der Hinweis oberhalb des Artikeltextes und nicht im Footer.
+import {AI_TRANSPARENCY_PAGE, EDITORIAL_RESPONSIBILITY} from '../../lib/site';
+
+interface Props {
+    level: 'generated' | 'assisted' | 'none';
+}
+
+const {level} = Astro.props;
+
+const config = {
+    generated: {
+        label: 'Mit KI erstellt',
+        text: 'Text und Bilder dieses Artikels wurden mit generativer KI erzeugt.',
+    },
+    assisted: {
+        label: 'Mit KI-Unterstützung',
+        text: 'Dieser Artikel wurde mit generativer KI überarbeitet, etwa für Lektorat und Recherche.',
+    },
+    none: null,
+};
+
+const c = config[level];
+---
+
+{c && (
+    <div
+        class="not-prose mx-auto max-w-(--content-width) px-6 pt-8"
+        data-ai-disclosure={level}
+    >
+        <aside
+            role="note"
+            aria-label="Transparenzhinweis zu KI-generierten Inhalten"
+            class="flex gap-3 rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-4"
+        >
+            <svg
+                class="mt-0.5 h-4 w-4 shrink-0 text-(--color-accent)"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <rect x="4" y="7" width="16" height="13" rx="2"></rect>
+                <path d="M12 3v4"></path>
+                <path d="M2 13h2"></path>
+                <path d="M20 13h2"></path>
+                <path d="M9 13h.01"></path>
+                <path d="M15 13h.01"></path>
+                <path d="M9 17h6"></path>
+            </svg>
+            <p class="text-sm leading-relaxed text-(--color-text-secondary)">
+                <strong class="font-semibold text-(--color-text)">{c.label}.</strong>{' '}
+                {c.text} Redaktionelle Verantwortung: {EDITORIAL_RESPONSIBILITY}.{' '}
+                <a href={AI_TRANSPARENCY_PAGE.path} class="text-(--color-accent) hover:underline">
+                    Wie dieser Blog KI einsetzt
+                </a>
+            </p>
+        </aside>
+    </div>
+)}

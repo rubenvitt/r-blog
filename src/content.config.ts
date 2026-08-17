@@ -13,6 +13,11 @@ const blog = defineCollection({
       aliases: z.array(z.string()).default([]),
       image: image().optional(),
       draft: z.boolean().default(false),
+      // Transparenzhinweis nach Art. 50 Abs. 4 KI-VO.
+      // 'generated' = Text/Bilder von einem Modell erzeugt (Default, weil das hier der Normalfall ist)
+      // 'assisted'  = selbst geschrieben, KI nur fuer Lektorat/Recherche
+      // 'none'      = ohne generative KI entstanden
+      ai: z.enum(['generated', 'assisted', 'none']).default('generated'),
       podcast: z
         .object({
           audioFile: z.string(),
