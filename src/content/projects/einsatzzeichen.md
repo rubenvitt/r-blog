@@ -5,7 +5,7 @@ area: bevoelkerungsschutz
 kind: bibliothek
 status: aktiv
 repo: rubenvitt/einsatzzeichen
-website: https://einsatzzeichen.rubeen.dev
+website: https://einsatzzeichen.dev
 stack: [TypeScript, SVG, Canvas, React, Web Components, MapLibre, QGIS]
 license: MIT
 featured: true
