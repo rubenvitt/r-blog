@@ -6,6 +6,8 @@ kind: desktop
 status: alpha
 repo: rubenvitt/mbar
 stack: [Rust, Metal, Lua]
+screenshot: ./_images/mbar/screenshot.webp
+screenshotAlt: "Illustration: mbar als Statusleiste am oberen Bildschirmrand mit Workspaces, aktiver App, Medien, CPU, RAM, WLAN, Lautstärke, Akku und Uhrzeit"
 license: GPL-3.0
 featured: true
 lastActivity: 2026-10-08
