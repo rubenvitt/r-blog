@@ -1,58 +1,50 @@
 ---
 interface Props {
     type?: 'info' | 'warning' | 'tip' | 'danger';
+    title?: string;
 }
 
-const {type = 'info'} = Astro.props;
+const {type = 'info', title} = Astro.props;
 
+// Jeder Ton trägt Wort und Icon, nie nur Farbe.
 const config = {
     info: {
-        bg: 'bg-blue-500/6 dark:bg-blue-400/8',
-        border: 'border-blue-500/10 dark:border-blue-400/15',
-        iconBg: 'bg-blue-500/12 dark:bg-blue-400/15',
-        iconColor: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-(--color-accent-soft)',
+        fg: 'text-(--color-accent)',
         label: 'Hinweis',
-        icon: 'i',
-    },
-    warning: {
-        bg: 'bg-amber-500/6 dark:bg-amber-400/8',
-        border: 'border-amber-500/12 dark:border-amber-400/15',
-        iconBg: 'bg-amber-500/12 dark:bg-amber-400/15',
-        iconColor: 'text-amber-600 dark:text-amber-400',
-        label: 'Achtung',
-        icon: '⚡',
+        icon: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 11v5', 'M12 8h.01'],
     },
     tip: {
-        bg: 'bg-emerald-500/6 dark:bg-emerald-400/8',
-        border: 'border-emerald-500/12 dark:border-emerald-400/15',
-        iconBg: 'bg-emerald-500/12 dark:bg-emerald-400/15',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-(--color-moss-soft)',
+        fg: 'text-(--color-moss)',
         label: 'Tipp',
-        icon: '💡',
+        icon: ['M9 18h6', 'M10 21h4', 'M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z'],
+    },
+    warning: {
+        bg: 'bg-(--color-amber-soft)',
+        fg: 'text-(--color-amber)',
+        label: 'Achtung',
+        icon: ['M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z', 'M12 9v4', 'M12 17h.01'],
     },
     danger: {
-        bg: 'bg-red-500/6 dark:bg-red-400/8',
-        border: 'border-red-500/10 dark:border-red-400/15',
-        iconBg: 'bg-red-500/12 dark:bg-red-400/15',
-        iconColor: 'text-red-600 dark:text-red-400',
+        bg: 'bg-(--color-danger-soft)',
+        fg: 'text-(--color-danger)',
         label: 'Gefahr',
-        icon: '🚨',
+        icon: ['M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9Z', 'M15 9l-6 6', 'M9 9l6 6'],
     },
 };
 
 const c = config[type];
 ---
 
-<div class={`not-prose my-6 flex gap-3 rounded-xl border ${c.bg} ${c.border} p-4`}>
-    <div class={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs ${c.iconBg}`}>
-        <span>{c.icon}</span>
+<aside role="note" class={`not-prose my-6 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-xl ${c.bg} py-4 pr-6 pl-4`}>
+    <svg class={`row-span-2 mt-0.5 h-5 w-5 ${c.fg}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {c.icon.map((d) => <path d={d}/>)}
+    </svg>
+    <div class={`text-sm leading-6 font-bold tracking-[0.01em] ${c.fg}`}>
+        {title ?? c.label}
     </div>
-    <div>
-        <div class={`text-xs font-medium uppercase tracking-wide ${c.iconColor}`}>
-            {c.label}
-        </div>
-        <div class="mt-1 text-sm leading-relaxed text-(--color-text)">
-            <slot/>
-        </div>
+    <div class="min-w-0 text-base leading-relaxed text-(--color-text) [&_p:last-child]:mb-0 [&_a]:text-(--color-accent) [&_a]:underline [&_a]:underline-offset-2">
+        <slot/>
     </div>
-</div>
+</aside>

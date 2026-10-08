@@ -9,23 +9,31 @@ const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !d
 ---
 
 <BaseLayout title={HOME_PAGE.title} description={HOME_PAGE.description}>
-    <div class="mx-auto max-w-(--content-width) px-6">
-        <!-- Hero Intro -->
-        <section class="py-16 border-b border-border">
-            <h1 class="text-3xl font-bold tracking-tight">
-                Hey, ich bin Ruben Vitt
+    <div class="mx-auto max-w-(--content-width) px-4 sm:px-6">
+        <!-- Hero: Lagekarten-Raster im Hintergrund, eine Markierung -->
+        <section class="relative pt-20 pb-16 sm:pt-24">
+            <div class="hero-grid" aria-hidden="true"></div>
+            <p class="relative mb-4 font-mono text-[0.8125rem] tracking-[0.04em] text-(--color-text-secondary)">
+                <span class="text-(--color-signal-text)">■</span> Software · Teams · Katastrophenschutz
+            </p>
+            <h1 class="hero-title relative text-[2.75rem] leading-[1.05] tracking-[-0.03em] sm:text-[4rem] sm:leading-none">
+                Hey, ich bin <span class="hero-name">Ruben.</span>
             </h1>
-            <p class="mt-3 text-lg text-text-secondary leading-relaxed max-w-lg">
+            <p class="relative mt-6 max-w-[56ch] text-xl leading-relaxed text-(--color-text-secondary)">
                 Ich schreibe über Softwareentwicklung, Zusammenarbeit und pragmatische Lösungen in komplexen Kontexten – aus Projekten, dem Consulting und an der Schnittstelle zum Katastrophenschutz.
             </p>
+            <div class="relative mt-8 flex flex-wrap items-center gap-3">
+                <a href="#posts" class="inline-flex h-10 items-center rounded-md border border-(--color-signal) bg-(--color-signal) px-4 text-sm font-bold tracking-[0.01em] text-(--color-on-signal) transition-colors hover:border-(--color-on-signal)">Neueste Posts lesen</a>
+                <a href="/about" class="inline-flex h-10 items-center rounded-md border border-(--color-border-strong) bg-(--color-bg-secondary) px-4 text-sm font-bold tracking-[0.01em] text-(--color-text) transition-colors hover:border-(--color-text)">Über mich</a>
+            </div>
         </section>
 
         <!-- Post List -->
-        <section class="py-8">
-            <h2 class="text-xs font-semibold uppercase tracking-widest text-(--color-text-muted) mb-4">
+        <section id="posts" class="scroll-mt-20 pb-8">
+            <h2 class="mb-2 text-[1.875rem] leading-tight font-semibold tracking-[-0.02em]" style="font-variation-settings: 'opsz' 48">
                 Neueste Posts
             </h2>
-            <div>
+            <div class="border-b border-(--color-border)">
                 {posts.map((post) => (
                         <PostCard
                                 title={post.data.title}
@@ -34,6 +42,7 @@ const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !d
                                 tags={post.data.tags}
                                 slug={post.id}
                                 image={post.data.image}
+                                podcastDuration={post.data.podcast?.duration}
                         />
                 ))}
             </div>
@@ -43,3 +52,23 @@ const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !d
         </section>
     </div>
 </BaseLayout>
+
+<style>
+    .hero-title {
+        font-variation-settings: 'opsz' 96;
+        font-weight: 750;
+    }
+    .hero-name {
+        background: linear-gradient(transparent 62%, var(--color-signal-soft) 62%);
+    }
+    .hero-grid {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(var(--color-border-strong) 1px, transparent 1.4px);
+        background-size: 24px 24px;
+        opacity: 0.4;
+        -webkit-mask-image: linear-gradient(115deg, transparent 35%, #000 80%);
+        mask-image: linear-gradient(115deg, transparent 35%, #000 80%);
+        pointer-events: none;
+    }
+</style>

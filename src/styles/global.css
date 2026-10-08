@@ -1,23 +1,38 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Colors - Light defaults */
-  --color-bg: #fafafa;
+  /* Colors - Light defaults. Design system: https://claude.ai/artifact/NMvWfeYURG2wz2uy1s5CUV */
+  --color-bg: #f3f4f0;
   --color-bg-secondary: #ffffff;
-  --color-text: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-muted: #9ca3af;
-  --color-border: rgba(0, 0, 0, 0.06);
-  --color-accent: #c2410c;
-  --color-accent-hover: #9a3412;
+  --color-bg-sunken: #e7e9e3;
+  --color-text: #14171a;
+  --color-text-secondary: #545b61;
+  --color-text-muted: #61686e;
+  --color-border: #d5d9d1;
+  --color-border-strong: #7c837b;
+  --color-accent: #0b5b6b;
+  --color-accent-hover: #073f4a;
+  --color-accent-soft: #dcebec;
+  --color-signal: #ee6a1f;
+  --color-on-signal: #14171a;
+  --color-signal-soft: #fde4d3;
+  --color-signal-text: #a8400a;
+  --color-moss: #3d6b2c;
+  --color-moss-soft: #e2eddb;
+  --color-amber: #7a5200;
+  --color-amber-soft: #fbefcf;
+  --color-danger: #a3261b;
+  --color-danger-soft: #f8dfdb;
+  --color-code-bg: #14171a;
 
   /* Spacing & Sizing */
-  --content-width: 820px;
-  --content-width-wide: 1100px;
+  --content-width: 760px;
+  --content-width-wide: 1120px;
 
   /* Fonts */
-  --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+  --font-sans: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Avenir Next', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Atkinson Hyperlegible Mono', 'JetBrains Mono', ui-monospace, monospace;
 }
 
 /* Dark mode overrides */
@@ -47,46 +62,90 @@
 
   .dark body,
   .dark {
-    --color-bg: #000000;
-    --color-bg-secondary: #0a0a0a;
-    --color-text: #e4e4e7;
-    --color-text-secondary: #a1a1aa;
-    --color-text-muted: #71717a;
-    --color-border: rgba(255, 255, 255, 0.1);
-    --color-accent: #ea580c;
-    --color-accent-hover: #f97316;
+    --color-bg: #0e1113;
+    --color-bg-secondary: #161a1d;
+    --color-bg-sunken: #0a0c0d;
+    --color-text: #e9ebe6;
+    --color-text-secondary: #9ba3a8;
+    --color-text-muted: #8a9297;
+    --color-border: #2a3135;
+    --color-border-strong: #5f686d;
+    --color-accent: #6cc9d6;
+    --color-accent-hover: #9adde6;
+    --color-accent-soft: #0f2c32;
+    --color-signal: #ff8442;
+    --color-on-signal: #0e1113;
+    --color-signal-soft: #3a1a08;
+    --color-signal-text: #ffa06b;
+    --color-moss: #9ccf83;
+    --color-moss-soft: #16260f;
+    --color-amber: #f2c45a;
+    --color-amber-soft: #2e2306;
+    --color-danger: #ff8f84;
+    --color-danger-soft: #33110d;
+    --color-code-bg: #0a0c0d;
+    color-scheme: dark;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-signal-soft);
   }
 
   /* Prose styles for blog content */
   .prose {
     max-width: var(--content-width);
     margin-inline: auto;
+    font-size: 1.125rem;
     line-height: 1.75;
   }
 
   .prose h1 {
     font-size: 2rem;
+    line-height: 1.15;
     font-weight: 700;
     letter-spacing: -0.025em;
     margin-top: 2.5rem;
     margin-bottom: 1rem;
   }
 
+  /* h2 mit Lagemarker: ein signal-Quadrat im linken Rand */
   .prose h2 {
     font-size: 1.5rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-top: 2rem;
+    line-height: 1.25;
+    font-weight: 650;
+    font-variation-settings: 'opsz' 32;
+    letter-spacing: -0.015em;
+    margin-top: 3rem;
     margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
+  }
+
+  .prose h2::before {
+    content: '';
+    position: absolute;
+    left: -1.375rem;
+    top: 0.6rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    background: var(--color-signal);
+    border-radius: 2px;
   }
 
   .prose h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: 1.1875rem;
+    line-height: 1.35;
+    font-weight: 650;
     letter-spacing: -0.01em;
-    margin-top: 1.75rem;
+    margin-top: 2rem;
     margin-bottom: 0.5rem;
   }
 
@@ -98,8 +157,9 @@
 
   .prose .heading-anchor {
     position: absolute;
-    right: calc(100% + 0.25rem);
+    right: calc(100% + 1.75rem);
     top: 0;
+    font-family: var(--font-mono);
     color: var(--color-text-muted);
     text-decoration: none;
     font-weight: 400;
@@ -109,7 +169,7 @@
   }
 
   .prose :is(h2, h3):hover .heading-anchor {
-    opacity: 0.5;
+    opacity: 0.6;
   }
 
   .prose .heading-anchor:hover {
@@ -123,24 +183,41 @@
     }
   }
 
+  @media (max-width: 52rem) {
+    .prose h2::before {
+      display: none;
+    }
+  }
+
   .prose p {
     margin-bottom: 1.25rem;
   }
 
   .prose a {
     color: var(--color-accent);
-    text-decoration: none;
-    text-underline-offset: 2px;
-    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: color 0.15s ease, text-decoration-thickness 0.15s ease;
   }
 
   .prose a:hover {
     color: var(--color-accent-hover);
-    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+
+  .prose mark {
+    background: var(--color-signal-soft);
+    color: inherit;
+    padding: 0 0.15em;
+  }
+
+  .prose strong {
+    font-weight: 700;
   }
 
   .prose ul {
-    list-style: disc;
+    list-style: square;
     padding-left: 1.5rem;
     margin-bottom: 1.25rem;
   }
@@ -156,21 +233,36 @@
   }
 
   .prose li::marker {
-    color: var(--color-accent);
+    color: var(--color-signal);
   }
 
-  .prose blockquote {
-    border-left: 3px solid var(--color-accent);
-    padding-left: 1rem;
+  .prose ol li::marker {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
     color: var(--color-text-secondary);
-    font-style: italic;
-    margin-bottom: 1.25rem;
+  }
+
+  /* Kernthesen: in der Display-Schrift, Strich in Tinte */
+  .prose blockquote {
+    border-left: 2px solid var(--color-text);
+    padding-left: 1.5rem;
+    margin-block: 2rem;
+    font-family: var(--font-display);
+    font-size: 1.3125rem;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+  }
+
+  .prose blockquote p:last-child {
+    margin-bottom: 0;
   }
 
   .prose code:not(pre code) {
-    background: var(--color-border);
-    padding: 0.15rem 0.4rem;
-    border-radius: 0.375rem;
+    background: var(--color-bg-sunken);
+    padding: 0.15rem 0.35rem;
+    border-radius: 2px;
     font-size: 0.875em;
     font-family: var(--font-mono);
   }
@@ -180,9 +272,12 @@
     padding: 1.25rem;
     overflow-x: auto;
     margin-bottom: 1.5rem;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.6;
-    border: 1px solid var(--color-border);
+  }
+
+  .prose pre code {
+    font-family: var(--font-mono);
   }
 
   .prose img {
@@ -201,9 +296,9 @@
 
   .prose thead th {
     text-align: left;
-    font-weight: 600;
+    font-weight: 700;
     padding: 0.625rem 0.75rem;
-    border-bottom: 2px solid var(--color-border);
+    background: var(--color-bg-sunken);
     color: var(--color-text);
   }
 
@@ -219,7 +314,14 @@
 
   .prose hr {
     border-color: var(--color-border);
-    margin-block: 2rem;
+    margin-block: 2.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }
   }
 }
 
@@ -264,10 +366,12 @@
 [data-theme="light"] #theme-toggle .icon-light { display: block; }
 [data-theme="dark"] #theme-toggle .icon-dark { display: block; }
 
-/* Shiki dual theme — outside @layer so it beats inline styles */
-.dark pre {
-  background-color: #0a0a0a !important;
+/* Code ist eigenes Material: in beiden Themes dunkel (Shiki-Dark-Farben).
+   Outside @layer so it beats Shiki's inline styles. */
+pre.astro-code {
+  background-color: var(--color-code-bg) !important;
+  color: #e9ebe6 !important;
 }
-.dark pre code span {
+pre.astro-code code span {
   color: var(--shiki-dark, inherit) !important;
 }
