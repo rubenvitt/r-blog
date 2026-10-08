@@ -5,7 +5,7 @@ area: bevoelkerungsschutz
 kind: desktop
 status: alpha
 repo: rubenvitt/lifeline-hub
-app: https://lifeline-hub.rubeen.dev
+website: https://lifeline-hub.de
 stack: [Rust, axum, SQLite, React, MapLibre, Tauri]
 screenshot: ./_images/lifeline-hub/screenshot.webp
 screenshotAlt: "Lifeline Hub: Lagebild einer Übungslage mit Kennzahlen, Gefahrenmatrix, Sichtung und Meldungsstrom"
