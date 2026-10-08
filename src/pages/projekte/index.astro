@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FeaturedProject from '../../components/projects/FeaturedProject.astro';
+import ProjectRow from '../../components/projects/ProjectRow.astro';
+import { AREAS, getProjects, isoDate } from '../../lib/projects';
+import { PROJECTS_PAGE } from '../../lib/site';
+
+const projects = await getProjects();
+const featured = projects.filter((p) => p.data.featured);
+const sections = AREAS.map((area) => ({
+    ...area,
+    projects: projects.filter((p) => p.data.area === area.key),
+})).filter((s) => s.projects.length > 0);
+
+const latest = projects[0]?.data.lastActivity;
+---
+
+<BaseLayout title={PROJECTS_PAGE.title} description={PROJECTS_PAGE.description}>
+    <div class="mx-auto max-w-(--content-width) px-4 sm:px-6">
+        <section class="pt-16 pb-10 sm:pt-20">
+            <p class="mb-4 font-mono text-[0.8125rem] tracking-[0.04em] text-(--color-text-secondary)">
+                <span class="text-(--color-signal-text)">■</span> {projects.length} Projekte{latest && <> · zuletzt bewegt {isoDate(latest)}</>}
+            </p>
+            <h1 class="text-[2.75rem] leading-[1.05] font-bold tracking-[-0.03em] sm:text-[3.5rem]" style="font-variation-settings: 'opsz' 96">
+                Woran ich baue
+            </h1>
+            <p class="mt-6 max-w-[56ch] text-xl leading-relaxed text-(--color-text-secondary)">
+                Nicht alles hier ist fertig, und das ist Absicht. Manche Projekte laufen im Einsatz, manche sind Demos zu einem Blogpost, manche lösen nur mein eigenes Problem. Der
+                Status sagt ehrlich, wo jedes gerade steht.
+            </p>
+        </section>
+
+        {featured.length > 0 && (
+            <section aria-labelledby="featured" class="pb-12">
+                <h2 id="featured" class="sr-only">Hervorgehoben</h2>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    {featured.map((project) => <FeaturedProject project={project} />)}
+                </div>
+            </section>
+        )}
+
+        {sections.map((section) => (
+            <section id={section.key} class="scroll-mt-20 pb-10">
+                <h2 class="text-[1.875rem] leading-tight font-semibold tracking-[-0.02em]" style="font-variation-settings: 'opsz' 48">
+                    {section.label}
+                </h2>
+                <p class="mt-2 mb-4 max-w-[62ch] text-(--color-text-secondary)">{section.intro}</p>
+                <div class="border-b border-(--color-border)">
+                    {section.projects.map((project) => <ProjectRow project={project} />)}
+                </div>
+            </section>
+        ))}
+
+        <p class="pb-8 text-(--color-text-secondary)">
+            Alles Weitere, auch Halbfertiges und Liegengelassenes, liegt auf{' '}
+            <a href="https://github.com/rubenvitt" class="text-(--color-accent) underline underline-offset-[3px] hover:text-(--color-accent-hover)">GitHub</a>.
+        </p>
+    </div>
+</BaseLayout>

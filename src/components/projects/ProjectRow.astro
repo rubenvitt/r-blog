@@ -1,0 +1,48 @@
+---
+// Eintrag wie im Einsatztagebuch: Art und Status in fester Spalte links, Projekt rechts.
+import StatusBadge from './StatusBadge.astro';
+import { KIND_LABEL, hostname, type Project } from '../../lib/projects';
+
+interface Props {
+    project: Project;
+}
+
+const { project } = Astro.props;
+const { title, tagline, kind, status, stack, website } = project.data;
+---
+
+<article class="project-row grid gap-x-6 gap-y-2 border-t border-(--color-border) py-6 sm:grid-cols-[7rem_1fr]">
+    <div class="flex flex-wrap items-start gap-2 sm:flex-col sm:gap-1.5">
+        <span class="font-mono text-[0.8125rem] leading-[1.75rem] tracking-[0.02em] text-(--color-text-secondary)">{KIND_LABEL[kind]}</span>
+        <StatusBadge status={status} />
+    </div>
+    <div class="grid min-w-0 gap-2">
+        <h3 class="text-[1.3125rem] leading-[1.3] font-semibold tracking-[-0.015em]" style="font-variation-settings: 'opsz' 24">
+            <a href={`/projekte/${project.id}`} class="project-row-link text-(--color-text)">{title}</a>
+        </h3>
+        <p class="max-w-[62ch] text-base leading-relaxed text-(--color-text-secondary)">{tagline}</p>
+        {(stack.length > 0 || website) && (
+            <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-muted)">
+                {stack.length > 0 && <span>{stack.join(' · ')}</span>}
+                {website && (
+                    <a href={website} class="relative z-10 text-(--color-accent) hover:text-(--color-accent-hover)">↗ {hostname(website)}</a>
+                )}
+            </div>
+        )}
+    </div>
+</article>
+
+<style>
+    .project-row-link {
+        text-decoration: none;
+        background-image: linear-gradient(var(--color-signal), var(--color-signal));
+        background-size: 0 2px;
+        background-position: 0 100%;
+        background-repeat: no-repeat;
+        transition: background-size 0.25s ease;
+    }
+    .project-row:hover .project-row-link,
+    .project-row-link:focus-visible {
+        background-size: 100% 2px;
+    }
+</style>

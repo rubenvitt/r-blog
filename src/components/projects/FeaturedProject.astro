@@ -1,0 +1,28 @@
+---
+// Hervorgehobenes Projekt als Karte: eine Signal-Markierung oben links, sonst ruhig.
+import StatusBadge from './StatusBadge.astro';
+import { KIND_LABEL, hostname, type Project } from '../../lib/projects';
+
+interface Props {
+    project: Project;
+}
+
+const { project } = Astro.props;
+const { title, tagline, kind, status, website, app } = project.data;
+const external = website ?? app;
+---
+
+<article class="featured-project relative flex flex-col gap-3 rounded-md border border-(--color-border) bg-(--color-bg-secondary) p-5 transition-colors hover:border-(--color-border-strong)">
+    <span class="absolute top-0 left-5 h-[3px] w-8 bg-(--color-signal)" aria-hidden="true"></span>
+    <div class="flex flex-wrap items-center gap-2">
+        <StatusBadge status={status} />
+        <span class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">{KIND_LABEL[kind]}</span>
+    </div>
+    <h3 class="text-[1.375rem] leading-[1.25] font-semibold tracking-[-0.015em]" style="font-variation-settings: 'opsz' 32">
+        <a href={`/projekte/${project.id}`} class="text-(--color-text) no-underline after:absolute after:inset-0 after:content-['']">{title}</a>
+    </h3>
+    <p class="text-base leading-relaxed text-(--color-text-secondary)">{tagline}</p>
+    {external && (
+        <p class="mt-auto pt-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-accent)">↗ {hostname(external)}</p>
+    )}
+</article>

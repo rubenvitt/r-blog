@@ -1,0 +1,113 @@
+---
+import { getEntry, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AiDisclosure from '../../components/ui/AiDisclosure.astro';
+import PostCard from '../../components/ui/PostCard.astro';
+import StatusBadge from '../../components/projects/StatusBadge.astro';
+import { KIND_LABEL, getProjects, hostname, isoDate, repoUrl } from '../../lib/projects';
+
+export async function getStaticPaths() {
+    const projects = await getProjects();
+    return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, lastActivity, ai } = project.data;
+const { Content } = await render(project);
+
+// Verweise auf Blogposts beim Build prüfen, damit kein toter Link entsteht.
+const posts = await Promise.all(
+    postSlugs.map(async (slug) => {
+        const post = await getEntry('blog', slug);
+        if (!post) throw new Error(`Projekt "${project.id}": Blogpost "${slug}" existiert nicht.`);
+        return post;
+    }),
+);
+const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.draft);
+
+---
+
+<BaseLayout title={`${title} — Projekte — rubeen.dev`} description={tagline}>
+    <div class="border-b border-(--color-border)">
+        <div class="mx-auto max-w-(--content-width) px-6 pt-16 pb-10">
+            <nav aria-label="Brotkrumen" class="mb-5 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
+                <a href="/projekte" class="text-(--color-accent) hover:text-(--color-accent-hover)">Projekte</a>
+                <span class="text-(--color-border-strong)"> / </span>
+                <span>{project.id}</span>
+            </nav>
+            <h1 class="project-title text-[2.25rem] leading-[1.1] tracking-[-0.03em] sm:text-[2.75rem]">{title}</h1>
+            <p class="mt-4 max-w-[60ch] text-xl leading-relaxed text-(--color-text-secondary)">{tagline}</p>
+
+            <dl class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
+                <div><dt class="sr-only">Status</dt><dd><StatusBadge status={status} /></dd></div>
+                <div><dt class="sr-only">Art</dt><dd>{KIND_LABEL[kind]}</dd></div>
+                {license && <div><dt class="sr-only">Lizenz</dt><dd>{license}</dd></div>}
+                <div><dt class="inline">Zuletzt bewegt </dt><dd class="inline"><time datetime={lastActivity.toISOString()}>{isoDate(lastActivity)}</time></dd></div>
+            </dl>
+
+            <div class="mt-8 flex flex-wrap items-center gap-3">
+                {website && (
+                    <a href={website} class="inline-flex h-10 items-center rounded-md border border-(--color-signal) bg-(--color-signal) px-4 text-sm font-bold tracking-[0.01em] text-(--color-on-signal) transition-colors hover:border-(--color-on-signal)">
+                        {hostname(website)} besuchen
+                    </a>
+                )}
+                {app && (
+                    <a href={app} class:list={[
+                        'inline-flex h-10 items-center rounded-md border px-4 text-sm font-bold tracking-[0.01em] transition-colors',
+                        website
+                            ? 'border-(--color-border-strong) bg-(--color-bg-secondary) text-(--color-text) hover:border-(--color-text)'
+                            : 'border-(--color-signal) bg-(--color-signal) text-(--color-on-signal) hover:border-(--color-on-signal)',
+                    ]}>
+                        App öffnen
+                    </a>
+                )}
+                <a href={repoUrl(repo)} class="inline-flex h-10 items-center gap-2 rounded-md border border-(--color-border-strong) bg-(--color-bg-secondary) px-4 text-sm font-bold tracking-[0.01em] text-(--color-text) transition-colors hover:border-(--color-text)">
+                    <svg class="size-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                    {repo}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <AiDisclosure level={ai} subject="dieser Projektseite" />
+
+    <article class="prose mx-auto max-w-(--content-width) px-6 pt-12 pb-8">
+        <Content />
+
+    </article>
+
+    {stack.length > 0 && (
+        <section class="mx-auto max-w-(--content-width) px-6 pb-10">
+            <h2 class="mb-3 font-mono text-[0.8125rem] font-bold tracking-[0.04em] text-(--color-text-secondary) uppercase">Stack</h2>
+            <ul class="flex flex-wrap gap-2">
+                {stack.map((item) => (
+                    <li class="rounded-[2px] border border-(--color-border) px-2 py-0.5 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">{item}</li>
+                ))}
+            </ul>
+        </section>
+    )}
+
+    {visiblePosts.length > 0 && (
+        <section class="mx-auto max-w-(--content-width) px-6 pb-8">
+            <h2 class="mb-2 text-[1.5rem] leading-tight font-semibold tracking-[-0.015em]">Darüber geschrieben</h2>
+            <div class="border-b border-(--color-border)">
+                {visiblePosts.map((post) => (
+                    <PostCard
+                        title={post.data.title}
+                        description={post.data.description}
+                        date={post.data.date}
+                        tags={post.data.tags}
+                        slug={post.id}
+                    />
+                ))}
+            </div>
+        </section>
+    )}
+
+    <style>
+        .project-title {
+            font-weight: 700;
+            font-variation-settings: 'opsz' 72;
+        }
+    </style>
+</BaseLayout>

@@ -24,3 +24,10 @@ export const AI_TRANSPARENCY_PAGE = {
   description:
     'Wie auf rubeen.dev generative KI eingesetzt wird, wie Inhalte gekennzeichnet sind und wer die redaktionelle Verantwortung trägt.',
 } as const;
+
+export const PROJECTS_PAGE = {
+  path: '/projekte',
+  title: 'Projekte — rubeen.dev',
+  description:
+    'Woran ich baue: Software für den Bevölkerungsschutz, AI-Engineering-Experimente, Desktop-Werkzeuge und kleine Apps für den Alltag.',
+} as const;

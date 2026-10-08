@@ -31,9 +31,13 @@ pnpm format:check # oxfmt --check
 
 ### Content Collection
 
-Einzige Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `description`, `date`, `updatedDate?`, `tags[]`, `aliases[]`, `image?`, `draft`, `ai`. Posts sind MDX-Dateien in `src/content/blog/`.
+Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `description`, `date`, `updatedDate?`, `tags[]`, `aliases[]`, `image?`, `draft`, `ai`. Posts sind MDX-Dateien in `src/content/blog/`.
 
 `aliases` ermöglicht alte URLs als 301-Redirects (generiert in `[...slug].astro`). Zusätzlich existieren manuelle Redirects in `astro.config.mjs`.
+
+### Projekte
+
+Zweite Collection `projects` in `src/content/projects/`, eine Markdown-Datei pro Projekt. Seiten: `/projekte` (gruppiert nach `area`, `featured` als Karten oben) und `/projekte/[slug]`. Hilfsfunktionen und Labels in `src/lib/projects.ts`. Kriterien, Felder und der regelmäßige Abgleich per Routine stehen in `docs/projekte.md`; dort auch die Liste der bewusst nicht gezeigten Repos.
 
 ### KI-Kennzeichnung
 

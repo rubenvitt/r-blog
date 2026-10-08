@@ -2,10 +2,13 @@
 import {getCollection} from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/ui/PostCard.astro';
+import FeaturedProject from '../components/projects/FeaturedProject.astro';
 import { HOME_PAGE } from '../lib/site';
+import { getProjects } from '../lib/projects';
 
 const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft))
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const featuredProjects = (await getProjects()).filter((p) => p.data.featured).slice(0, 4);
 ---
 
 <BaseLayout title={HOME_PAGE.title} description={HOME_PAGE.description}>
@@ -24,6 +27,7 @@ const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !d
             </p>
             <div class="relative mt-8 flex flex-wrap items-center gap-3">
                 <a href="#posts" class="inline-flex h-10 items-center rounded-md border border-(--color-signal) bg-(--color-signal) px-4 text-sm font-bold tracking-[0.01em] text-(--color-on-signal) transition-colors hover:border-(--color-on-signal)">Neueste Posts lesen</a>
+                <a href="/projekte" class="inline-flex h-10 items-center rounded-md border border-(--color-border-strong) bg-(--color-bg-secondary) px-4 text-sm font-bold tracking-[0.01em] text-(--color-text) transition-colors hover:border-(--color-text)">Projekte</a>
                 <a href="/about" class="inline-flex h-10 items-center rounded-md border border-(--color-border-strong) bg-(--color-bg-secondary) px-4 text-sm font-bold tracking-[0.01em] text-(--color-text) transition-colors hover:border-(--color-text)">Über mich</a>
             </div>
         </section>
@@ -50,6 +54,20 @@ const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !d
                     <p class="text-(--color-text-muted) py-8">Noch keine Posts vorhanden.</p>
             )}
         </section>
+
+        {featuredProjects.length > 0 && (
+            <section id="projekte" class="scroll-mt-20 pt-8 pb-8">
+                <div class="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h2 class="text-[1.875rem] leading-tight font-semibold tracking-[-0.02em]" style="font-variation-settings: 'opsz' 48">
+                        Woran ich baue
+                    </h2>
+                    <a href="/projekte" class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-accent) hover:text-(--color-accent-hover)">Alle Projekte →</a>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    {featuredProjects.map((project) => <FeaturedProject project={project} />)}
+                </div>
+            </section>
+        )}
     </div>
 </BaseLayout>
 
