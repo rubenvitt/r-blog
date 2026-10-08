@@ -49,6 +49,8 @@ const projects = defineCollection({
       screenshotAlt: z.string().optional(),
       // Welche Ecke des Screenshots Karten und Vorschaubilder zeigen.
       screenshotFocus: z.enum(['links', 'rechts']).default('links'),
+      /** Bild ist eine gestaltete Darstellung (z. B. KI-generiert), kein echter Screenshot. */
+      screenshotIllustration: z.boolean().default(false),
       license: z.string().optional(),
       // Slugs von Blogposts, die das Projekt behandeln.
       posts: z.array(z.string()).default([]),

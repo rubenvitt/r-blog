@@ -6,6 +6,9 @@ kind: ios
 status: aktiv
 repo: rubenvitt/rudel
 stack: [Swift, SwiftUI, SwiftData, AlarmKit, Live Activities]
+screenshot: ./_images/rudel/screenshot.webp
+screenshotIllustration: true
+screenshotAlt: "Illustration: Rudel mit Läufigkeit als Zeitspanne mit Konfidenz, anstehenden Medikamenten und Gewichtsverlauf"
 license: MIT
 lastActivity: 2026-10-05
 ---

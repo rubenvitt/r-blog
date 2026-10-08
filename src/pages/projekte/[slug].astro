@@ -72,11 +72,15 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
 
     {screenshot && (
         <div class="mx-auto max-w-(--content-width-wide) px-4 pt-10 sm:px-6">
-            <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="hero" focus={project.data.screenshotFocus} label={website || app ? hostname((website ?? app)!) : repo} />
+            <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="hero" focus={project.data.screenshotFocus} illustration={project.data.screenshotIllustration} label={website || app ? hostname((website ?? app)!) : repo} />
         </div>
     )}
 
-    <AiDisclosure level={ai} subject="dieser Projektseite" />
+    <AiDisclosure
+        level={ai}
+        subject="dieser Projektseite"
+        note={project.data.screenshotIllustration ? 'Das Bild oben ist eine KI-generierte Illustration, kein echter Screenshot.' : undefined}
+    />
 
     <article class="prose mx-auto max-w-(--content-width) px-6 pt-12 pb-8">
         <Content />

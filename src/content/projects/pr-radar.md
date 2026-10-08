@@ -6,6 +6,9 @@ kind: desktop
 status: aktiv
 repo: rubenvitt/pr-radar
 stack: [Rust, GPUI, GitHub GraphQL]
+screenshot: ./_images/pr-radar/screenshot.webp
+screenshotIllustration: true
+screenshotAlt: "Illustration: PR Radar mit offenen Pull Requests nach Repo gruppiert, aufgeklappten Checks, Auto-Merge und Zeitleiste der zuletzt gemergten PRs"
 license: Apache-2.0
 lastActivity: 2026-10-06
 ---

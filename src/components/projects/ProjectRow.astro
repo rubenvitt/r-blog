@@ -33,7 +33,7 @@ const { title, tagline, kind, status, stack, website, screenshot, screenshotAlt 
     </div>
     {screenshot && (
         <div class="project-row-shot max-w-[16rem] self-start sm:max-w-none" aria-hidden="true">
-            <ProjectShot src={screenshot} alt="" variant="thumb" focus={project.data.screenshotFocus} />
+            <ProjectShot src={screenshot} alt="" variant="thumb" focus={project.data.screenshotFocus} illustration={project.data.screenshotIllustration} />
         </div>
     )}
 </article>

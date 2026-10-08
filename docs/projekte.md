@@ -18,6 +18,7 @@ app: https://app.flugmappe.de       # optional, die laufende Anwendung
 stack: [React, Vite, PWA]
 screenshot: ./_images/flugmappe/screenshot.webp   # optional, echter Screenshot
 screenshotAlt: "Was auf dem Bild zu sehen ist"
+screenshotIllustration: false   # true, wenn das Bild kein echter Screenshot ist
 license: MIT                # optional, so wie im Repo
 posts: [papier-fliegt-nicht]        # optional, Slugs von Blogposts zum Projekt
 externalPosts:                      # optional, Artikel an anderer Stelle
@@ -45,7 +46,8 @@ Reihenfolge: Bilder aus dem Repo oder aus Blogposts, sonst die App lokal starten
 abfotografieren. Keine erfundenen Oberflächen, keine echten Personendaten, und „DRK“ darf auf
 keinem Bild und in keinem Text vorkommen. Beispieldaten in einer echten Oberfläche
 sind in Ordnung (cefr-loop). Native Apps (macOS, iOS) lassen sich hier nicht starten: dafür liefert
-Ruben die Bilder, bei Bedarf auch als KI-Illustration, dann mit „Illustration“ im Alt-Text.
+Ruben die Bilder, bei Bedarf auch als KI-Illustration. Dann `screenshotIllustration: true` setzen, damit die
+Kopfzeile „Illustration“ zeigt, und den Alt-Text mit „Illustration:“ beginnen.
 
 ## Was gezeigt wird
 

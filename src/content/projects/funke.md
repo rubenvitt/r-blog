@@ -6,6 +6,9 @@ kind: ios
 status: aktiv
 repo: rubenvitt/funke
 stack: [Swift, SwiftUI, watchOS, Apple Intelligence, ClickUp API]
+screenshot: ./_images/funke/screenshot.webp
+screenshotIllustration: true
+screenshotAlt: "Illustration: Funke mit Textfeld, Mikrofon-Button, Vorschlag für Titel, Priorität und Tag sowie der Heute-Liste"
 lastActivity: 2026-06-19
 ---
 

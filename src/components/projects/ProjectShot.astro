@@ -14,9 +14,11 @@ interface Props {
     label?: string;
     /** Welche Ecke Karte und Vorschaubild zeigen. */
     focus?: 'links' | 'rechts';
+    /** Gestaltete Darstellung statt echtem Screenshot: wird sichtbar gekennzeichnet. */
+    illustration?: boolean;
 }
 
-const { src, alt, variant, label, focus = 'links' } = Astro.props;
+const { src, alt, variant, label, focus = 'links', illustration = false } = Astro.props;
 const portrait = src.height > src.width;
 
 const widths = {
@@ -36,6 +38,7 @@ const sizes = {
         <figcaption class="shot-bar">
             <span class="shot-marker" aria-hidden="true"></span>
             <span class="truncate">{label}</span>
+            {illustration && <span class="shot-note">Illustration</span>}
         </figcaption>
     )}
     <div class="shot-stage">
@@ -83,6 +86,16 @@ const sizes = {
         height: 0.5rem;
         border-radius: 1px;
         background: var(--color-signal);
+    }
+
+    .shot-note {
+        flex: none;
+        margin-left: auto;
+        padding: 0 0.375rem;
+        border: 1px solid var(--color-border);
+        border-radius: 2px;
+        font-size: 0.6875rem;
+        color: var(--color-text-muted);
     }
 
     .shot-img {

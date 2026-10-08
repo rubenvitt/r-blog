@@ -25,7 +25,7 @@ const label = external ? hostname(external) : project.data.repo;
             </div>
         </div>
     )}
-    {screenshot && <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="card" focus={project.data.screenshotFocus} label={label} />}
+    {screenshot && <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="card" focus={project.data.screenshotFocus} illustration={project.data.screenshotIllustration} label={label} />}
     <div class="relative flex flex-1 flex-col gap-3 p-5">
     <span class="absolute top-0 left-5 h-[3px] w-8 bg-(--color-signal)" aria-hidden="true"></span>
     <div class="flex flex-wrap items-center gap-2">
