@@ -1,6 +1,6 @@
 ---
 title: IuK-Suite
-tagline: Eine Web-Suite für die Informations- und Kommunikationsarbeit einer DRK-Bereitschaft, mit einem Login für alle Module.
+tagline: Eine Web-Suite für die Informations- und Kommunikationsarbeit einer ehrenamtlichen Einheit im Bevölkerungsschutz, mit einem Login für alle Module.
 area: bevoelkerungsschutz
 kind: web
 status: aktiv

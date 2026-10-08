@@ -7,6 +7,8 @@ status: aktiv
 repo: rubenvitt/uav-checklists
 website: https://flugmappe.de
 app: https://app.flugmappe.de
+screenshot: ./_images/flugmappe/screenshot.webp
+screenshotAlt: "Flugmappe: Einsatzkarte mit eingezeichnetem Einsatzgebiet und Standort"
 stack: [React, Vite, PWA, Leaflet, TanStack Query, jsPDF]
 posts: [papier-fliegt-nicht]
 featured: true

@@ -6,6 +6,8 @@ kind: demo
 status: stabil
 repo: rubenvitt/plan-from-issue
 app: https://plan-from-issue.pages.dev
+screenshot: ./_images/plan-from-issue/screenshot.webp
+screenshotAlt: "Plan from Issue: generierter Implementierungsplan mit Zusammenfassung, betroffenen Bereichen, Risiken und Umsetzungsschritten"
 stack: [Next.js, AI SDK, Zod, Tailwind CSS]
 posts: [ai-systems-architecture]
 lastActivity: 2026-03-19

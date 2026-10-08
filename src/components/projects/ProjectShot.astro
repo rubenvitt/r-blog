@@ -1,0 +1,53 @@
+---
+// Screenshot eines Projekts. Hochformat (Handy-Apps) steht mittig auf einer Fläche,
+// Querformat füllt den Rahmen von oben, damit Kopfzeile und Navigation sichtbar bleiben.
+import { Image } from 'astro:assets';
+
+interface Props {
+    src: ImageMetadata;
+    alt: string;
+    variant: 'hero' | 'card' | 'thumb';
+}
+
+const { src, alt, variant } = Astro.props;
+const portrait = src.height > src.width;
+
+const widths = {
+    hero: [800, 1200, 1600, 2240],
+    card: [480, 720, 960],
+    thumb: [240, 360, 480],
+}[variant];
+const sizes = {
+    hero: '(min-width: 1120px) 1120px, 100vw',
+    card: '(min-width: 760px) 360px, 100vw',
+    thumb: '160px',
+}[variant];
+---
+
+{variant === 'hero' ? (
+    <figure class:list={['project-shot-hero overflow-hidden rounded-md border border-(--color-border) bg-(--color-bg-sunken)', portrait ? 'flex justify-center px-6 py-8' : '']}>
+        <Image
+            src={src}
+            alt={alt}
+            widths={portrait ? [360, 540, 720] : widths}
+            sizes={portrait ? '360px' : sizes}
+            class:list={['cursor-zoom-in', portrait ? 'w-[22rem] max-w-full rounded-md border border-(--color-border)' : 'w-full']}
+            data-zoomable
+        />
+    </figure>
+) : (
+    <div class:list={[
+        'overflow-hidden bg-(--color-bg-sunken)',
+        variant === 'card' ? 'aspect-[16/10] border-b border-(--color-border)' : 'aspect-[4/3] rounded-[3px] border border-(--color-border)',
+        portrait ? 'flex justify-center px-4 pt-4' : '',
+    ]}>
+        <Image
+            src={src}
+            alt={alt}
+            widths={widths}
+            sizes={sizes}
+            loading="lazy"
+            class:list={[portrait ? 'h-auto w-3/5 self-start rounded-t-md border-x border-t border-(--color-border)' : 'size-full object-cover object-top']}
+        />
+    </div>
+)}

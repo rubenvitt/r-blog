@@ -31,27 +31,31 @@ const blog = defineCollection({
 // Projekte: eine Datei pro Repository. Prozess und Kriterien: docs/projekte.md
 const projects = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/projects' }),
-  schema: z.object({
-    title: z.string(),
-    // Ein Satz, erscheint in der Übersicht und als Meta-Description.
-    tagline: z.string(),
-    area: z.enum(['bevoelkerungsschutz', 'ai-engineering', 'werkzeuge', 'alltag']),
-    kind: z.enum(['web', 'desktop', 'ios', 'bibliothek', 'server', 'demo', 'cli']),
-    status: z.enum(['aktiv', 'alpha', 'beta', 'stabil', 'pausiert', 'archiviert']),
-    // owner/name auf GitHub, daraus entstehen Link und Abgleich in der Routine.
-    repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
-    website: z.string().url().optional(),
-    app: z.string().url().optional(),
-    stack: z.array(z.string()).default([]),
-    license: z.string().optional(),
-    // Slugs von Blogposts, die das Projekt behandeln.
-    posts: z.array(z.string()).default([]),
-    featured: z.boolean().default(false),
-    // Letzter Push laut GitHub, wird von der Projekte-Routine nachgezogen.
-    lastActivity: z.coerce.date(),
-    draft: z.boolean().default(false),
-    ai: z.enum(['generated', 'assisted', 'none']).default('generated'),
-  }),
+  schema: ({ image }) =>
+    z.object({
+      title: z.string(),
+      // Ein Satz, erscheint in der Übersicht und als Meta-Description.
+      tagline: z.string(),
+      area: z.enum(['bevoelkerungsschutz', 'ai-engineering', 'werkzeuge', 'alltag']),
+      kind: z.enum(['web', 'desktop', 'ios', 'bibliothek', 'server', 'demo', 'cli']),
+      status: z.enum(['aktiv', 'alpha', 'beta', 'stabil', 'pausiert', 'archiviert']),
+      // owner/name auf GitHub, daraus entstehen Link und Abgleich in der Routine.
+      repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
+      website: z.string().url().optional(),
+      app: z.string().url().optional(),
+      stack: z.array(z.string()).default([]),
+      // Echter Screenshot der Anwendung, liegt in src/content/projects/_images/<slug>/.
+      screenshot: image().optional(),
+      screenshotAlt: z.string().optional(),
+      license: z.string().optional(),
+      // Slugs von Blogposts, die das Projekt behandeln.
+      posts: z.array(z.string()).default([]),
+      featured: z.boolean().default(false),
+      // Letzter Push laut GitHub, wird von der Projekte-Routine nachgezogen.
+      lastActivity: z.coerce.date(),
+      draft: z.boolean().default(false),
+      ai: z.enum(['generated', 'assisted', 'none']).default('generated'),
+    }),
 });
 
 export const collections = { blog, projects };

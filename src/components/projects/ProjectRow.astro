@@ -1,5 +1,6 @@
 ---
 // Eintrag wie im Einsatztagebuch: Art und Status in fester Spalte links, Projekt rechts.
+import ProjectShot from './ProjectShot.astro';
 import StatusBadge from './StatusBadge.astro';
 import { KIND_LABEL, hostname, type Project } from '../../lib/projects';
 
@@ -8,10 +9,10 @@ interface Props {
 }
 
 const { project } = Astro.props;
-const { title, tagline, kind, status, stack, website } = project.data;
+const { title, tagline, kind, status, stack, website, screenshot, screenshotAlt } = project.data;
 ---
 
-<article class="project-row grid gap-x-6 gap-y-2 border-t border-(--color-border) py-6 sm:grid-cols-[7rem_1fr]">
+<article class:list={['project-row grid gap-x-6 gap-y-2 border-t border-(--color-border) py-6', screenshot ? 'sm:grid-cols-[7rem_1fr_9rem]' : 'sm:grid-cols-[7rem_1fr]']}>
     <div class="flex flex-wrap items-start gap-2 sm:flex-col sm:gap-1.5">
         <span class="font-mono text-[0.8125rem] leading-[1.75rem] tracking-[0.02em] text-(--color-text-secondary)">{KIND_LABEL[kind]}</span>
         <StatusBadge status={status} />
@@ -30,6 +31,11 @@ const { title, tagline, kind, status, stack, website } = project.data;
             </div>
         )}
     </div>
+    {screenshot && (
+        <a href={`/projekte/${project.id}`} class="hidden self-start sm:block" tabindex="-1" aria-hidden="true">
+            <ProjectShot src={screenshot} alt="" variant="thumb" />
+        </a>
+    )}
 </article>
 
 <style>

@@ -3,6 +3,7 @@ import { getEntry, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AiDisclosure from '../../components/ui/AiDisclosure.astro';
 import PostCard from '../../components/ui/PostCard.astro';
+import ProjectShot from '../../components/projects/ProjectShot.astro';
 import StatusBadge from '../../components/projects/StatusBadge.astro';
 import { KIND_LABEL, getProjects, hostname, isoDate, repoUrl } from '../../lib/projects';
 
@@ -12,7 +13,7 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
-const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, lastActivity, ai } = project.data;
+const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, lastActivity, ai, screenshot, screenshotAlt } = project.data;
 const { Content } = await render(project);
 
 // Verweise auf Blogposts beim Build prüfen, damit kein toter Link entsteht.
@@ -27,7 +28,7 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
 
 ---
 
-<BaseLayout title={`${title} — Projekte — rubeen.dev`} description={tagline}>
+<BaseLayout title={`${title} — Projekte — rubeen.dev`} description={tagline} image={screenshot?.src} imageWidth={screenshot?.width} imageHeight={screenshot?.height}>
     <div class="border-b border-(--color-border)">
         <div class="mx-auto max-w-(--content-width) px-6 pt-16 pb-10">
             <nav aria-label="Brotkrumen" class="mb-5 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
@@ -68,6 +69,12 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
             </div>
         </div>
     </div>
+
+    {screenshot && (
+        <div class="mx-auto max-w-(--content-width-wide) px-4 pt-10 sm:px-6">
+            <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="hero" />
+        </div>
+    )}
 
     <AiDisclosure level={ai} subject="dieser Projektseite" />
 

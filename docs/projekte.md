@@ -16,6 +16,8 @@ repo: rubenvitt/uav-checklists
 website: https://flugmappe.de       # optional, Marketing- oder Projektseite
 app: https://app.flugmappe.de       # optional, die laufende Anwendung
 stack: [React, Vite, PWA]
+screenshot: ./_images/flugmappe/screenshot.webp   # optional, echter Screenshot
+screenshotAlt: "Was auf dem Bild zu sehen ist"
 license: MIT                # optional, so wie im Repo
 posts: [papier-fliegt-nicht]        # optional, Slugs von Blogposts zum Projekt
 featured: true              # optional, Karte oben auf /projekte (höchstens vier)
@@ -28,6 +30,16 @@ Nur Fakten aus Repo, README und Blogposts, nichts erfinden.
 
 Der Dateiname ist der Slug unter `/projekte/<slug>`. Nimm den Produktnamen, nicht zwingend den
 Repo-Namen. `ai` steht standardmäßig auf `generated`, die Seite zeigt dann den KI-Hinweis.
+
+## Screenshots
+
+Jedes Projekt mit Oberfläche bekommt einen echten Screenshot unter
+`src/content/projects/_images/<slug>/screenshot.webp`, als WebP, höchstens 1600 px breit. Diese
+Bilder liegen bewusst direkt im Git und nicht in LFS (siehe `.gitattributes`). Quellen in dieser
+Reihenfolge: Bilder aus dem Repo oder aus Blogposts, sonst die App lokal starten und mit Playwright
+abfotografieren. Keine erfundenen Oberflächen, keine echten Personendaten, und „DRK“ darf auf
+keinem Bild und in keinem Text vorkommen. Native Apps (macOS, iOS) lassen sich hier nicht starten:
+dafür liefert Ruben die Bilder.
 
 ## Was gezeigt wird
 

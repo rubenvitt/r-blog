@@ -6,6 +6,8 @@ kind: demo
 status: stabil
 repo: rubenvitt/refund-agent
 app: https://refund-agent.pages.dev
+screenshot: ./_images/refund-agent/screenshot.webp
+screenshotAlt: "Reliability Lab: Chat mit dem Support-Agenten links, rechts Routing-Entscheidung und der ausgeführte Tool-Call lookup_order"
 stack: [Next.js, AI SDK, Zod, Vitest]
 posts: [ai-evals-ci-pipeline, tools-sind-keine-prompts, human-in-the-loop]
 lastActivity: 2026-04-28
