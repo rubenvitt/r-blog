@@ -5,6 +5,7 @@ area: bevoelkerungsschutz
 kind: desktop
 status: alpha
 repo: rubenvitt/lifeline-hub
+app: https://lifeline-hub.rubeen.dev
 stack: [Rust, axum, SQLite, React, MapLibre, Tauri]
 license: Alle Rechte vorbehalten
 featured: true
