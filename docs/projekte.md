@@ -43,8 +43,9 @@ Jedes Projekt mit Oberfläche bekommt einen echten Screenshot unter
 Bilder liegen bewusst direkt im Git und nicht in LFS (siehe `.gitattributes`). Quellen in dieser
 Reihenfolge: Bilder aus dem Repo oder aus Blogposts, sonst die App lokal starten und mit Playwright
 abfotografieren. Keine erfundenen Oberflächen, keine echten Personendaten, und „DRK“ darf auf
-keinem Bild und in keinem Text vorkommen. Native Apps (macOS, iOS) lassen sich hier nicht starten:
-dafür liefert Ruben die Bilder.
+keinem Bild und in keinem Text vorkommen. Beispieldaten in einer echten Oberfläche
+sind in Ordnung (cefr-loop). Native Apps (macOS, iOS) lassen sich hier nicht starten: dafür liefert
+Ruben die Bilder, bei Bedarf auch als KI-Illustration, dann mit „Illustration“ im Alt-Text.
 
 ## Was gezeigt wird
 

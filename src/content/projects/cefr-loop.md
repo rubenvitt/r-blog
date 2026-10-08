@@ -6,6 +6,8 @@ kind: demo
 status: stabil
 repo: rubenvitt/cefr-loop
 stack: [Python, Claude, Jev]
+screenshot: ./_images/cefr-loop/screenshot.webp
+screenshotAlt: "cefr-loop: Umschreibung des Sprachmodells und Einstufung des Entscheidungsmodells mit Verteilung über A1 bis C2"
 externalPosts:
   - title: 'Jev und System One Models: wie Formulare und UIs intelligent werden können'
     url: https://www.innoq.com/de/blog/2026/09/jev-system-one-models-intelligente-formulare-und-uis/
