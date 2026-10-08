@@ -1,0 +1,24 @@
+{
+  "shape": "package",
+  "pkg": "@rubeen/lagebild",
+  "globalName": "Lagebild",
+  "buildCmd": "npm run build",
+  "cssEntry": "dist/styles.css",
+  "componentSrcMap": {
+    "Button": "src/components.tsx",
+    "Tag": "src/components.tsx",
+    "MetaLine": "src/components.tsx",
+    "PostCard": "src/components.tsx",
+    "Callout": "src/components.tsx",
+    "AiNote": "src/components.tsx",
+    "LinkCard": "src/components.tsx",
+    "CodeBlock": "src/components.tsx",
+    "Prose": "src/components.tsx",
+    "SiteHeader": "src/components.tsx",
+    "SiteFooter": "src/components.tsx",
+    "Hero": "src/components.tsx",
+    "ArticleHeader": "src/components.tsx",
+    "Icon": "src/icons.tsx"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
