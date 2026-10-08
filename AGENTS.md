@@ -63,7 +63,7 @@ In Posts als Astro-Komponenten importiert und inline genutzt:
 
 Kein `@tailwindcss/typography` — eigene Prose-Styles in `global.css`. Dark-Mode via `.dark`-Klasse auf `<html>`. Design-Tokens als CSS Custom Properties in `@theme`.
 
-Content-Width: `--content-width: 760px`, Wide: `--content-width-wide: 1120px`. Designsystem „Lagebild“ (https://claude.ai/artifact/NMvWfeYURG2wz2uy1s5CUV): `--color-accent` ist Petrol (Links, Navigation, Fokus), `--color-signal` ist Signalorange und nur Fläche oder Markierung (Primärbutton, h2-Marker, Lesefortschritt), nie Text auf `--color-bg`. Überschriften in `--font-display`, Metadaten und Tags in `--font-mono`, Daten im ISO-Format. Codeblöcke sind in beiden Themes dunkel.
+Content-Width: `--content-width: 760px`, Wide: `--content-width-wide: 1120px`. Designsystem „Lagebild“ (https://claude.ai/artifact/NMvWfeYURG2wz2uy1s5CUV): `--color-accent` ist Petrol (Links, Navigation, Fokus, Primärbutton mit `--color-on-accent`), `--color-signal` ist Signalorange und nur Markierung (h2-Marker, Lesefortschritt, kleine Akzente), nie Button-Fläche und nie Text auf `--color-bg`. Überschriften in `--font-display`, Metadaten und Tags in `--font-mono`, Daten im ISO-Format. Codeblöcke sind in beiden Themes dunkel.
 
 ### Bilder
 

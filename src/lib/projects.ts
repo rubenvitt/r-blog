@@ -11,7 +11,7 @@ export const AREAS: { key: ProjectArea; label: string; intro: string }[] = [
     key: 'bevoelkerungsschutz',
     label: 'Bevölkerungsschutz',
     intro:
-      'Software für Einsatz, Ausbildung und Ehrenamt – gebaut für Orte, an denen Netz und Zeit knapp sind.',
+      'Software für Einsatz, Ausbildung und Ehrenamt. Gebaut für Orte, an denen Netz und Zeit knapp sind.',
   },
   {
     key: 'ai-engineering',
@@ -22,7 +22,7 @@ export const AREAS: { key: ProjectArea; label: string; intro: string }[] = [
   {
     key: 'werkzeuge',
     label: 'Werkzeuge',
-    intro: 'Desktop-Apps und kleine Dienste, die meinen eigenen Arbeitsalltag besser machen.',
+    intro: 'Desktop-Apps und kleine Dienste, die mir den Arbeitsalltag leichter machen.',
   },
   {
     key: 'alltag',

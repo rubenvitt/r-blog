@@ -9,8 +9,8 @@ stack: [Swift, SwiftUI, watchOS, Apple Intelligence, ClickUp API]
 lastActivity: 2026-06-19
 ---
 
-Funke ist dafür da, einen Gedanken loszuwerden, bevor er weg ist. Ein großes Textfeld mit sofortigem Fokus, ein Mikrofon-Button mit deutscher Live-Transkription, und die Aufgabe landet in der ClickUp-Inbox. Ohne Netz wartet sie in einer Offline-Warteschlange, statt verloren zu gehen.
+Mit Funke werde ich einen Gedanken los, bevor er wieder weg ist. Ein großes Textfeld, das sofort den Fokus hat, ein Mikrofon-Button mit deutscher Live-Transkription, und die Aufgabe landet in der ClickUp-Inbox. Ohne Netz wartet sie in einer Offline-Warteschlange und geht nicht verloren.
 
-Auf Wunsch macht ein Sprachmodell aus rohem Text einen strukturierten Vorschlag mit Titel, Beschreibung, Priorität und Tag, den ich vor dem Anlegen prüfe. Der Provider ist wählbar, Apple Intelligence läuft dabei direkt auf dem Gerät. Standardmäßig ist das aus.
+Auf Wunsch macht ein Sprachmodell aus dem rohen Text einen Vorschlag mit Titel, Beschreibung, Priorität und Tag. Den prüfe ich, bevor die Aufgabe angelegt wird. Den Provider kann ich wählen, Apple Intelligence läuft dabei direkt auf dem Gerät. Standardmäßig ist die Funktion aus.
 
-Die Heute-Liste zeigt, was mir zugewiesen und fällig ist, und lässt sich direkt abhaken. Die App nutzt ausschließlich Apple-Frameworks, ohne externe Abhängigkeiten.
+Die Heute-Liste zeigt, was mir zugewiesen und fällig ist, und ich kann es dort direkt abhaken. Externe Abhängigkeiten hat die App keine, sie nutzt nur Apple-Frameworks.

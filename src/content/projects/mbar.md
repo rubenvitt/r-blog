@@ -11,12 +11,8 @@ featured: true
 lastActivity: 2026-10-08
 ---
 
-mbar implementiert die Befehlssprache und das Verhalten von [SketchyBar](https://github.com/FelixKratz/SketchyBar) neu. Bestehende `sketchybarrc`-Dateien und Plugin-Skripte laufen weiter.
+mbar implementiert die Befehlssprache und das Verhalten von [SketchyBar](https://github.com/FelixKratz/SketchyBar) neu. Bestehende `sketchybarrc`-Dateien und Plugin-Skripte laufen also weiter.
 
-Was dazukommt:
+Dazu kommt einiges. Lua 5.4 läuft direkt im Prozess, die Event-Handler also im Daemon. mbar startet nicht für jedes Event, jeden Klick oder jeden Update-Takt eine Shell. Uhr, CPU, Speicher, Akku, Lautstärke, WLAN, Netzwerk, Festplatte, aktive App und Medien kommen aus nativen Datenquellen. Gerendert wird mit Metal, und ein natives Anwendungsmenü gibt es auch.
 
-- **Lua 5.4 im Prozess.** Event-Handler laufen im Daemon, es wird nicht für jedes Event, jeden Klick oder jeden Update-Takt eine Shell gestartet.
-- **Native Datenquellen** für Uhr, CPU, Speicher, Akku, Lautstärke, WLAN, Netzwerk, Festplatte, aktive App und Medien.
-- **Metal-Renderer** und ein natives Anwendungsmenü.
-
-> Stand: frühe Entwicklung. Der plattformunabhängige Kern ist unter Linux getestet, die macOS-Schicht baut und besteht ihre Tests in der CI. Auf echter Hardware ist mbar noch kaum gelaufen.
+> Stand: frühe Entwicklung. Der plattformunabhängige Kern ist unter Linux getestet, die macOS-Schicht baut und besteht ihre Tests in der CI. Auf echter Hardware ist mbar bisher kaum gelaufen.

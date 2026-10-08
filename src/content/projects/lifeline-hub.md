@@ -7,19 +7,23 @@ status: alpha
 repo: rubenvitt/lifeline-hub
 app: https://lifeline-hub.rubeen.dev
 stack: [Rust, axum, SQLite, React, MapLibre, Tauri]
+screenshot: ./_images/lifeline-hub/screenshot.webp
+screenshotAlt: "Lifeline Hub: Lagebild einer Übungslage mit Kennzahlen, Gefahrenmatrix, Sichtung und Meldungsstrom"
 license: Alle Rechte vorbehalten
 featured: true
 lastActivity: 2026-10-08
 ---
 
-Einsatztagebuch, Lagekarte, Kräfteübersicht, Betroffenen- und Schadenserfassung, Meldungen und Aufträge: Lifeline Hub bündelt, was eine Einsatzleitung im Bevölkerungsschutz braucht, in einer Anwendung.
+Einsatztagebuch, Lagekarte, Kräfteübersicht, Betroffenen- und Schadenserfassung, Meldungen und Aufträge. Lifeline Hub bündelt in einer Anwendung, was eine Einsatzleitung im Bevölkerungsschutz braucht.
 
-Der Ausgangspunkt ist ein Ort, an dem Netz nicht vorausgesetzt werden darf. Daraus folgen die tragenden Entscheidungen:
+Ausgangspunkt ist ein Ort, an dem ich nicht mit Netz rechnen darf. Daraus ergibt sich fast alles andere.
 
-- **Eine Datei, keine Laufzeitabhängigkeiten.** Backend, eingebettetes Frontend, SQLite und OpenSSL stecken im Binary. Auf dem Zielrechner wird weder Node.js noch ein Webserver noch eine Datenbank installiert. Bauen, Datei kopieren, starten.
-- **Offline-fähige Lagekarte.** Kartenkacheln liegen als lokale MBTiles-Datei vor, Schriften und Symbole sind eingebettet. Ohne Netz fehlt der Kartenhintergrund, nicht die Funktion.
-- **Bedienbar unter Einsatzbedingungen.** Trefferflächen, Dichte und Farbrollen folgen einer ausformulierten Leitlinie für Handschuhbetrieb, Tageslicht und Nachtmodus.
+Lifeline Hub ist eine einzige Datei ohne Laufzeitabhängigkeiten. Backend, eingebettetes Frontend, SQLite und OpenSSL stecken im Binary. Auf dem Zielrechner muss weder Node.js noch ein Webserver noch eine Datenbank installiert werden. Bauen, Datei kopieren, starten.
 
-Die taktischen Zeichen auf der Lagekarte kommen aus [einsatzzeichen](/projekte/einsatzzeichen), meinem Generator für taktische Zeichen.
+Auch die Lagekarte funktioniert offline. Die Kartenkacheln liegen als lokale MBTiles-Datei vor, Schriften und Symbole sind eingebettet. Ohne Netz fehlt der Kartenhintergrund, die Funktion bleibt.
 
-> Stand: frühe Alpha. Es gibt noch kein Release, Datenmodell und Bedienung ändern sich laufend. Der Quelltext ist einsehbar, steht aber unter keiner Open-Source-Lizenz.
+Und die Oberfläche muss unter Einsatzbedingungen bedienbar sein. Trefferflächen, Dichte und Farbrollen folgen einer ausformulierten Leitlinie für Handschuhbetrieb, Tageslicht und Nachtmodus.
+
+Die taktischen Zeichen auf der Lagekarte erzeugt [einsatzzeichen](/projekte/einsatzzeichen), mein Generator für taktische Zeichen.
+
+> Stand: frühe Alpha. Ein Release gibt es noch nicht, Datenmodell und Bedienung ändern sich laufend. Den Quelltext kann man einsehen, er steht aber unter keiner Open-Source-Lizenz.

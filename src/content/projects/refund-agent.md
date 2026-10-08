@@ -13,13 +13,10 @@ posts: [ai-evals-ci-pipeline, tools-sind-keine-prompts, human-in-the-loop]
 lastActivity: 2026-04-28
 ---
 
-Ein Support-Agent sagt „Ihre Erstattung ist veranlasst.“ Aber wurde `refund_order` wirklich aufgerufen? Das Reliability Lab macht genau diese Lücke sichtbar.
+Ein Support-Agent sagt „Ihre Erstattung ist veranlasst.“ Aber wurde `refund_order` wirklich aufgerufen? Genau diese Lücke macht das Reliability Lab sichtbar.
 
-- **Orchestrator-Routing:** Ein zentraler Router delegiert an spezialisierte Agenten.
-- **Tool-Contracts:** Jeder Agent hat Werkzeuge mit expliziten Schemas.
-- **Approval-Gates:** Destruktive Aktionen wie eine Erstattung brauchen menschliche Freigabe.
-- **False-Success-Erkennung:** Behauptet die Antwort einen Erfolg, ohne dass der Tool-Call stattfand, schlägt ein Alarm an.
-- **Drift:** Prompts und Tool-Beschreibungen sind editierbar, damit man sieht, wie kleine Änderungen das Routing brechen.
-- **Deterministische Evals:** 20 Fälle, bewertet nach Route, Tools, Freigabe, Seiteneffekten und erkannter Abweichung.
+Ein zentraler Router delegiert an spezialisierte Agenten. Jeder Agent hat seine Tools mit expliziten Schemas, also echte Tool-Contracts. Destruktive Aktionen wie eine Erstattung brauchen eine menschliche Freigabe. Und behauptet die Antwort einen Erfolg, obwohl der Tool-Call nie stattgefunden hat, schlägt ein Alarm an.
 
-Das Lab läuft bewusst nur lokal und ist das Begleitprojekt zu mehreren Blogposts.
+Prompts und Tool-Beschreibungen kann man im Lab bearbeiten. So sieht man, wie schon kleine Änderungen das Routing brechen. Dazu gibt es 20 deterministische Evals, bewertet nach Route, Tools, Freigabe, Seiteneffekten und erkannter Abweichung.
+
+Das Lab läuft absichtlich nur lokal. Es ist das Begleitprojekt zu mehreren Blogposts.

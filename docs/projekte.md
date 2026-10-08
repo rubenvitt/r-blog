@@ -20,6 +20,11 @@ screenshot: ./_images/flugmappe/screenshot.webp   # optional, echter Screenshot
 screenshotAlt: "Was auf dem Bild zu sehen ist"
 license: MIT                # optional, so wie im Repo
 posts: [papier-fliegt-nicht]        # optional, Slugs von Blogposts zum Projekt
+externalPosts:                      # optional, Artikel an anderer Stelle
+  - title: 'Titel des Artikels'
+    url: https://www.innoq.com/de/blog/...
+    publisher: INNOQ
+    date: 2026-09-23
 featured: true              # optional, Karte oben auf /projekte (höchstens vier)
 lastActivity: 2026-10-03    # letzter Push laut GitHub
 ---

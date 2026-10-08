@@ -47,9 +47,22 @@ const projects = defineCollection({
       // Echter Screenshot der Anwendung, liegt in src/content/projects/_images/<slug>/.
       screenshot: image().optional(),
       screenshotAlt: z.string().optional(),
+      // Welche Ecke des Screenshots Karten und Vorschaubilder zeigen.
+      screenshotFocus: z.enum(['links', 'rechts']).default('links'),
       license: z.string().optional(),
       // Slugs von Blogposts, die das Projekt behandeln.
       posts: z.array(z.string()).default([]),
+      // Beiträge an anderer Stelle, z. B. im INNOQ-Blog.
+      externalPosts: z
+        .array(
+          z.object({
+            title: z.string(),
+            url: z.string().url(),
+            publisher: z.string(),
+            date: z.coerce.date(),
+          }),
+        )
+        .default([]),
       featured: z.boolean().default(false),
       // Letzter Push laut GitHub, wird von der Projekte-Routine nachgezogen.
       lastActivity: z.coerce.date(),

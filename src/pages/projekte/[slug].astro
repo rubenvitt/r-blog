@@ -13,7 +13,7 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
-const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, lastActivity, ai, screenshot, screenshotAlt } = project.data;
+const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, externalPosts, lastActivity, ai, screenshot, screenshotAlt } = project.data;
 const { Content } = await render(project);
 
 // Verweise auf Blogposts beim Build prüfen, damit kein toter Link entsteht.
@@ -48,7 +48,7 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
 
             <div class="mt-8 flex flex-wrap items-center gap-3">
                 {website && (
-                    <a href={website} class="inline-flex h-10 items-center rounded-md border border-(--color-signal) bg-(--color-signal) px-4 text-sm font-bold tracking-[0.01em] text-(--color-on-signal) transition-colors hover:border-(--color-on-signal)">
+                    <a href={website} class="inline-flex h-10 items-center rounded-md border border-(--color-accent) bg-(--color-accent) px-4 text-sm font-bold tracking-[0.01em] text-(--color-on-accent) transition-colors hover:border-(--color-accent-hover) hover:bg-(--color-accent-hover)">
                         {hostname(website)} besuchen
                     </a>
                 )}
@@ -57,7 +57,7 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
                         'inline-flex h-10 items-center rounded-md border px-4 text-sm font-bold tracking-[0.01em] transition-colors',
                         website
                             ? 'border-(--color-border-strong) bg-(--color-bg-secondary) text-(--color-text) hover:border-(--color-text)'
-                            : 'border-(--color-signal) bg-(--color-signal) text-(--color-on-signal) hover:border-(--color-on-signal)',
+                            : 'border-(--color-accent) bg-(--color-accent) text-(--color-on-accent) hover:border-(--color-accent-hover) hover:bg-(--color-accent-hover)',
                     ]}>
                         App öffnen
                     </a>
@@ -72,7 +72,7 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
 
     {screenshot && (
         <div class="mx-auto max-w-(--content-width-wide) px-4 pt-10 sm:px-6">
-            <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="hero" />
+            <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="hero" focus={project.data.screenshotFocus} label={website || app ? hostname((website ?? app)!) : repo} />
         </div>
     )}
 
@@ -94,7 +94,7 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
         </section>
     )}
 
-    {visiblePosts.length > 0 && (
+    {(visiblePosts.length > 0 || externalPosts.length > 0) && (
         <section class="mx-auto max-w-(--content-width) px-6 pb-8">
             <h2 class="mb-2 text-[1.5rem] leading-tight font-semibold tracking-[-0.015em]">Darüber geschrieben</h2>
             <div class="border-b border-(--color-border)">
@@ -106,6 +106,19 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
                         tags={post.data.tags}
                         slug={post.id}
                     />
+                ))}
+                {externalPosts.map((post) => (
+                    <article class="grid gap-x-6 gap-y-1 border-t border-(--color-border) py-6 sm:grid-cols-[7rem_1fr]">
+                        <time datetime={post.date.toISOString()} class="font-mono text-[0.8125rem] leading-[1.75rem] tracking-[0.02em] text-(--color-text-secondary) tabular-nums">
+                            {isoDate(post.date)}
+                        </time>
+                        <div class="grid min-w-0 gap-1">
+                            <h3 class="text-[1.3125rem] leading-[1.3] font-semibold tracking-[-0.015em]" style="font-variation-settings: 'opsz' 24">
+                                <a href={post.url} class="text-(--color-text) hover:text-(--color-accent)">{post.title} <span class="text-(--color-text-muted)" aria-hidden="true">↗</span></a>
+                            </h3>
+                            <p class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">bei {post.publisher}</p>
+                        </div>
+                    </article>
                 ))}
             </div>
         </section>

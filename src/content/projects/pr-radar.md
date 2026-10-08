@@ -10,11 +10,13 @@ license: Apache-2.0
 lastActivity: 2026-10-06
 ---
 
-Wer viele Repos betreut, hat schnell zwanzig Tabs mit Pull Requests offen. PR Radar bündelt sie in einem Fenster und spricht GitHub direkt an, ohne eigenen Server.
+Wer viele Repos betreut, hat schnell zwanzig Tabs mit Pull Requests offen. PR Radar holt sie in ein Fenster und spricht GitHub direkt an. Einen eigenen Server braucht es dafür nicht.
 
-- **Offene PRs** gruppiert nach Repo oder flach, mit Review-Status, Konflikten, Labels und Diff-Größe.
+- **Offene PRs** nach Repo gruppiert oder als flache Liste, mit Review-Status, Konflikten, Labels und Diff-Größe.
 - **Pipelines** pro PR als Ampel, aufklappbar bis zum einzelnen Check.
-- **Auto-Merge** mit einem Klick. Angeboten werden nur Methoden, die Repo-Einstellungen und Rulesets des Ziel-Branches auch erlauben. Lehnt GitHub einen Merge kurzzeitig ab, versucht die App es erneut, immer nur auf dem geprüften Commit.
+- **Auto-Merge** mit einem Klick.
 - **Zuletzt gemergt** als Timeline und **Releases** aller Repos.
 
-Die App pollt per GraphQL mit wenigen Requests für alle Repos und wird schneller, solange irgendwo eine Pipeline läuft.
+Beim Auto-Merge bietet die App nur die Methoden an, die Repo-Einstellungen und Rulesets des Ziel-Branches auch erlauben. Lehnt GitHub einen Merge kurzzeitig ab, versucht sie es erneut, und zwar immer nur auf dem geprüften Commit.
+
+Abgefragt wird per GraphQL, mit wenigen Requests für alle Repos. Solange irgendwo eine Pipeline läuft, pollt die App schneller.

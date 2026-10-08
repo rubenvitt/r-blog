@@ -13,6 +13,7 @@
   --color-accent: #0b5b6b;
   --color-accent-hover: #073f4a;
   --color-accent-soft: #dcebec;
+  --color-on-accent: #ffffff;
   --color-signal: #ee6a1f;
   --color-on-signal: #14171a;
   --color-signal-soft: #fde4d3;
@@ -73,6 +74,7 @@
     --color-accent: #6cc9d6;
     --color-accent-hover: #9adde6;
     --color-accent-soft: #0f2c32;
+    --color-on-accent: #0e1113;
     --color-signal: #ff8442;
     --color-on-signal: #0e1113;
     --color-signal-soft: #3a1a08;

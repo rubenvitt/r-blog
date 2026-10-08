@@ -10,6 +10,6 @@ license: MIT
 lastActivity: 2026-02-06
 ---
 
-[Pocket ID](https://github.com/pocket-id/pocket-id) bringt keinen WebFinger-Endpunkt nach RFC 7033 mit. Dienste wie Tailscale brauchen ihn aber, um den Identity Provider einer Domain zu finden.
+[Pocket ID](https://github.com/pocket-id/pocket-id) bringt keinen WebFinger-Endpunkt nach RFC 7033 mit. Dienste wie Tailscale brauchen den aber, um den Identity Provider einer Domain zu finden.
 
-Dieser Dienst schließt die Lücke als leichtgewichtiger Container neben Pocket ID. Konfiguriert wird er über zwei Umgebungsvariablen, das Image liegt fertig in der GitHub Container Registry. Im Repo steht außerdem, wie man ihn per Path-Routing unter derselben Domain wie Pocket ID betreibt.
+Diese Lücke schließt ein kleiner Container, der neben Pocket ID läuft. Konfiguriert wird er über zwei Umgebungsvariablen, das fertige Image liegt in der GitHub Container Registry. Im Repo steht außerdem, wie man ihn per Path-Routing unter derselben Domain wie Pocket ID betreibt.
