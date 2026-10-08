@@ -54,17 +54,6 @@ const projects = defineCollection({
       license: z.string().optional(),
       // Slugs von Blogposts, die das Projekt behandeln.
       posts: z.array(z.string()).default([]),
-      // Beiträge an anderer Stelle, z. B. im INNOQ-Blog.
-      externalPosts: z
-        .array(
-          z.object({
-            title: z.string(),
-            url: z.string().url(),
-            publisher: z.string(),
-            date: z.coerce.date(),
-          }),
-        )
-        .default([]),
       featured: z.boolean().default(false),
       // Letzter Push laut GitHub, wird von der Projekte-Routine nachgezogen.
       lastActivity: z.coerce.date(),
@@ -73,4 +62,20 @@ const projects = defineCollection({
     }),
 });
 
-export const collections = { blog, projects };
+// Eigene Artikel, die woanders erschienen sind (z. B. im INNOQ-Blog). Sie stehen in der
+// Post-Liste der Startseite und auf den Projektseiten, die sie unter `projects` nennen.
+const extern = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/extern' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    url: z.string().url(),
+    publisher: z.string(),
+    coAuthors: z.array(z.string()).default([]),
+    date: z.coerce.date(),
+    // Slugs aus src/content/projects/.
+    projects: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { blog, projects, extern };

@@ -1,5 +1,5 @@
 ---
-import { getEntry, render } from 'astro:content';
+import { getCollection, getEntry, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AiDisclosure from '../../components/ui/AiDisclosure.astro';
 import PostCard from '../../components/ui/PostCard.astro';
@@ -13,7 +13,7 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
-const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, externalPosts, lastActivity, ai, screenshot, screenshotAlt } = project.data;
+const { title, tagline, kind, status, repo, website, app, stack, license, posts: postSlugs, lastActivity, ai, screenshot, screenshotAlt } = project.data;
 const { Content } = await render(project);
 
 // Verweise auf Blogposts beim Build prüfen, damit kein toter Link entsteht.
@@ -25,6 +25,8 @@ const posts = await Promise.all(
     }),
 );
 const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.draft);
+const externalPosts = (await getCollection('extern', ({ data }) => data.projects.includes(project.id)))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
 ---
 
@@ -112,17 +114,14 @@ const visiblePosts = posts.filter((post) => import.meta.env.DEV || !post.data.dr
                     />
                 ))}
                 {externalPosts.map((post) => (
-                    <article class="grid gap-x-6 gap-y-1 border-t border-(--color-border) py-6 sm:grid-cols-[7rem_1fr]">
-                        <time datetime={post.date.toISOString()} class="font-mono text-[0.8125rem] leading-[1.75rem] tracking-[0.02em] text-(--color-text-secondary) tabular-nums">
-                            {isoDate(post.date)}
-                        </time>
-                        <div class="grid min-w-0 gap-1">
-                            <h3 class="text-[1.3125rem] leading-[1.3] font-semibold tracking-[-0.015em]" style="font-variation-settings: 'opsz' 24">
-                                <a href={post.url} class="text-(--color-text) hover:text-(--color-accent)">{post.title} <span class="text-(--color-text-muted)" aria-hidden="true">↗</span></a>
-                            </h3>
-                            <p class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">bei {post.publisher}</p>
-                        </div>
-                    </article>
+                    <PostCard
+                        title={post.data.title}
+                        description={post.data.description}
+                        date={post.data.date}
+                        tags={[]}
+                        slug={post.id}
+                        external={post.data}
+                    />
                 ))}
             </div>
         </section>

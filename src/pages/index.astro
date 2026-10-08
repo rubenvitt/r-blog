@@ -6,8 +6,10 @@ import FeaturedProject from '../components/projects/FeaturedProject.astro';
 import { HOME_PAGE } from '../lib/site';
 import { getProjects } from '../lib/projects';
 
-const posts = (await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft))
-    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const blogPosts = await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft);
+const externalPosts = await getCollection('extern');
+// Blogposts und Artikel an anderer Stelle in einer Liste, neueste zuerst.
+const posts = [...blogPosts, ...externalPosts].sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 const featuredProjects = (await getProjects()).filter((p) => p.data.featured).slice(0, 4);
 ---
 
@@ -38,7 +40,16 @@ const featuredProjects = (await getProjects()).filter((p) => p.data.featured).sl
                 Neueste Posts
             </h2>
             <div class="border-b border-(--color-border)">
-                {posts.map((post) => (
+                {posts.map((post) => post.collection === 'extern' ? (
+                        <PostCard
+                                title={post.data.title}
+                                description={post.data.description}
+                                date={post.data.date}
+                                tags={[]}
+                                slug={post.id}
+                                external={post.data}
+                        />
+                ) : (
                         <PostCard
                                 title={post.data.title}
                                 description={post.data.description}

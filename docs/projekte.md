@@ -21,11 +21,6 @@ screenshotAlt: "Was auf dem Bild zu sehen ist"
 screenshotIllustration: false   # true, wenn das Bild kein echter Screenshot ist
 license: MIT                # optional, so wie im Repo
 posts: [papier-fliegt-nicht]        # optional, Slugs von Blogposts zum Projekt
-externalPosts:                      # optional, Artikel an anderer Stelle
-  - title: 'Titel des Artikels'
-    url: https://www.innoq.com/de/blog/...
-    publisher: INNOQ
-    date: 2026-09-23
 featured: true              # optional, Karte oben auf /projekte (höchstens vier)
 lastActivity: 2026-10-03    # letzter Push laut GitHub
 ---
@@ -33,6 +28,11 @@ lastActivity: 2026-10-03    # letzter Push laut GitHub
 Zwei bis vier kurze Absätze: welches Problem, was es kann, was daran besonders ist.
 Nur Fakten aus Repo, README und Blogposts, nichts erfinden.
 ```
+
+Eigene Artikel, die woanders erschienen sind (z. B. bei INNOQ), stehen nicht im Projekt, sondern
+als eigene Datei in `src/content/extern/<slug>.md` (nur Frontmatter: `title`, `description`, `url`,
+`publisher`, `coAuthors`, `date`, `projects`). Sie erscheinen in der Post-Liste der Startseite und
+unter „Darüber geschrieben“ bei jedem Projekt, das in `projects` steht.
 
 Der Dateiname ist der Slug unter `/projekte/<slug>`. Nimm den Produktnamen, nicht zwingend den
 Repo-Namen. `ai` steht standardmäßig auf `generated`, die Seite zeigt dann den KI-Hinweis.

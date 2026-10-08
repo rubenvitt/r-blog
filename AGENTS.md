@@ -39,6 +39,10 @@ Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `descripti
 
 Zweite Collection `projects` in `src/content/projects/`, eine Markdown-Datei pro Projekt. Seiten: `/projekte` (gruppiert nach `area`, `featured` als Karten oben) und `/projekte/[slug]`. Hilfsfunktionen und Labels in `src/lib/projects.ts`. Kriterien, Felder und der regelmäßige Abgleich per Routine stehen in `docs/projekte.md`; dort auch die Liste der bewusst nicht gezeigten Repos.
 
+### Artikel an anderer Stelle
+
+Dritte Collection `extern` in `src/content/extern/` (nur Frontmatter, Link nach außen, z. B. INNOQ-Blog). Die Startseite mischt sie in „Neueste Posts“ (`PostCard` mit `external`), Projektseiten zeigen sie, wenn ihr Slug in `projects` steht.
+
 ### KI-Kennzeichnung
 
 Das Frontmatter-Feld `ai` steuert den Transparenzhinweis nach Art. 50 KI-VO — `generated` (Default), `assisted` oder `none`. `BlogPost.astro` rendert daraus über `AiDisclosure.astro` einen Hinweis **oberhalb** des Artikeltextes (Art. 50 Abs. 5: spätestens bei erster Wahrnehmung, nicht im Footer). Derselbe Hinweis geht in `rss.xml.ts`; der Podcast-Feed und der Player weisen zusätzlich auf die synthetischen Stimmen hin. Details und die benannte redaktionelle Verantwortung stehen auf `/ki-transparenz`.
