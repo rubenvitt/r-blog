@@ -31,9 +31,17 @@ pnpm format:check # oxfmt --check
 
 ### Content Collection
 
-Einzige Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `description`, `date`, `updatedDate?`, `tags[]`, `aliases[]`, `image?`, `draft`, `ai`. Posts sind MDX-Dateien in `src/content/blog/`.
+Collection `blog` in `src/content.config.ts`. Schema-Felder: `title`, `description`, `date`, `updatedDate?`, `tags[]`, `aliases[]`, `image?`, `draft`, `ai`. Posts sind MDX-Dateien in `src/content/blog/`.
 
 `aliases` ermöglicht alte URLs als 301-Redirects (generiert in `[...slug].astro`). Zusätzlich existieren manuelle Redirects in `astro.config.mjs`.
+
+### Projekte
+
+Zweite Collection `projects` in `src/content/projects/`, eine Markdown-Datei pro Projekt. Seiten: `/projekte` (gruppiert nach `area`, `featured` als Karten oben) und `/projekte/[slug]`. Hilfsfunktionen und Labels in `src/lib/projects.ts`. Kriterien, Felder und der regelmäßige Abgleich per Routine stehen in `docs/projekte.md`; dort auch die Liste der bewusst nicht gezeigten Repos.
+
+### Artikel an anderer Stelle
+
+Dritte Collection `extern` in `src/content/extern/` (nur Frontmatter, Link nach außen, z. B. INNOQ-Blog). Die Startseite mischt sie in „Neueste Posts“ (`PostCard` mit `external`), Projektseiten zeigen sie, wenn ihr Slug in `projects` steht.
 
 ### KI-Kennzeichnung
 
@@ -59,7 +67,7 @@ In Posts als Astro-Komponenten importiert und inline genutzt:
 
 Kein `@tailwindcss/typography` — eigene Prose-Styles in `global.css`. Dark-Mode via `.dark`-Klasse auf `<html>`. Design-Tokens als CSS Custom Properties in `@theme`.
 
-Content-Width: `--content-width: 760px`, Wide: `--content-width-wide: 1120px`. Designsystem „Lagebild“ (https://claude.ai/artifact/NMvWfeYURG2wz2uy1s5CUV): `--color-accent` ist Petrol (Links, Navigation, Fokus), `--color-signal` ist Signalorange und nur Fläche oder Markierung (Primärbutton, h2-Marker, Lesefortschritt), nie Text auf `--color-bg`. Überschriften in `--font-display`, Metadaten und Tags in `--font-mono`, Daten im ISO-Format. Codeblöcke sind in beiden Themes dunkel.
+Content-Width: `--content-width: 760px`, Wide: `--content-width-wide: 1120px`. Designsystem „Lagebild“ (https://claude.ai/artifact/NMvWfeYURG2wz2uy1s5CUV): `--color-accent` ist Petrol (Links, Navigation, Fokus, Primärbutton mit `--color-on-accent`), `--color-signal` ist Signalorange und nur Markierung (h2-Marker, Lesefortschritt, kleine Akzente), nie Button-Fläche und nie Text auf `--color-bg`. Überschriften in `--font-display`, Metadaten und Tags in `--font-mono`, Daten im ISO-Format. Codeblöcke sind in beiden Themes dunkel.
 
 ### Bilder
 

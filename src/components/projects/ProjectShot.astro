@@ -1,0 +1,194 @@
+---
+// Screenshot eines Projekts im „Lagefenster“: Raster-Fläche wie im Hero der Startseite,
+// darüber eine Kopfzeile mit Adresse, der Screenshot liegt mit Schatten auf der Fläche.
+// Querformat ragt in Karten und Vorschaubildern unten und rechts aus dem Rahmen,
+// Hochformat (Handy-Apps) steckt in einem schlichten Gerät. So sehen helle und dunkle
+// Oberflächen nebeneinander gleich eingebettet aus.
+import { Image } from 'astro:assets';
+
+interface Props {
+    src: ImageMetadata;
+    alt: string;
+    variant: 'hero' | 'card' | 'thumb';
+    /** Adresse oder Name in der Kopfzeile, z. B. "flugmappe.de". */
+    label?: string;
+    /** Welche Ecke Karte und Vorschaubild zeigen. */
+    focus?: 'links' | 'rechts';
+    /** Gestaltete Darstellung statt echtem Screenshot: wird sichtbar gekennzeichnet. */
+    illustration?: boolean;
+}
+
+const { src, alt, variant, label, focus = 'links', illustration = false } = Astro.props;
+const portrait = src.height > src.width;
+
+const widths = {
+    hero: portrait ? [400, 600, 800] : [800, 1200, 1600],
+    card: portrait ? [240, 360, 480] : [480, 720, 960],
+    thumb: portrait ? [120, 180, 240] : [240, 360, 480],
+}[variant];
+const sizes = {
+    hero: portrait ? '20rem' : '(min-width: 1120px) 1040px, 92vw',
+    card: portrait ? '9rem' : '(min-width: 760px) 400px, 100vw',
+    thumb: portrait ? '4rem' : '10rem',
+}[variant];
+---
+
+<figure class:list={['shot not-prose', `shot-${variant}`, portrait ? 'shot-portrait' : 'shot-landscape', `shot-focus-${focus}`]}>
+    {variant !== 'thumb' && (
+        <figcaption class="shot-bar">
+            <span class="shot-marker" aria-hidden="true"></span>
+            <span class="truncate">{label}</span>
+            {illustration && <span class="shot-note">Illustration</span>}
+        </figcaption>
+    )}
+    <div class="shot-stage">
+        <Image
+            src={src}
+            alt={alt}
+            widths={widths}
+            sizes={sizes}
+            loading={variant === 'hero' ? 'eager' : 'lazy'}
+            class="shot-img"
+            data-zoomable={variant === 'hero' ? '' : undefined}
+        />
+    </div>
+</figure>
+
+<style>
+    .shot {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        background-color: var(--color-bg-sunken);
+        background-image: radial-gradient(var(--color-border-strong) 1px, transparent 1.4px);
+        background-size: 20px 20px;
+        background-position: -10px -10px;
+    }
+
+    .shot-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        height: 2rem;
+        padding-inline: 0.875rem;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-bg-secondary);
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+        color: var(--color-text-secondary);
+    }
+
+    .shot-marker {
+        flex: none;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 1px;
+        background: var(--color-signal);
+    }
+
+    .shot-note {
+        flex: none;
+        margin-left: auto;
+        padding: 0 0.375rem;
+        border: 1px solid var(--color-border);
+        border-radius: 2px;
+        font-size: 0.6875rem;
+        color: var(--color-text-muted);
+    }
+
+    .shot-img {
+        display: block;
+        max-width: none;
+        border: 1px solid var(--color-border-strong);
+        box-shadow:
+            0 1px 2px rgb(20 23 26 / 0.08),
+            0 16px 40px -16px rgb(20 23 26 / 0.45);
+    }
+
+    /* Hochformat: Gerät mit dunklem Rand, unabhängig vom Theme */
+    .shot-portrait .shot-img {
+        border: 5px solid var(--color-code-bg);
+        border-radius: 1.25rem;
+    }
+
+    /* --- Detailseite: ganzes Bild, ringsum Luft --- */
+    .shot-hero .shot-stage {
+        display: flex;
+        justify-content: center;
+        padding: clamp(1rem, 4vw, 3rem);
+    }
+    .shot-hero.shot-landscape .shot-img {
+        width: 100%;
+        height: auto;
+        border-radius: 4px;
+        cursor: zoom-in;
+    }
+    .shot-hero.shot-portrait .shot-img {
+        width: min(20rem, 80%);
+        height: auto;
+        cursor: zoom-in;
+    }
+
+    /* --- Karte und Vorschaubild: fester Ausschnitt, Bild ragt aus dem Rahmen --- */
+    .shot-card .shot-stage,
+    .shot-thumb .shot-stage {
+        position: relative;
+        overflow: hidden;
+    }
+    .shot-card {
+        border-width: 0 0 1px;
+        border-radius: 0;
+    }
+    .shot-card .shot-stage {
+        aspect-ratio: 16 / 9;
+    }
+    .shot-thumb .shot-stage {
+        aspect-ratio: 4 / 3;
+    }
+    .shot-card.shot-landscape .shot-img,
+    .shot-thumb.shot-landscape .shot-img {
+        position: absolute;
+        left: 7%;
+        top: 10%;
+        width: 135%;
+        height: auto;
+        border-radius: 4px 0 0 0;
+    }
+    .shot-thumb.shot-landscape .shot-img {
+        width: 170%;
+    }
+    .shot-card.shot-focus-rechts.shot-landscape .shot-img,
+    .shot-thumb.shot-focus-rechts.shot-landscape .shot-img {
+        left: auto;
+        right: 7%;
+        border-radius: 0 4px 0 0;
+    }
+    .shot-card.shot-portrait .shot-img,
+    .shot-thumb.shot-portrait .shot-img {
+        position: absolute;
+        left: 50%;
+        top: 10%;
+        width: 38%;
+        height: auto;
+        transform: translateX(-50%);
+    }
+    .shot-thumb.shot-portrait .shot-img {
+        border-width: 3px;
+        border-radius: 0.625rem;
+    }
+    .shot-thumb {
+        border-radius: 3px;
+        background-size: 12px 12px;
+    }
+
+    :global(.dark) .shot-img {
+        box-shadow:
+            0 1px 2px rgb(0 0 0 / 0.4),
+            0 16px 40px -16px rgb(0 0 0 / 0.8);
+    }
+    :global(.dark) .shot-portrait .shot-img {
+        border-color: #2a3135;
+    }
+</style>

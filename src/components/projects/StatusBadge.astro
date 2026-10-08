@@ -1,0 +1,24 @@
+---
+// Status als Lagemeldung: Farbfläche mit Text in der passenden Kontrastfarbe, nie Signal als Text.
+import { STATUS_LABEL, type ProjectStatus } from '../../lib/projects';
+
+interface Props {
+    status: ProjectStatus;
+}
+
+const { status } = Astro.props;
+
+const tone: Record<ProjectStatus, string> = {
+    aktiv: 'border-(--color-moss-soft) bg-(--color-moss-soft) text-(--color-moss)',
+    stabil: 'border-(--color-accent-soft) bg-(--color-accent-soft) text-(--color-accent)',
+    alpha: 'border-(--color-amber-soft) bg-(--color-amber-soft) text-(--color-amber)',
+    beta: 'border-(--color-amber-soft) bg-(--color-amber-soft) text-(--color-amber)',
+    pausiert: 'border-(--color-border) text-(--color-text-secondary)',
+    archiviert: 'border-(--color-border) text-(--color-text-muted)',
+};
+---
+
+<span class:list={['inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-0.5 font-mono text-[0.8125rem] leading-snug tracking-[0.02em]', tone[status]]}>
+    <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
+    {STATUS_LABEL[status]}
+</span>

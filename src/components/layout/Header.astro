@@ -6,8 +6,10 @@ const currentPath = Astro.url.pathname;
 
 const navLinks = [
     {href: '/', label: 'Blog'},
-    {href: '/tags', label: 'Tags'},
-    {href: '/about', label: 'Über mich'},
+    {href: '/projekte', label: 'Projekte'},
+    // Auf schmalen Displays fehlt der Platz für alle Links: Tags und Über mich bleiben über Posts und Startseite erreichbar.
+    {href: '/tags', label: 'Tags', hide: 'max-sm:hidden'},
+    {href: '/about', label: 'Über mich', hide: 'max-[400px]:hidden'},
 ];
 ---
 
@@ -28,6 +30,7 @@ const navLinks = [
                             href={link.href}
                             aria-current={isActive ? 'page' : undefined}
                             class:list={[
+                                link.hide,
                                 'whitespace-nowrap px-1.5 py-2 text-sm font-semibold transition-colors sm:px-3 sm:text-[0.9375rem]',
                                 isActive
                                     ? 'text-(--color-accent) shadow-[inset_0_-2px_0_var(--color-accent)]'

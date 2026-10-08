@@ -28,4 +28,54 @@ const blog = defineCollection({
     }),
 });
 
-export const collections = { blog };
+// Projekte: eine Datei pro Repository. Prozess und Kriterien: docs/projekte.md
+const projects = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/projects' }),
+  schema: ({ image }) =>
+    z.object({
+      title: z.string(),
+      // Ein Satz, erscheint in der Übersicht und als Meta-Description.
+      tagline: z.string(),
+      area: z.enum(['bevoelkerungsschutz', 'ai-engineering', 'werkzeuge', 'alltag']),
+      kind: z.enum(['web', 'desktop', 'ios', 'bibliothek', 'server', 'demo', 'cli']),
+      status: z.enum(['aktiv', 'alpha', 'beta', 'stabil', 'pausiert', 'archiviert']),
+      // owner/name auf GitHub, daraus entstehen Link und Abgleich in der Routine.
+      repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
+      website: z.string().url().optional(),
+      app: z.string().url().optional(),
+      stack: z.array(z.string()).default([]),
+      // Echter Screenshot der Anwendung, liegt in src/content/projects/_images/<slug>/.
+      screenshot: image().optional(),
+      screenshotAlt: z.string().optional(),
+      // Welche Ecke des Screenshots Karten und Vorschaubilder zeigen.
+      screenshotFocus: z.enum(['links', 'rechts']).default('links'),
+      /** Bild ist eine gestaltete Darstellung (z. B. KI-generiert), kein echter Screenshot. */
+      screenshotIllustration: z.boolean().default(false),
+      license: z.string().optional(),
+      // Slugs von Blogposts, die das Projekt behandeln.
+      posts: z.array(z.string()).default([]),
+      featured: z.boolean().default(false),
+      // Letzter Push laut GitHub, wird von der Projekte-Routine nachgezogen.
+      lastActivity: z.coerce.date(),
+      draft: z.boolean().default(false),
+      ai: z.enum(['generated', 'assisted', 'none']).default('generated'),
+    }),
+});
+
+// Eigene Artikel, die woanders erschienen sind (z. B. im INNOQ-Blog). Sie stehen in der
+// Post-Liste der Startseite und auf den Projektseiten, die sie unter `projects` nennen.
+const extern = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/extern' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    url: z.string().url(),
+    publisher: z.string(),
+    coAuthors: z.array(z.string()).default([]),
+    date: z.coerce.date(),
+    // Slugs aus src/content/projects/.
+    projects: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { blog, projects, extern };
