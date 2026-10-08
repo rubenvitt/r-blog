@@ -76,7 +76,7 @@ faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
 {heroImage ? (
     <a
             href={url}
-            class="not-prose group my-4 block overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) no-underline! hover:no-underline! transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
+            class="not-prose group my-4 block overflow-hidden rounded-xl border border-(--color-border) bg-(--color-bg-secondary) no-underline! hover:no-underline! transition-all hover:border-(--color-accent)"
     >
         <div class="overflow-hidden">
             <Image
@@ -89,7 +89,7 @@ faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
         </div>
         <div class="flex items-start gap-4 p-5">
             <div class="min-w-0 flex-1">
-                <div class="font-medium text-(--color-text) group-hover:text-(--color-accent) transition-colors">
+                <div class="font-display text-[1.0625rem] font-semibold tracking-[-0.01em] text-(--color-text)">
                     {resolvedTitle}
                 </div>
                 {resolvedDescription && (
@@ -97,9 +97,9 @@ faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
                             {resolvedDescription}
                         </div>
                 )}
-                <div class="mt-2 text-xs text-(--color-text-muted)">{linkLabel}</div>
+                <div class="mt-2 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-accent)">{linkLabel}</div>
             </div>
-            <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-text-secondary) transition-colors pt-0.5">&rarr;</span>
+            <span class="shrink-0 text-(--color-text-muted) transition-all group-hover:translate-x-0.5 group-hover:text-(--color-accent) pt-0.5">&rarr;</span>
         </div>
     </a>
 ) : (
@@ -107,7 +107,7 @@ faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
             href={url}
             target={isExternalLink ? '_blank' : undefined}
             rel={isExternalLink ? 'noopener noreferrer' : undefined}
-            class="not-prose group my-4 flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-bg-secondary) p-5 no-underline! hover:no-underline! transition-all hover:border-(--color-accent)/30 hover:shadow-sm"
+            class="not-prose group my-4 flex items-center gap-4 rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-5 no-underline! hover:no-underline! transition-all hover:border-(--color-accent)"
     >
         <div class="relative flex h-10 w-10 shrink-0 items-center justify-center">
             <span class="absolute text-sm font-medium text-(--color-text-muted)">{faviconFallback}</span>
@@ -122,7 +122,7 @@ faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
             />
         </div>
         <div class="min-w-0 flex-1">
-            <div class="truncate font-medium text-(--color-text) group-hover:text-(--color-text-secondary) transition-colors">
+            <div class="truncate font-display text-[1.0625rem] font-semibold tracking-[-0.01em] text-(--color-text)">
                 {resolvedTitle}
             </div>
             {resolvedDescription && (
@@ -130,8 +130,8 @@ faviconFallback = getFaviconFallbackLabel(hostname || linkLabel);
                         {resolvedDescription}
                     </div>
             )}
-            <div class="mt-1 text-xs text-(--color-text-muted)">{linkLabel}</div>
+            <div class="mt-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-accent)">{linkLabel}</div>
         </div>
-        <span class="shrink-0 text-(--color-text-muted) group-hover:text-(--color-text-secondary) transition-colors">&rarr;</span>
+        <span class="shrink-0 text-(--color-text-muted) transition-all group-hover:translate-x-0.5 group-hover:text-(--color-accent)">&rarr;</span>
     </a>
 )}

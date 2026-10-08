@@ -43,7 +43,7 @@ Keine manuellen Transparenz-Callouts in Posts — das Feld ist die einzige Quell
 
 ### Layouts
 
-- `BaseLayout.astro` — HTML-Shell mit Dark-Mode (3-State: system/light/dark via `data-theme`), Fonts (Nunito + JetBrains Mono), Pagefind Search Modal, Image Zoom, externe Links auto `target="_blank"`
+- `BaseLayout.astro` — HTML-Shell mit Dark-Mode (3-State: system/light/dark via `data-theme`), Fonts (Bricolage Grotesque + Atkinson Hyperlegible Next/Mono), Pagefind Search Modal, Image Zoom, externe Links auto `target="_blank"`
 - `BlogPost.astro` — Hero-Header (mit/ohne Bild), Lesezeit-Berechnung, Reading Progress Bar
 
 ### MDX Widgets
@@ -59,7 +59,7 @@ In Posts als Astro-Komponenten importiert und inline genutzt:
 
 Kein `@tailwindcss/typography` — eigene Prose-Styles in `global.css`. Dark-Mode via `.dark`-Klasse auf `<html>`. Design-Tokens als CSS Custom Properties in `@theme`.
 
-Content-Width: `--content-width: 820px`, Wide: `--content-width-wide: 1100px`. Accent-Farbe: Orange (#c2410c light / #ea580c dark).
+Content-Width: `--content-width: 760px`, Wide: `--content-width-wide: 1120px`. Designsystem „Lagebild“ (https://claude.ai/artifact/NMvWfeYURG2wz2uy1s5CUV): `--color-accent` ist Petrol (Links, Navigation, Fokus), `--color-signal` ist Signalorange und nur Fläche oder Markierung (Primärbutton, h2-Marker, Lesefortschritt), nie Text auf `--color-bg`. Überschriften in `--font-display`, Metadaten und Tags in `--font-mono`, Daten im ISO-Format. Codeblöcke sind in beiden Themes dunkel.
 
 ### Bilder
 

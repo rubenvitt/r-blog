@@ -1,6 +1,7 @@
 ---
 import {getCollection} from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import TagBadge from '../../components/ui/TagBadge.astro';
 
 const posts = await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft);
 const tagCounts = new Map<string, number>();
@@ -16,16 +17,10 @@ const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
 
 <BaseLayout title="Tags — rubeen.dev">
     <div class="mx-auto max-w-(--content-width) px-6 py-16">
-        <h1 class="text-3xl font-bold tracking-tight mb-8">Tags</h1>
-        <div class="flex flex-wrap gap-3">
+        <h1 class="mb-8 text-[2.75rem] leading-[1.1] font-bold tracking-[-0.03em]" style="font-variation-settings: 'opsz' 72">Tags</h1>
+        <div class="flex flex-wrap gap-2">
             {sortedTags.map(([tag, count]) => (
-                    <a
-                            href={`/tags/${tag}`}
-                            class="inline-flex items-center gap-2 rounded-full bg-(--color-bg-secondary) border border-(--color-border) px-4 py-2 text-sm text-(--color-text-secondary) hover:text-(--color-accent) hover:border-(--color-accent)/30 transition-colors"
-                    >
-                        {tag}
-                        <span class="text-xs text-(--color-text-muted)">({count})</span>
-                    </a>
+                    <TagBadge tag={tag} count={count}/>
             ))}
         </div>
         {sortedTags.length === 0 && (

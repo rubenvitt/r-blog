@@ -33,10 +33,10 @@ const c = config[level];
         <aside
             role="note"
             aria-label="Transparenzhinweis zu KI-generierten Inhalten"
-            class="flex gap-3 rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-4"
+            class="flex gap-3 rounded-xl border border-dashed border-(--color-signal) bg-(--color-signal-soft) px-4 py-3"
         >
             <svg
-                class="mt-0.5 h-4 w-4 shrink-0 text-(--color-accent)"
+                class="mt-1 h-4 w-4 shrink-0 text-(--color-signal-text)"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -54,10 +54,10 @@ const c = config[level];
                 <path d="M15 13h.01"></path>
                 <path d="M9 17h6"></path>
             </svg>
-            <p class="text-sm leading-relaxed text-(--color-text-secondary)">
-                <strong class="font-semibold text-(--color-text)">{c.label}.</strong>{' '}
+            <p class="text-[0.9375rem] leading-relaxed text-(--color-text)">
+                <strong class="mb-0.5 block font-mono text-[0.8125rem] font-bold tracking-[0.04em] text-(--color-signal-text) uppercase">{c.label}</strong>
                 {c.text} Redaktionelle Verantwortung: {EDITORIAL_RESPONSIBILITY}.{' '}
-                <a href={AI_TRANSPARENCY_PAGE.path} class="text-(--color-accent) hover:underline">
+                <a href={AI_TRANSPARENCY_PAGE.path} class="text-(--color-text) underline underline-offset-[3px] hover:text-(--color-accent)">
                     Wie dieser Blog KI einsetzt
                 </a>
             </p>
