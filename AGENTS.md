@@ -41,7 +41,11 @@ Zweite Collection `projects` in `src/content/projects/`, eine Markdown-Datei pro
 
 ### Artikel an anderer Stelle
 
-Dritte Collection `extern` in `src/content/extern/` (nur Frontmatter, Link nach außen, z. B. INNOQ-Blog). Die Startseite mischt sie in „Neueste Posts“ (`PostCard` mit `external`), Projektseiten zeigen sie, wenn ihr Slug in `projects` steht.
+Dritte Collection `extern` in `src/content/extern/` (nur Frontmatter, Link nach außen, z. B. INNOQ-Blog). Die Startseite mischt sie in „Neueste Posts“ (`PostCard` mit `external`), Projektseiten zeigen sie, wenn ihr Slug in `projects` steht. `language: en` markiert englische Originale.
+
+### Talks
+
+Vierte Collection `talks` in `src/content/talks/` (nur Frontmatter, ein Termin pro Datei). Seite `/talks` teilt zur Build-Zeit in „Demnächst“ und „Vergangen“, die Startseite zeigt kommende Termine. Der Titel verlinkt `url` (Detailseite mit Abstract), der Veranstaltungsname `eventUrl`; sobald die Konferenz eine eigene Session-Seite hat, gehört die in `eventUrl`. Beschreibung in eigenen Worten, keinen Abstract kopieren. Hilfsfunktionen in `src/lib/talks.ts`.
 
 ### KI-Kennzeichnung
 

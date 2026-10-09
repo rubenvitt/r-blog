@@ -9,7 +9,7 @@ interface Props {
     image?: ImageMetadata;
     podcastDuration?: string;
     /** Artikel an anderer Stelle: verlinkt nach außen statt auf /blog/<slug>. */
-    external?: {url: string; publisher: string; coAuthors?: string[]};
+    external?: {url: string; publisher: string; coAuthors?: string[]; language?: 'de' | 'en'};
 }
 
 const {title, description, date, tags, slug, podcastDuration, external} = Astro.props;
@@ -24,14 +24,14 @@ const isoDate = date.toISOString().slice(0, 10);
     </time>
     <div class="grid min-w-0 gap-2">
         <h3 class="text-[1.3125rem] leading-[1.3] font-semibold tracking-[-0.015em]" style="font-variation-settings: 'opsz' 24">
-            <a href={href} class="post-card-link text-(--color-text)">{title}</a>{external && <span class="text-(--color-text-muted)" aria-hidden="true"> ↗</span>}
+            <a href={href} hreflang={external?.language === 'en' ? 'en' : undefined} class="post-card-link text-(--color-text)">{title}</a>{external && <span class="text-(--color-text-muted)" aria-hidden="true"> ↗</span>}
         </h3>
         <p class="line-clamp-2 max-w-[62ch] text-base leading-relaxed text-(--color-text-secondary)">
             {description}
         </p>
         {external && (
             <p class="mt-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
-                <span class="text-(--color-signal-text)">■</span> erschienen bei {external.publisher}{external.coAuthors?.length ? `, mit ${external.coAuthors.join(', ')}` : ''}
+                <span class="text-(--color-signal-text)">■</span> erschienen bei {external.publisher}{external.coAuthors?.length ? `, mit ${external.coAuthors.join(', ')}` : ''}{external.language === 'en' ? ' · auf Englisch' : ''}
             </p>
         )}
         {(tags.length > 0 || podcastDuration) && (

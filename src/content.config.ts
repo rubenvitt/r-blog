@@ -73,9 +73,35 @@ const extern = defineCollection({
     publisher: z.string(),
     coAuthors: z.array(z.string()).default([]),
     date: z.coerce.date(),
+    // Sprache des Originals; englische Artikel bekommen einen Hinweis und hreflang.
+    language: z.enum(['de', 'en']).default('de'),
     // Slugs aus src/content/projects/.
     projects: z.array(z.string()).default([]),
   }),
 });
 
-export const collections = { blog, projects, extern };
+// Vorträge und Workshops, eine Datei pro Termin (nur Frontmatter). Seite: /talks
+const talks = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/talks' }),
+  schema: z.object({
+    title: z.string(),
+    // Ein bis zwei Sätze in eigenen Worten, kein kopierter Abstract.
+    description: z.string(),
+    kind: z.enum(['vortrag', 'workshop']),
+    date: z.coerce.date(),
+    event: z.string(),
+    // Seite der Veranstaltung; sobald sie eine eigene Session-Seite hat, die hier eintragen.
+    eventUrl: z.string().url().optional(),
+    location: z.string(),
+    // Detailseite mit Abstract (z. B. bei INNOQ), dorthin führt der Titel.
+    url: z.string().url().optional(),
+    coSpeakers: z.array(z.string()).default([]),
+    language: z.enum(['de', 'en']).default('de'),
+    slides: z.string().url().optional(),
+    video: z.string().url().optional(),
+    // Slugs von Blogposts zum Thema.
+    posts: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { blog, projects, extern, talks };
