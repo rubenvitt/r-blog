@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TalkRow from '../../components/talks/TalkRow.astro';
+import { getTalks, splitByDate } from '../../lib/talks';
+import { TALKS_PAGE } from '../../lib/site';
+
+const talks = await getTalks();
+const { upcoming, past } = splitByDate(talks);
+const sections = [
+    { key: 'demnaechst', label: 'Demnächst', talks: upcoming },
+    { key: 'vergangen', label: 'Vergangen', talks: past },
+].filter((s) => s.talks.length > 0);
+---
+
+<BaseLayout title={TALKS_PAGE.title} description={TALKS_PAGE.description}>
+    <div class="mx-auto max-w-(--content-width) px-4 sm:px-6">
+        <section class="pt-16 pb-10 sm:pt-20">
+            <p class="mb-4 font-mono text-[0.8125rem] tracking-[0.04em] text-(--color-text-secondary)">
+                <span class="text-(--color-signal-text)">■</span> {talks.length} {talks.length === 1 ? 'Termin' : 'Termine'}{upcoming.length > 0 && <> · {upcoming.length} demnächst</>}
+            </p>
+            <h1 class="text-[2.75rem] leading-[1.05] font-bold tracking-[-0.03em] sm:text-[3.5rem]" style="font-variation-settings: 'opsz' 96">
+                Talks
+            </h1>
+            <p class="mt-6 max-w-[56ch] text-xl leading-relaxed text-(--color-text-secondary)">
+                Vorträge und Workshops, meistens zu dem, worüber ich auch hier schreibe: wie AI-Features zu Systemen werden, die man testen, beobachten und betreiben kann.
+            </p>
+        </section>
+
+        {sections.map((section) => (
+            <section id={section.key} class="scroll-mt-20 pb-10">
+                <h2 class="mb-2 text-[1.875rem] leading-tight font-semibold tracking-[-0.02em]" style="font-variation-settings: 'opsz' 48">
+                    {section.label}
+                </h2>
+                <div class="border-b border-(--color-border)">
+                    {section.talks.map((talk) => <TalkRow talk={talk} />)}
+                </div>
+            </section>
+        ))}
+    </div>
+</BaseLayout>

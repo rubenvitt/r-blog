@@ -5,12 +5,15 @@ import PostCard from '../components/ui/PostCard.astro';
 import FeaturedProject from '../components/projects/FeaturedProject.astro';
 import { HOME_PAGE } from '../lib/site';
 import { getProjects } from '../lib/projects';
+import TalkRow from '../components/talks/TalkRow.astro';
+import { getTalks, splitByDate } from '../lib/talks';
 
 const blogPosts = await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft);
 const externalPosts = await getCollection('extern');
 // Blogposts und Artikel an anderer Stelle in einer Liste, neueste zuerst.
 const posts = [...blogPosts, ...externalPosts].sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 const featuredProjects = (await getProjects()).filter((p) => p.data.featured).slice(0, 4);
+const upcomingTalks = splitByDate(await getTalks()).upcoming.slice(0, 3);
 ---
 
 <BaseLayout title={HOME_PAGE.title} description={HOME_PAGE.description}>
@@ -65,6 +68,20 @@ const featuredProjects = (await getProjects()).filter((p) => p.data.featured).sl
                     <p class="text-(--color-text-muted) py-8">Noch keine Posts vorhanden.</p>
             )}
         </section>
+
+        {upcomingTalks.length > 0 && (
+            <section id="talks" class="scroll-mt-20 pt-8 pb-8">
+                <div class="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h2 class="text-[1.875rem] leading-tight font-semibold tracking-[-0.02em]" style="font-variation-settings: 'opsz' 48">
+                        Demnächst unterwegs
+                    </h2>
+                    <a href="/talks" class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-accent) hover:text-(--color-accent-hover)">Alle Talks →</a>
+                </div>
+                <div class="border-b border-(--color-border)">
+                    {upcomingTalks.map((talk) => <TalkRow talk={talk} />)}
+                </div>
+            </section>
+        )}
 
         {featuredProjects.length > 0 && (
             <section id="projekte" class="scroll-mt-20 pt-8 pb-8">

@@ -31,3 +31,9 @@ export const PROJECTS_PAGE = {
   description:
     'Woran ich baue: Software für den Bevölkerungsschutz, AI-Engineering-Experimente, Desktop-Werkzeuge und kleine Apps für den Alltag.',
 } as const;
+
+export const TALKS_PAGE = {
+  path: '/talks',
+  title: 'Talks — rubeen.dev',
+  description: 'Vorträge und Workshops zu AI Systems Engineering, Evals und Softwarearchitektur.',
+} as const;

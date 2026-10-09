@@ -1,0 +1,59 @@
+---
+// Eintrag wie im Einsatztagebuch: Datum und Art in fester Spalte links, Talk rechts.
+import { getCollection } from 'astro:content';
+import { isoDate, hostname } from '../../lib/projects';
+import { KIND_LABEL, type Talk } from '../../lib/talks';
+
+interface Props {
+    talk: Talk;
+}
+
+const { talk } = Astro.props;
+const { title, description, kind, date, event, eventUrl, location, url, coSpeakers, language, slides, video, posts } = talk.data;
+const relatedPosts = posts.length > 0 ? await getCollection('blog', ({ id, data }) => posts.includes(id) && !data.draft) : [];
+const href = url ?? eventUrl;
+---
+
+<article class="talk-row grid gap-x-6 gap-y-1 border-t border-(--color-border) py-6 sm:grid-cols-[7rem_1fr]">
+    <div class="flex flex-wrap items-baseline gap-x-3 sm:flex-col sm:gap-0">
+        <time datetime={date.toISOString()} class="font-mono text-[0.8125rem] leading-[1.75rem] tracking-[0.02em] text-(--color-text-secondary) tabular-nums">{isoDate(date)}</time>
+        <span class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-muted)">{KIND_LABEL[kind]}</span>
+    </div>
+    <div class="grid min-w-0 gap-2">
+        <h3 class="text-[1.3125rem] leading-[1.3] font-semibold tracking-[-0.015em]" style="font-variation-settings: 'opsz' 24">
+            {href ? (
+                <><a href={href} hreflang={language === 'en' ? 'en' : undefined} class="talk-row-link text-(--color-text)">{title}</a><span class="text-(--color-text-muted)" aria-hidden="true"> ↗</span></>
+            ) : title}
+        </h3>
+        <p class="max-w-[62ch] text-base leading-relaxed text-(--color-text-secondary)">{description}</p>
+        <p class="mt-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
+            <span class="text-(--color-signal-text)">■</span>{' '}
+            {eventUrl ? <a href={eventUrl} class="text-(--color-accent) hover:text-(--color-accent-hover)">{event}</a> : event}
+            {' '}· {location}{coSpeakers.length > 0 && `, mit ${coSpeakers.join(', ')}`}{language === 'en' && ' · auf Englisch'}
+        </p>
+        {(slides || video || relatedPosts.length > 0) && (
+            <div class="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[0.8125rem] tracking-[0.02em]">
+                {slides && <a href={slides} class="text-(--color-accent) hover:text-(--color-accent-hover)">↗ Folien</a>}
+                {video && <a href={video} class="text-(--color-accent) hover:text-(--color-accent-hover)">↗ Video ({hostname(video)})</a>}
+                {relatedPosts.map((post) => (
+                    <a href={`/blog/${post.id}`} class="text-(--color-accent) hover:text-(--color-accent-hover)">→ Zum Weiterlesen: {post.data.title}</a>
+                ))}
+            </div>
+        )}
+    </div>
+</article>
+
+<style>
+    .talk-row-link {
+        text-decoration: none;
+        background-image: linear-gradient(var(--color-signal), var(--color-signal));
+        background-size: 0 2px;
+        background-position: 0 100%;
+        background-repeat: no-repeat;
+        transition: background-size 0.25s ease;
+    }
+    .talk-row-link:hover,
+    .talk-row-link:focus-visible {
+        background-size: 100% 2px;
+    }
+</style>
