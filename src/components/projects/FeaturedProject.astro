@@ -26,8 +26,10 @@ const label = external ? hostname(external) : project.data.repo;
         </div>
     )}
     {screenshot && <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="card" focus={project.data.screenshotFocus} illustration={project.data.screenshotIllustration} label={label} />}
-    <div class="relative flex flex-1 flex-col gap-3 p-5">
-    <span class="absolute top-0 left-5 h-[3px] w-8 bg-(--color-signal)" aria-hidden="true"></span>
+    <div class="relative" aria-hidden="true">
+        <span class="absolute top-0 left-5 h-[3px] w-8 bg-(--color-signal)"></span>
+    </div>
+    <div class="flex flex-1 flex-col gap-3 p-5">
     <div class="flex flex-wrap items-center gap-2">
         <StatusBadge status={status} />
         <span class="font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">{KIND_LABEL[kind]}</span>
