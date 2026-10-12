@@ -11,7 +11,7 @@ screenshot: ./_images/lifeline-hub/screenshot.webp
 screenshotAlt: "Lifeline Hub: Lagebild einer Übungslage mit Kennzahlen, Gefahrenmatrix, Sichtung und Meldungsstrom"
 license: Alle Rechte vorbehalten
 featured: true
-lastActivity: 2026-10-08
+lastActivity: 2026-10-12
 ---
 
 Einsatztagebuch, Lagekarte, Kräfteübersicht, Betroffenen- und Schadenserfassung, Meldungen und Aufträge. Lifeline Hub bündelt in einer Anwendung, was eine Einsatzleitung im Bevölkerungsschutz braucht.

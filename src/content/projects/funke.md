@@ -9,7 +9,7 @@ stack: [Swift, SwiftUI, watchOS, Apple Intelligence, ClickUp API]
 screenshot: ./_images/funke/screenshot.webp
 screenshotIllustration: true
 screenshotAlt: "Illustration: Funke mit Textfeld, Mikrofon-Button, Vorschlag für Titel, Priorität und Tag sowie der Heute-Liste"
-lastActivity: 2026-06-19
+lastActivity: 2026-10-12
 ---
 
 Mit Funke werde ich einen Gedanken los, bevor er wieder weg ist. Ein großes Textfeld, das sofort den Fokus hat, ein Mikrofon-Button mit deutscher Live-Transkription, und die Aufgabe landet in der ClickUp-Inbox. Ohne Netz wartet sie in einer Offline-Warteschlange und geht nicht verloren.
