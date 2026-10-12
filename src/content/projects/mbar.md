@@ -11,7 +11,7 @@ screenshotIllustration: true
 screenshotAlt: "Illustration: mbar als Statusleiste am oberen Bildschirmrand mit Workspaces, aktiver App, Medien, CPU, RAM, WLAN, Lautstärke, Akku und Uhrzeit"
 license: GPL-3.0
 featured: true
-lastActivity: 2026-10-08
+lastActivity: 2026-10-10
 ---
 
 mbar implementiert die Befehlssprache und das Verhalten von [SketchyBar](https://github.com/FelixKratz/SketchyBar) neu. Bestehende `sketchybarrc`-Dateien und Plugin-Skripte laufen also weiter.
