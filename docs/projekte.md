@@ -91,6 +91,8 @@ Repos, die die Routine nicht vorschlagen soll, mit kurzem Grund.
 | rubenvitt/ember-rescue | Vorgänger von Lifeline Hub |
 | rubenvitt/uav-praxis | in der IuK-Suite aufgegangen (Modul `uav`) |
 | rubenvitt/da-feedback | in der IuK-Suite aufgegangen (Modul `feedback`) |
+| rubenvitt/vault-mcp | in Vault Cockpit aufgegangen, archiviert |
+| rubenvitt/vault-cockpit | privat |
 | rubenvitt/material-dienstabende | Sammlung für die eigene Bereitschaft |
 | rubenvitt/life-automations | ohne README |
 | rubenvitt/rubenvitt | GitHub-Profil |
