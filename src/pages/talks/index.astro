@@ -8,7 +8,7 @@ const talks = await getTalks();
 const { upcoming, past } = splitByDate(talks);
 const sections = [
     { key: 'demnaechst', label: 'Demnächst', talks: upcoming },
-    { key: 'vergangen', label: 'Vergangen', talks: past },
+    { key: 'gehalten', label: 'Gehalten', talks: past },
 ].filter((s) => s.talks.length > 0);
 ---
 
