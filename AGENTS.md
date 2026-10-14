@@ -45,7 +45,7 @@ Dritte Collection `extern` in `src/content/extern/` (nur Frontmatter, Link nach 
 
 ### Talks
 
-Vierte Collection `talks` in `src/content/talks/` (nur Frontmatter, ein Termin pro Datei). Seite `/talks` teilt zur Build-Zeit in „Demnächst“ und „Vergangen“, die Startseite zeigt kommende Termine. Der Titel verlinkt `url` (Detailseite mit Abstract), der Veranstaltungsname `eventUrl`; sobald die Konferenz eine eigene Session-Seite hat, gehört die in `eventUrl`. Beschreibung in eigenen Worten, keinen Abstract kopieren. Hilfsfunktionen in `src/lib/talks.ts`.
+Vierte Collection `talks` in `src/content/talks/` (nur Frontmatter, ein Termin pro Datei). Seite `/talks` teilt zur Build-Zeit in „Demnächst“ und „Gehalten“, die Startseite zeigt kommende Termine. Der Titel verlinkt `url` (Detailseite mit Abstract), der Veranstaltungsname `eventUrl`; sobald die Konferenz eine eigene Session-Seite hat, gehört die in `eventUrl`. Beschreibung in eigenen Worten, keinen Abstract kopieren. Hilfsfunktionen in `src/lib/talks.ts`.
 
 ### KI-Kennzeichnung
 
