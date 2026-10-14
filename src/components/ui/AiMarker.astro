@@ -1,0 +1,24 @@
+---
+// Kurzer KI-Hinweis in der Metazeile oben (Art. 50 Abs. 5 KI-VO: spätestens bei erster
+// Wahrnehmung). Er verweist auf den ausführlichen Hinweis am Ende der Seite (AiDisclosure).
+interface Props {
+    level: 'generated' | 'assisted' | 'none';
+    /** Für Metazeilen auf dem dunklen Hero-Bild. */
+    variant?: 'default' | 'hero';
+}
+
+const {level, variant = 'default'} = Astro.props;
+const label = {generated: 'Mit KI erstellt', assisted: 'Mit KI-Unterstützung', none: null}[level];
+---
+
+{label && (
+    <a
+        href="#ki-hinweis"
+        class:list={[
+            'underline decoration-dotted underline-offset-[3px] transition-colors',
+            variant === 'hero' ? 'text-white/65 hover:text-white' : 'text-(--color-text-secondary) hover:text-(--color-accent)',
+        ]}
+    >
+        {label}
+    </a>
+)}
