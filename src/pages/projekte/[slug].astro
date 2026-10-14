@@ -2,6 +2,7 @@
 import { getCollection, getEntry, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AiDisclosure from '../../components/ui/AiDisclosure.astro';
+import AiMarker from '../../components/ui/AiMarker.astro';
 import PostCard from '../../components/ui/PostCard.astro';
 import ProjectShot from '../../components/projects/ProjectShot.astro';
 import StatusBadge from '../../components/projects/StatusBadge.astro';
@@ -46,6 +47,7 @@ const externalPosts = (await getCollection('extern', ({ data }) => data.projects
                 <div><dt class="sr-only">Art</dt><dd>{KIND_LABEL[kind]}</dd></div>
                 {license && <div><dt class="sr-only">Lizenz</dt><dd>{license}</dd></div>}
                 <div><dt class="inline">Zuletzt bewegt </dt><dd class="inline"><time datetime={lastActivity.toISOString()}>{isoDate(lastActivity)}</time></dd></div>
+                {ai !== 'none' && <div><dt class="sr-only">KI-Hinweis</dt><dd><AiMarker level={ai} /></dd></div>}
             </dl>
 
             <div class="mt-8 flex flex-wrap items-center gap-3">
@@ -77,12 +79,6 @@ const externalPosts = (await getCollection('extern', ({ data }) => data.projects
             <ProjectShot src={screenshot} alt={screenshotAlt ?? `Screenshot von ${title}`} variant="hero" focus={project.data.screenshotFocus} illustration={project.data.screenshotIllustration} label={website || app ? hostname((website ?? app)!) : repo} />
         </div>
     )}
-
-    <AiDisclosure
-        level={ai}
-        subject="dieser Projektseite"
-        note={project.data.screenshotIllustration ? 'Das Bild oben ist eine KI-generierte Illustration, kein echter Screenshot.' : undefined}
-    />
 
     <article class="prose mx-auto max-w-(--content-width) px-6 pt-12 pb-8">
         <Content />
@@ -126,6 +122,12 @@ const externalPosts = (await getCollection('extern', ({ data }) => data.projects
             </div>
         </section>
     )}
+
+    <AiDisclosure
+        level={ai}
+        subject="dieser Projektseite"
+        note={project.data.screenshotIllustration ? 'Das Bild oben ist eine KI-generierte Illustration, kein echter Screenshot.' : undefined}
+    />
 
     <style>
         .project-title {

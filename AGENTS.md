@@ -49,7 +49,7 @@ Vierte Collection `talks` in `src/content/talks/` (nur Frontmatter, ein Termin p
 
 ### KI-Kennzeichnung
 
-Das Frontmatter-Feld `ai` steuert den Transparenzhinweis nach Art. 50 KI-VO — `generated` (Default), `assisted` oder `none`. `BlogPost.astro` rendert daraus über `AiDisclosure.astro` einen Hinweis **oberhalb** des Artikeltextes (Art. 50 Abs. 5: spätestens bei erster Wahrnehmung, nicht im Footer). Derselbe Hinweis geht in `rss.xml.ts`; der Podcast-Feed und der Player weisen zusätzlich auf die synthetischen Stimmen hin. Details und die benannte redaktionelle Verantwortung stehen auf `/ki-transparenz`.
+Das Frontmatter-Feld `ai` steuert den Transparenzhinweis nach Art. 50 KI-VO — `generated` (Default), `assisted` oder `none`. `BlogPost.astro` und die Projektseiten rendern daraus zwei Teile: `AiMarker.astro` als kurzes Label in der Metazeile **oben** (Art. 50 Abs. 5: spätestens bei erster Wahrnehmung) und `AiDisclosure.astro` als ausführlichen, zurückhaltenden Hinweis am Ende (`#ki-hinweis`), auf den das Label verlinkt. Das Label oben nie entfernen, nur der ausführliche Text steht unten. Derselbe Hinweis geht in `rss.xml.ts`; der Podcast-Feed und der Player weisen zusätzlich auf die synthetischen Stimmen hin. Details und die benannte redaktionelle Verantwortung stehen auf `/ki-transparenz`.
 
 Keine manuellen Transparenz-Callouts in Posts — das Feld ist die einzige Quelle.
 

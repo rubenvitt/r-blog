@@ -5,6 +5,7 @@ import TagBadge from '../components/ui/TagBadge.astro';
 import ReadingProgress from '../components/ui/ReadingProgress.astro';
 import PodcastPlayer from '../components/widgets/PodcastPlayer.astro';
 import AiDisclosure from '../components/ui/AiDisclosure.astro';
+import AiMarker from '../components/ui/AiMarker.astro';
 
 interface Props {
     title: string;
@@ -66,6 +67,12 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
                                 <span>Aktualisiert {formattedUpdatedDate}</span>
                             </>
                         )}
+                        {ai !== 'none' && (
+                            <>
+                                <span>&middot;</span>
+                                <AiMarker level={ai} variant="hero"/>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -81,6 +88,12 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
                         <>
                             <span class="text-(--color-border-strong)">&middot;</span>
                             <span>Aktualisiert {formattedUpdatedDate}</span>
+                        </>
+                    )}
+                    {ai !== 'none' && (
+                        <>
+                            <span class="text-(--color-border-strong)">&middot;</span>
+                            <AiMarker level={ai}/>
                         </>
                     )}
                 </div>
@@ -101,8 +114,6 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
         </div>
     )}
 
-    <AiDisclosure level={ai} />
-
     {podcast && (
         <div class="mx-auto max-w-(--content-width) px-6 pt-8">
             <PodcastPlayer audioFile={podcast.audioFile} transcript={podcast.transcript} title={title} />
@@ -116,6 +127,8 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
     <article class="prose mx-auto max-w-(--content-width) px-6 py-12">
         <slot/>
     </article>
+
+    <AiDisclosure level={ai} />
 
     <style>
         .post-title {

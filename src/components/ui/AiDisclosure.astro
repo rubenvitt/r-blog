@@ -1,7 +1,7 @@
 ---
-// Transparenzhinweis fuer KI-erzeugte Inhalte (Art. 50 Abs. 4 KI-VO).
-// Art. 50 Abs. 5 verlangt "klar und eindeutig, spaetestens zum Zeitpunkt der ersten
-// Wahrnehmung" — deshalb steht der Hinweis oberhalb des Artikeltextes und nicht im Footer.
+// Transparenzhinweis fuer KI-erzeugte Inhalte (Art. 50 Abs. 4 KI-VO), ausführlich am Ende
+// der Seite. Art. 50 Abs. 5 verlangt "klar und eindeutig, spaetestens zum Zeitpunkt der ersten
+// Wahrnehmung" — das leistet AiMarker in der Metazeile oben, der hierher verlinkt.
 import {AI_TRANSPARENCY_PAGE, EDITORIAL_RESPONSIBILITY} from '../../lib/site';
 
 interface Props {
@@ -36,37 +36,19 @@ const text = c && note ? `${c.text} ${note}` : c?.text;
 
 {c && (
     <div
-        class="not-prose mx-auto max-w-(--content-width) px-6 pt-8"
+        id="ki-hinweis"
+        class="not-prose mx-auto max-w-(--content-width) scroll-mt-20 px-6 pb-10"
         data-ai-disclosure={level}
     >
         <aside
             role="note"
             aria-label="Transparenzhinweis zu KI-generierten Inhalten"
-            class="flex gap-3 rounded-xl border border-dashed border-(--color-signal) bg-(--color-signal-soft) px-4 py-3"
+            class="border-t border-(--color-border) pt-5"
         >
-            <svg
-                class="mt-1 h-4 w-4 shrink-0 text-(--color-signal-text)"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-            >
-                <rect x="4" y="7" width="16" height="13" rx="2"></rect>
-                <path d="M12 3v4"></path>
-                <path d="M2 13h2"></path>
-                <path d="M20 13h2"></path>
-                <path d="M9 13h.01"></path>
-                <path d="M15 13h.01"></path>
-                <path d="M9 17h6"></path>
-            </svg>
-            <p class="text-[0.9375rem] leading-relaxed text-(--color-text)">
-                <strong class="mb-0.5 block font-mono text-[0.8125rem] font-bold tracking-[0.04em] text-(--color-signal-text) uppercase">{c.label}</strong>
+            <p class="text-[0.875rem] leading-relaxed text-(--color-text-secondary)">
+                <strong class="mb-1 block font-mono text-[0.8125rem] font-bold tracking-[0.04em] text-(--color-text-secondary) uppercase">{c.label}</strong>
                 {text} Redaktionelle Verantwortung: {EDITORIAL_RESPONSIBILITY}.{' '}
-                <a href={AI_TRANSPARENCY_PAGE.path} class="text-(--color-text) underline underline-offset-[3px] hover:text-(--color-accent)">
+                <a href={AI_TRANSPARENCY_PAGE.path} class="text-(--color-accent) underline underline-offset-[3px] hover:text-(--color-accent-hover)">
                     Wie dieser Blog KI einsetzt
                 </a>
             </p>
