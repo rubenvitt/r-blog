@@ -89,6 +89,7 @@ Repos, die die Routine nicht vorschlagen soll, mit kurzem Grund.
 | rubenvitt/r-blog | diese Website |
 | rubenvitt/bluelight-hub | Vorgänger von Lifeline Hub |
 | rubenvitt/ember-rescue | Vorgänger von Lifeline Hub |
+| rubenvitt/uav-lagebild | Vorgänger von Suchlage, archiviert |
 | rubenvitt/uav-praxis | in der IuK-Suite aufgegangen (Modul `uav`) |
 | rubenvitt/da-feedback | in der IuK-Suite aufgegangen (Modul `feedback`) |
 | rubenvitt/vault-mcp | in Vault Cockpit aufgegangen, archiviert |
