@@ -12,7 +12,7 @@ screenshotFocus: rechts
 stack: [TypeScript, SVG, Canvas, React, Web Components, MapLibre, QGIS]
 license: MIT
 featured: true
-lastActivity: 2026-10-11
+lastActivity: 2026-10-18
 ---
 
 Taktische Zeichen gibt es meistens als Sammlung einzelner SVG-Dateien. Das reicht, bis man eine Kombination braucht, die noch niemand gezeichnet hat. einsatzzeichen dreht das um. Die Anwendung beschreibt, **was** dargestellt werden soll, und der Generator baut daraus das Zeichen nach der BBK/BABZ-Systematik.
