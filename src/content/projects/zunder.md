@@ -9,7 +9,7 @@ stack: [Rust, axum, SQLite, SolidJS, Tauri, MCP]
 screenshot: ./_images/zunder/screenshot.webp
 screenshotAlt: "Zunder: Dev-Board mit den Spalten Offen, In Arbeit, Review, Blockiert und Erledigt, Beispieldaten"
 license: Apache-2.0
-lastActivity: 2026-10-12
+lastActivity: 2026-10-18
 ---
 
 Zunder ist das, womit man Feuer entfacht. Aufgaben sind der Brennstoff für fokussierte Arbeit. Die App ordnet sie nach Lebensbereichen, Projekten und schnellen, losen Aufgaben, und sie soll ClickUp bei mir ablösen.

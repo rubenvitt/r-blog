@@ -9,7 +9,7 @@ screenshot: ./_images/iuk-suite/screenshot.webp
 screenshotAlt: "IuK-Suite: Portal mit den Kacheln aller Module, von QR-Codes über Lagerbuch und Funkgeräte bis Drohnentraining"
 stack: [Next.js, React, Ant Design, Drizzle, SQLite, Auth.js, Playwright]
 posts: [drei-abende-drei-tools]
-lastActivity: 2026-10-09
+lastActivity: 2026-10-20
 ---
 
 Über die Zeit sind für unsere Bereitschaft viele kleine Anwendungen entstanden: QR-Codes, Feedback zu Dienstabenden, Dateifreigaben, Materialverwaltung, Funkgeräte-Ausleihe, Drohnentraining. Die IuK-Suite holt sie unter ein Dach.

@@ -12,7 +12,7 @@ screenshotAlt: "Flugmappe: Einsatzkarte mit eingezeichnetem Einsatzgebiet und St
 stack: [React, Vite, PWA, Leaflet, TanStack Query, jsPDF]
 posts: [papier-fliegt-nicht]
 featured: true
-lastActivity: 2026-10-10
+lastActivity: 2026-10-18
 ---
 
 Flugmappe ersetzt bei Drohneneinsätzen die Checkliste auf Papier. Jeder Einsatz läuft durch vier Phasen: Einsatzdaten, Vorflugkontrolle, Flüge und zum Schluss die Nachbereitung mit PDF-Export.

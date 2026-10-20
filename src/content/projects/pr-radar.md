@@ -10,7 +10,7 @@ screenshot: ./_images/pr-radar/screenshot.webp
 screenshotIllustration: true
 screenshotAlt: "Illustration: PR Radar mit offenen Pull Requests nach Repo gruppiert, aufgeklappten Checks, Auto-Merge und Zeitleiste der zuletzt gemergten PRs"
 license: Apache-2.0
-lastActivity: 2026-10-06
+lastActivity: 2026-10-15
 ---
 
 Wer viele Repos betreut, hat schnell zwanzig Tabs mit Pull Requests offen. PR Radar holt sie in ein Fenster und spricht GitHub direkt an. Einen eigenen Server braucht es dafür nicht.

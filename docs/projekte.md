@@ -101,7 +101,8 @@ Repos, die die Routine nicht vorschlagen soll, mit kurzem Grund.
 
 ## Offen
 
-Noch nicht entschieden, ob und wie sie rein sollen: `einsatztagebuch` (noch ohne README),
+Noch nicht entschieden, ob und wie sie rein sollen: `sudoku` (laut README noch in Planung),
+`simple-todo-app` (letzter Commit 2025-06, README größtenteils NestJS-Vorlage),
 `rubeen-email` (nur die Standard-README von create-next-app),
 `r-worktime`, `r-times`, `docker-update-dashboard`, `cv-hub`, `momentchen-app`, `airport-db`,
 `bookmark-manager`, `reiseplaner`, `naehrwert-tracker`, `r-rezepte`.
