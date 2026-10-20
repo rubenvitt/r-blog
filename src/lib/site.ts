@@ -12,7 +12,7 @@ export const HOME_PAGE = {
 export const ABOUT_PAGE = {
   path: '/about',
   title: 'Über mich — rubeen.dev',
-  description: 'Über Ruben – Consultant, Softwareentwickler und Engagierter im Katastrophenschutz.',
+  description: 'Über Ruben – Consultant bei INNOQ, Softwareentwickler und Engagierter im Katastrophenschutz.',
 } as const;
 
 /** Natürliche Person, die die redaktionelle Verantwortung i.S.d. Art. 50 Abs. 4 KI-VO trägt. */
