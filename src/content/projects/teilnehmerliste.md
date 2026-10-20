@@ -5,6 +5,7 @@ area: werkzeuge
 kind: web
 status: aktiv
 repo: rubenvitt/teilnehmerliste
+app: https://teilnehmerliste.pages.dev
 stack: [TypeScript, Vite, SheetJS, Service Worker, Cloudflare Pages]
 screenshot: ./_images/teilnehmerliste/screenshot.webp
 screenshotAlt: "Teilnehmerliste auf dem Handy: Gruppen als Tabs, darunter die Namen mit Häkchen, erfundene Demo-Daten"
