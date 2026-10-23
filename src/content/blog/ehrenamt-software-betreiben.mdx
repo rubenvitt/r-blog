@@ -14,7 +14,7 @@ import ProjectCard from '../../components/widgets/ProjectCard.astro';
 
 > Eine App zu bauen dauert mit AI einen Abend. Sie zu betreiben dauert jeden Abend ein bisschen - mal so viele Apps, wie du hast.
 
-Stell dir eine Personensuche vor. Ein Mensch wird vermisst, es wird langsam dunkel, und über dem Waldstück steht eine Drohne. Im Einsatzleitwagen, dem Fahrzeug, von dem aus der Einsatz geführt wird, schaut die Einsatzleitung auf einen Bildschirm und will sehen, was die Drohne sieht. Ob das Bild dort ankommt, soll bald an einer Software hängen, die ich in meiner Freizeit baue. Und an einem Server, um den sich niemand kümmert außer mir.
+Stell dir eine Personensuche vor. Ein Mensch wird vermisst, es wird langsam dunkel, und über dem Waldstück steht eine Drohne. Im Einsatzleitwagen, dem Fahrzeug, von dem aus der Einsatz geführt wird, schaut die Einsatzleitung auf einen Bildschirm und will sehen, was die Drohne sieht. Gesucht wird dabei über die Fernsteuerung des Piloten, dort ist das Bild ohnehin. Damit es auch im Einsatzleitwagen ankommt, baue ich in meiner Freizeit gerade eine Software. Sie läuft auf einem Server, um den sich niemand kümmert außer mir.
 
 Im April habe ich darüber geschrieben, wie leicht es mit AI geworden ist, Software fürs Ehrenamt zu bauen. Drei Tools an drei Abenden, alle im echten Einsatz, den Code habe ich nicht gelesen. Mein Fazit damals: Wichtiger als Code-Wissen ist zu wissen, was eine Software braucht, um zu laufen.
 
@@ -148,13 +148,13 @@ Die eigentliche Entscheidung steckt damit im Merge: Was übernommen wird, geht r
 
 <LinkCard url="/blog/human-in-the-loop"/>
 
-Wird der Merge irgendwann zum Abnicken, ohne dass noch jemand hinsieht? Ehrlich gesagt: Ich nicke schon ab. Bei einem Feedback-Formular oder einem Lagerbuch halte ich das für vertretbar, die Tests fangen das Gröbste ab, und die Fallhöhe ist klein. Bei einem Lagebild für eine Personensuche wäre es das nicht.
+Wird der Merge irgendwann zum Abnicken, ohne dass noch jemand hinsieht? Ehrlich gesagt: Ich nicke schon ab. Bei einem Feedback-Formular oder einem Lagerbuch halte ich das für vertretbar, die Tests fangen das Gröbste ab, und die Fallhöhe ist klein.
 
 ## Warum Suchlage nicht einzieht
 
-Eigentlich könnte die Geschichte hier enden: ein Haus, ein automatischer Rollout, ein Hausmeister fürs Backup. Eine App wohnt aber bewusst nicht mit drin. Ausgerechnet die, bei der am meisten auf dem Spiel steht.
+Eigentlich könnte die Geschichte hier enden: ein Haus, ein automatischer Rollout, ein Hausmeister fürs Backup. Eine App wohnt aber bewusst nicht mit drin. Und das liegt nicht daran, dass sie wichtiger wäre.
 
-Suchlage ist mein jüngstes Projekt und steckt noch in der Alpha, also in einer frühen Testphase. Gerade laufen die ersten Versuche mit der echten Drohne, die Abnahme im Feld steht noch aus. Die Idee ist die Szene vom Anfang: Bei einer Personensuche fliegt eine Drohne über das Suchgebiet, und die Einsatzleitung sitzt im Einsatzleitwagen. Suchlage bringt das Livebild der Kamera, die aktuelle Position und die bisherige Flugspur der Drohne dorthin und auf die Handys der Leute im Gelände. Wer die Flugmappe aus einem früheren Post kennt, unsere digitale Drohnen-Checkliste: Das hier ist der nächste Schritt im selben Einsatzfeld.
+Suchlage ist mein jüngstes Projekt und steckt noch in der Alpha, also in einer frühen Testphase. Gerade laufen die ersten Versuche mit der echten Drohne, die Abnahme im Feld steht noch aus. Die Idee ist die Szene vom Anfang: Bei einer Personensuche fliegt eine Drohne über das Suchgebiet, und die Einsatzleitung sitzt im Einsatzleitwagen. Suchlage bringt das Livebild der Kamera, die aktuelle Position und die bisherige Flugspur der Drohne dorthin und auf die Handys der Leute im Gelände. Gesucht wird dabei weiter über die Fernsteuerung: Dort sieht der Pilot alles, was die Drohne sieht, und das bleibt die Quelle, auf die sich alle verlassen. Suchlage ist ein zusätzlicher Blick für die, die nicht neben dem Piloten stehen. Wer die Flugmappe aus einem früheren Post kennt, unsere digitale Drohnen-Checkliste: Das hier ist der nächste Schritt im selben Einsatzfeld.
 
 <LinkCard url="/blog/papier-fliegt-nicht"/>
 
@@ -164,7 +164,7 @@ Technisch hat Suchlage mit der Suite wenig gemeinsam. Die Position und die ander
 
 Auch der Takt ist ein anderer. In der Suite läuft das Backup automatisch im Hintergrund. In der Betriebsanleitung für Suchlage steht beim Backup ein kurzer Satz: "Nicht während eines Flugs."
 
-Am schwersten wiegt aber der gemeinsame Sicherungskasten, den Suchlage im Haus der Suite hätte. Steckt im Lagerbuch ein Fehler, ist das ärgerlich, dann sucht halt jemand ein Ladekabel einen Tag länger. Reißt derselbe Fehler bei einer laufenden Suche das Livebild mit, schaut die Einsatzleitung auf einen schwarzen Bildschirm, während die Drohne weiter über dem Wald steht. Und umgekehrt soll ein Problem im Videostrom niemandem das Lagerbuch wegnehmen.
+Dazu kommt der gemeinsame Sicherungskasten, den Suchlage im Haus der Suite hätte. Steckt im Lagerbuch ein Fehler, ist das ärgerlich, dann sucht halt jemand ein Ladekabel einen Tag länger. Reißt derselbe Fehler bei einer laufenden Suche das Livebild mit, schaut die Einsatzleitung auf einen schwarzen Bildschirm. Gesucht wird dann zwar über die Fernsteuerung weiter, aber im Einsatzleitwagen fehlt ausgerechnet das, wofür Suchlage gebaut ist. Und umgekehrt soll ein Problem im Videostrom niemandem das Lagerbuch wegnehmen.
 
 Werner Vogels, der Technikchef von Amazon, hat in einem [Text darüber, ob man Software in einem großen Stück bauen darf](https://www.allthingsdistributed.com/2023/05/monoliths-are-not-dinosaurs.html), geschrieben: "Building evolvable software systems is a strategy, not a religion." Auf Deutsch etwa: Software so zu bauen, dass sie sich weiterentwickeln lässt, ist eine Strategie und keine Religion. Für mich heißt das: Ob ich zusammenlege oder trenne, entscheide ich im Einzelfall, und zwar nach einer simplen Faustregel. Zusammenlegen, was auf dieselbe Art ausfällt. Trennen, was anders ausfällt.
 
@@ -172,7 +172,7 @@ Draußen heißt allerdings nicht ohne Regeln. Bei Suchlage wird jede Änderung, 
 
 Ganz so weit wie die Suite ist Suchlage trotzdem nicht. Das Backup ist dort noch Handarbeit: Server kurz anhalten, Daten wegkopieren, wieder starten. Ob das so bleibt, ist offen. Naja, zumindest weiß ich, dass es offen ist.
 
-In "Drei Abende, drei Tools" war meine Begründung fürs schnelle Bauen, dass wenig auf dem Spiel steht. Geht etwas kaputt, fixe ich es halt, und das Risiko ist ein verlorener Abend. Für ein Feedback-Formular stimmt das immer noch. Bei einem Lagebild für eine Personensuche stimmt es nicht mehr, denn wer gerade nach einem vermissten Menschen sucht, hat nichts davon, dass ich es morgen Abend repariere. Suchlage bekommt deshalb mehr Vorsicht als alles andere, was ich betreibe.
+In "Drei Abende, drei Tools" war meine Begründung fürs schnelle Bauen, dass wenig auf dem Spiel steht. Geht etwas kaputt, fixe ich es halt, und das Risiko ist ein verlorener Abend. Das gilt auch für Suchlage, und zwar mit Absicht: Die Fernsteuerung bleibt die Wahrheit, dort wird gesucht. Fällt Suchlage aus, sieht die Einsatzleitung das Bild nicht mehr mit, die Suche geht trotzdem weiter. Dass Suchlage getrennt bleibt, hat also nichts mit der Fallhöhe zu tun. Es fällt einfach anders aus als der Rest.
 
 ## Was ich mache, wenn ich im Urlaub bin
 
@@ -182,7 +182,7 @@ Die ehrliche Antwort ist kleiner, als ich sie gern hätte. Ich kann mich nicht e
 
 Und wenn es trotzdem hängt? Dann bleibt es vermutlich hängen, bis jemand nachsieht. Den Neustart-Helfer aus der Geschichte vom Juni hat die Suite bisher nicht, Docker startet sie nur neu, wenn sie wirklich abstürzt. Das ist eine offene Stelle, und eine etwas peinliche dazu, weil ich die Lektion schon einmal gelernt habe.
 
-Bei Suchlage ist meine Antwort noch dünner. Auch deshalb steckt es in der Alpha: Bevor das Lagebild bei einer echten Suche gebraucht wird, muss diese Frage besser beantwortet sein als hier.
+Bei Suchlage ist meine Antwort noch dünner, aber auch die Fallhöhe ist kleiner, als es klingt: Fällt es aus, wird über die Fernsteuerung weitergesucht, nur eben ohne zweiten Bildschirm im Einsatzleitwagen.
 
 Die Anleitungen sind immerhin so geschrieben, dass sie nicht nur ich lesen kann. Claude Code arbeitet sie heute schon auf dem Server ab. Ein Mensch aus der Bereitschaft könnte das grundsätzlich auch, mit etwas Mut und einem Login. Ob sich dafür jemand findet, ist eine andere Frage, und die lässt sich nicht an einem Abend klären.
 
