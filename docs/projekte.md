@@ -101,7 +101,7 @@ Repos, die die Routine nicht vorschlagen soll, mit kurzem Grund.
 
 ## Offen
 
-Noch nicht entschieden, ob und wie sie rein sollen: `sudoku` (laut README noch in Planung),
+Noch nicht entschieden, ob und wie sie rein sollen: `lichtung` (laut README im Aufbau, Repo seit 2026-10-23),
 `simple-todo-app` (letzter Commit 2025-06, README größtenteils NestJS-Vorlage),
 `rubeen-email` (nur die Standard-README von create-next-app),
 `r-worktime`, `r-times`, `docker-update-dashboard`, `cv-hub`, `momentchen-app`, `airport-db`,
