@@ -9,7 +9,7 @@ website: https://keymap.rubeen.dev
 stack: [QMK, C, Docker, three.js]
 screenshot: ./_images/zsa-layout/screenshot.webp
 screenshotAlt: "Moonlander-Keymap: beide Hälften des Moonlander in 3D, Tasten nach Funktion farbig hinterleuchtet, oben die Reiter für die sechs Layer"
-lastActivity: 2026-10-16
+lastActivity: 2026-10-23
 ---
 
 Ich tippe auf einem ZSA Moonlander mit [Bone](https://neo-layout.org/Layouts/bone/) als Basislayout, einer Variante aus der Neo-Familie. Dazu kommen Layer für QWERTZ, Symbole und F-Tasten, Navigation und Numpad, Maus und Medien sowie einen eigenen für IDE-Shortcuts.
