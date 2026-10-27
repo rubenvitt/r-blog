@@ -25,8 +25,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
          (shown while the render-blocking stylesheets load and between page
          navigations) follows the system theme instead of flashing white. -->
     <meta name="color-scheme" content="light dark"/>
-    <meta name="theme-color" content="#f3f4f0" media="(prefers-color-scheme: light)"/>
-    <meta name="theme-color" content="#0e1113" media="(prefers-color-scheme: dark)"/>
+    <!-- Browser UI color; the theme script below sets it to the effective theme -->
+    <meta name="theme-color" content="#f3f4f0"/>
 
     <!-- Critical theme colors, inlined so the first paint never waits for global.css -->
     <style is:inline>
@@ -41,9 +41,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         try { stored = localStorage.getItem('theme'); } catch (e) {}
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         document.documentElement.setAttribute('data-theme', stored || 'system');
-        if (stored === 'dark' || (!stored && prefersDark)) {
-            document.documentElement.classList.add('dark');
-        }
+        var dark = stored === 'dark' || (!stored && prefersDark);
+        document.documentElement.classList.toggle('dark', dark);
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#0e1113' : '#f3f4f0');
         // Enable color transitions after the first paint to avoid initial-load flash
         window.addEventListener('load', function () {
             requestAnimationFrame(function () {
