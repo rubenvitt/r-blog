@@ -12,11 +12,11 @@ import InfoBox from '../../components/widgets/InfoBox.astro';
 
 > Ein Grader ist ein System wie jedes andere. Wer ihn nicht testet, hat die Hoffnung nur eine Ebene nach oben verschoben.
 
-Im März habe ich hier über Evals in der CI-Pipeline geschrieben. Zwei Sätze aus diesem Post stehen direkt untereinander. Der erste sagt über LLM-as-a-Judge, die "sollten deshalb den Hauptteil der Evals darstellen". Der zweite sagt über Code-Grader: "und (falls möglich) sollten diese den Hauptteil der Evals darstellen". Zweimal der Hauptteil, und wer im Zweifel gewinnt, stand nirgends.
+Im März habe ich hier über Evals in der CI-Pipeline geschrieben: Code-Grader, LLM-as-a-Judge, menschliches Review.
 
 <LinkCard url="/blog/ai-evals-ci-pipeline" />
 
-Welche Methode was findet, war dort nur Behauptung. Also drehe ich die Frage um: Statt den Agenten zu testen, teste ich die Tests. Zwölf Fehlerarten eingebaut, elf Grader darauf angesetzt, 1.265 Modellaufrufe.
+Welche Methode was findet, blieb dort Behauptung. Also drehe ich die Frage um: Statt den Agenten zu testen, teste ich die Tests. Zwölf Fehlerarten eingebaut, elf Grader darauf angesetzt, 1.265 Modellaufrufe.
 
 Herausgekommen ist eine Matrix. Dann stellt sich heraus, dass ein Label selbst falsch war, und auf echten Läufen sagen die Werte kaum noch etwas.
 
@@ -194,7 +194,7 @@ Lässt sich der Abstand zwischen Mutationen und echten Läufen herausrechnen? Hu
 
 Gemessen ist von dem, was jetzt kommt, nichts. Es sind meine Folgerungen aus diesem einen Lab.
 
-- **Der Hauptteil gehört für mich den Code-Gradern.** Das ist meine Antwort auf den Widerspruch aus dem März. Für eine erfundene PR-Nummer reicht `pr-refs`, an ein Modell geht nur, was Code nicht sehen kann.
+- **Der Hauptteil gehört den Code-Gradern.** Für eine erfundene PR-Nummer reicht `pr-refs`, an ein Modell geht nur, was Code nicht sehen kann.
 - **Seiteneffekt und Weg würde ich separat prüfen.** Text-Grader kommen da nicht hin.
 - **Jeder Grader gehört auch gegen Kontrollen.** Sonst gewinnt, wer am meisten ablehnt.
 - **Mutationen sind für mich ein Unit-Test des Graders, keine Kalibrierung.** Sie finden Bugs im Grader und in der Referenz. TPR und TNR daraus gelten aber nicht für Produktion, dafür braucht es Labels auf echten Läufen.
