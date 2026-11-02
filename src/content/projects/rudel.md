@@ -10,7 +10,7 @@ screenshot: ./_images/rudel/screenshot.webp
 screenshotIllustration: true
 screenshotAlt: "Illustration: Rudel mit Läufigkeit als Zeitspanne mit Konfidenz, anstehenden Medikamenten und Gewichtsverlauf"
 license: MIT
-lastActivity: 2026-10-05
+lastActivity: 2026-11-01
 ---
 
 Rudel dokumentiert Medikamente und Intervalle, Läufigkeit, Symptome und Gewicht eines Hundes und erinnert lokal daran, was als Nächstes ansteht.

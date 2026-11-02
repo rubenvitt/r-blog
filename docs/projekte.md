@@ -102,6 +102,8 @@ Repos, die die Routine nicht vorschlagen soll, mit kurzem Grund.
 ## Offen
 
 Noch nicht entschieden, ob und wie sie rein sollen: `lichtung` (laut README im Aufbau, Repo seit 2026-10-23),
+`lagemonitor` (v1 läuft, aber für einen Screenshot braucht es den Rust-Server mit Kartendaten; ohne Lizenzdatei),
+`iuk-monitoring` (überwiegend Compose-Stack und Konfiguration für Beszel),
 `simple-todo-app` (letzter Commit 2025-06, README größtenteils NestJS-Vorlage),
 `rubeen-email` (nur die Standard-README von create-next-app),
 `r-worktime`, `r-times`, `docker-update-dashboard`, `cv-hub`, `momentchen-app`, `airport-db`,
