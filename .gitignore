@@ -38,3 +38,6 @@ design-system/ds-bundle/
 design-system/.design-sync/.cache/
 design-system/.design-sync/learnings/
 design-system/.design-sync/node_modules
+
+# lokale Codex-Konfiguration mit Secrets
+.codex/
