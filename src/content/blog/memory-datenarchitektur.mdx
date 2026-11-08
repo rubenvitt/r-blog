@@ -101,9 +101,10 @@ async function deleteChat(chatId: string) {
       if (d.derivedFrom.length > 1) await tx.rebuild.enqueue(d.id);   // aus den übrigen Chats neu ableiten
       else await tx.derived.delete(d.id);
     }
+    await tx.outbox.enqueue({ type: "destroy-key", chatId }); // Protokoll: Schlüssel pro Chat, im selben Commit beauftragt
   });
-  await keys.destroy(chatId); // Protokoll: Schlüssel pro Chat
 }
+// Ein Worker ruft keys.destroy(chatId) idempotent auf, bis es klappt. Erst dann ist die Löschung abgeschlossen.
 
 async function writeDerived(d: Derived) {
   await db.tx(async (tx) => {
