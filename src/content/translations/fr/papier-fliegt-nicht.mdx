@@ -1,0 +1,265 @@
+---
+title: "Le papier ne vole pas : comment une PWA remplace la checklist drone en protection civile"
+description: "Comment j'ai construit avec l'IA une PWA hors ligne pour les opérations de drones en protection civile - et pourquoi la connaissance du domaine compte plus que les prompts."
+date: 2026-03-31
+tags: ["ai", "software-engineering", "pwa", "katastrophenschutz"]
+image: ../../blog/_images/papier-fliegt-nicht/hero.png
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+import einsatzkarte from '../../blog/_images/papier-fliegt-nicht/einsatzkarte.png';
+import wetterbewertung from '../../blog/_images/papier-fliegt-nicht/wetterbewertung.png';
+import pdfBericht from '../../blog/_images/papier-fliegt-nicht/pdf-bericht.png';
+
+L'équipe drone est sur les lieux de l'intervention, l'UAV est prêt à décoller - mais avant que quoi que ce soit ne vole, il faut documenter. Et la documentation ? Elle est dans le véhicule. Sur papier.
+
+## Le papier reste dans le véhicule
+
+En protection civile, les drones ne décollent pas comme ça. Avant qu'un UAV ait le droit de s'envoler, l'équipe suit un processus structuré : saisir les données de l'opération, évaluer les conditions météo, réaliser une évaluation des risques SORA, préparer la déclaration de vol, dérouler les checklists. Après le vol vient le débriefing. Jusqu'ici, tout ça est documenté sur papier - dans le véhicule de l'équipe de reconnaissance aérienne, le GW AufklTruLu.
+
+Ça marche. Plus ou moins. Mais ça a des limites qui se font sentir en opération.
+
+**Le premier problème, c'est l'endroit.** La documentation papier se remplit dans le véhicule. Mais le pilote se tient à côté de l'UAV - souvent à des dizaines de mètres. Consulter la météo actuelle ? Retour au véhicule. Vérifier une checklist ? Retour au véhicule. Relire une procédure parce que la situation l'exige ? Retour au véhicule. Ou de mémoire. En opération, ni l'un ni l'autre n'est idéal.
+
+**Le deuxième problème, ce sont les procédures.** Les procédures Normal, Contingency et Emergency - codifiées de N1 à N6, de C0 à C6 et de E1 à E3 - sont rangées dans le véhicule sous forme de documents séparés. Ce sont les instructions pour tout ce qui peut mal tourner : du fonctionnement normal aux incidents, jusqu'à la perte totale de contrôle. Sous stress, à côté de l'UAV, dans le vent et le bruit, on n'a pas ces documents sur soi. Il faudrait les connaître par cœur. Ou retourner au véhicule.
+
+**Le troisième problème, c'est le calcul.** Le papier ne sait pas calculer. La vitesse du vent au sol dit peu de chose des conditions à 120 mètres d'altitude de vol - pour ça, il faut une interpolation.
+
+<Accordion title="Qu'est-ce que SORA ?">
+SORA (Specific Operations Risk Assessment) est une méthode standardisée d'évaluation des risques pour les vols de drones. Elle combine deux dimensions : le **Ground Risk** (GRC) - à quel point un crash est-il dangereux pour les personnes au sol ? - et l'**Air Risk** (ARC) - quelle est la probabilité d'une collision dans l'espace aérien ? Des deux découle le **SAIL** (Specific Assurance and Integrity Level), qui détermine les mesures de sécurité nécessaires pour le vol. Le calcul ne se fait pas au feeling : c'est une matrice définie, avec des paramètres d'entrée concrets.
+
+<LinkCard url="https://www.easa.europa.eu/en/domains/drones-air-mobility/operating-drone/specific-category-civil-drones/specific-operations-risk-assessment-sora"/>
+</Accordion>
+
+L'évaluation SORA - GRC plus ARC donne le SAIL - se fait à la main sur papier, avec des risques d'erreur, et chaque fois depuis zéro.
+
+<Accordion title="Qu'est-ce qu'EGRED ?">
+EGRED signifie **Empfehlungen für Gemeinsame Regelungen zum Einsatz von Drohnen im Bevölkerungsschutz** (recommandations pour des règles communes sur l'emploi de drones en protection civile). Publié par le BBK (Bundesamt für Bevölkerungsschutz und Katastrophenhilfe, l'office fédéral allemand de la protection civile), le document définit dans sa deuxième version (EGRED 2), entre autres, les exigences d'une documentation structurée des vols de drones dans le contexte des BOS, les services publics de secours et de sécurité.
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
+</Accordion>
+
+C'est précisément cette documentation structurée qu'exige EGRED 2. Pas comme une recommandation, mais comme la base d'une exploitation conforme des UAV en protection civile. La documentation doit être traçable, complète et standardisée. Le papier peut le faire - mais il ne peut pas aider. Il ne calcule pas, il ne rappelle rien, il n'est pas là où se tient le pilote.
+
+Un smartphone, si. Il est sur soi, il fonctionne hors ligne, il sait calculer. Afficher la météo, guider les checklists, consulter les procédures, calculer les valeurs SORA - tout ça directement à côté de l'UAV, pas dans le véhicule. Pas pour remplacer le processus, mais comme un outil qui amène le processus là où on en a besoin. Une Progressive Web App (PWA) - c'est-à-dire une application qui tourne dans le navigateur, se comporte comme une appli normale et fonctionne aussi hors ligne.
+
+> Une documentation papier dans le véhicule ne sait pas interpoler une vitesse de vent à 120 mètres d'altitude.
+
+Et si tout ça - documentation, calcul, checklists, procédures - tournait sur le smartphone ? Utilisable hors ligne, directement sur les lieux ?
+
+## De la liste papier à la PWA : ce que fait l'appli
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="PWA hors ligne pour les opérations de drones en protection civile"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+L'appli s'appelle « UAV Einsatzverwaltung ». Pas un tableur, pas un formulaire PDF - une Progressive Web App qui tourne directement dans le navigateur et fonctionne sur n'importe quelle tablette d'intervention.
+
+Le déroulé suit ce qui se passe réellement en opération. Quatre phases, calquées sur le schéma EGRED :
+
+### 1. Saisir les données de l'opération
+
+Position par GPS ou saisie manuelle. Choix du drone parmi des profils préconfigurés - actuellement DJI Matrice 350 RTK et DJI Matrice 200, chacun avec ses limites spécifiques. Effectif de l'équipe, ordre de mission, et une carte interactive avec des outils de dessin : la position est placée comme un marqueur circulaire, la zone de recherche est tracée en polygone.
+
+<Figure src={einsatzkarte} alt="Carte d'opération avec la zone de recherche tracée (polygone bleu) et le marqueur de position (rouge) sur la lande de Wesel" caption="Carte d'opération interactive : position et zone de recherche se dessinent directement dans l'appli."/>
+
+### 2. Contrôle pré-vol - le cœur de l'appli
+
+C'est ici que se passe ce qui n'a jamais fonctionné sur papier : une analyse automatisée de l'environnement en temps réel.
+
+**Météo** : l'appli récupère les données actuelles chez Open-Meteo - vent, rafales, température, précipitations, visibilité, humidité, pression, point de rosée. Chaque valeur reçoit une évaluation en feu tricolore : vert, jaune, rouge - comparée aux limites spécifiques du drone choisi. La vitesse du vent est interpolée à l'altitude de vol réelle, à partir de mesures à 10 m, 80 m, 120 m et 180 m. Fini de deviner si « là-haut, le vent doit être plus fort ».
+
+<Figure src={wetterbewertung} alt="Évaluation météo en couleurs de feu tricolore : vent et rafales en rouge, température en jaune, autres paramètres en vert. En dessous, la représentativité du METAR et des recommandations." caption="Évaluation météo automatique avec logique de feu tricolore - comparée aux limites du DJI Matrice 350 RTK."/>
+
+**Géomagnétisme** : l'indice K du NOAA SWPC indique si des perturbations géomagnétiques pourraient influencer la boussole du drone. Ça paraît exotique, mais c'est un risque réel - en particulier avec la série Matrice.
+
+**Environnement** : via OpenStreetMap et l'API Overpass, l'appli vérifie automatiquement ce qui se trouve dans la zone d'opération. Espaces aériens, routes, voies ferrées, lignes électriques, hôpitaux, réserves naturelles. Tout ce qu'il faudrait sinon chercher à la main sur une carte.
+
+**Évaluation des risques SORA** : le risque au sol (GRC) et le risque aérien (ARC) donnent ensemble le SAIL - le Specific Assurance and Integrity Level. L'appli le calcule automatiquement à partir des données saisies. Ce qui était avant un diagramme que je devais parcourir à la main tient maintenant en un clic.
+
+S'y ajoutent des checklists techniques pour le drone lui-même. Hélices, batteries, firmware, caméra - point par point.
+
+### 3. Vols et débriefing
+
+Les deux dernières phases bouclent la boucle : chaque vol est documenté individuellement (heure de décollage, heure d'atterrissage, particularités), puis l'appli génère un rapport PDF complet - toutes les données météo, checklists, temps de vol et cartes dans un seul document. C'est ce qui finit dans le dossier de l'opération.
+
+<Figure src={pdfBericht} alt="Première page du rapport de mission UAV généré, avec le nom de l'opération, la position, la date et le type de drone" caption="Le rapport de mission PDF généré - l'équivalent numérique de la documentation papier."/>
+
+Important en pratique : une opération peut avoir plusieurs positions. Une crue avec trois points de reconnaissance ? Une opération, trois segments, chacun avec son propre contrôle pré-vol et ses propres vols.
+
+### Les procédures directement dans l'appli
+
+Toutes les procédures Normal, Contingency et Emergency sont intégrées à l'appli. Pas en PDF joint, mais sous forme de checklists navigables.
+
+Quelques exemples :
+
+- **N1 « Avant le décollage »** : « Check Controlled Ground établi » - « Call Out: CLEAR PROP! »
+- **C4.2 « Aéronef habité »** : « Call Out: AÉRONEF INCONNU ! » → engager l'atterrissage
+- **E1 « Terminaison »** : « Call Out: CRASH ! CRASH ! CRASH ! »
+
+Quand on doit trouver la bonne procédure sous stress, on ne fait pas défiler un manuel de 30 pages. Les procédures N1 à N6, C0 à C6 et E1 à E3, plus les plans d'urgence (ERP), sont toutes à un tap.
+
+<Callout type="tip">
+  **Comment installer la PWA sur votre tablette d'intervention :** ouvrez [uav.iuk-ue.de](https://uav.iuk-ue.de) dans le navigateur, touchez le menu du navigateur (trois points ou icône de partage) et choisissez « Ajouter à l'écran d'accueil ». L'appli tourne ensuite comme une application native - fonctionnement hors ligne compris.
+</Callout>
+
+Voilà pour les features côté utilisateur. Mais une appli qui récupère des données météo, utilise le GPS et génère des PDF - elle n'a pas besoin d'un gros backend ? Spoiler : non.
+
+## Pas de backend, pas de problème : le local-first comme choix de conception
+
+Une unité BOS bénévole n'a pas de budget pour de l'infrastructure serveur. Pas d'admin pour s'occuper des bases de données. Et aucune envie de bannières de cookies, de registres de traitement RGPD et d'abonnements cloud. Donc : pas de backend.
+
+Ça ressemble à une contrainte. Ça n'en est pas une - c'est une décision d'architecture.
+
+### Tout vit dans le navigateur
+
+Toutes les données d'opération, saisies de formulaire et calques de carte sont stockés dans le localStorage. Pas de serveur, pas de base de données, pas de comptes. Le navigateur est la base de données. Un service worker fait en sorte que l'appli tourne aussi sans réseau mobile - après le premier chargement, tout fonctionne hors ligne.
+
+Pour les non-développeurs, ça veut dire : ouvrir le lien, terminé. Pas d'inscription, pas de « serveur injoignable », pas de « veuillez mettre à jour l'appli ». Pour les développeurs : l'architecture de cache est en couches, et chaque couche a sa propre stratégie.
+
+<Accordion title="La stack technique en détail">
+
+| Technologie | Version | Rôle |
+|---|---|---|
+| [React](https://react.dev/) | 19 | Framework UI |
+| [TypeScript](https://www.typescriptlang.org/) | 5.9 (strict) | Sûreté du typage |
+| [Vite](https://vite.dev/) | 8 | Outil de build et serveur de dev |
+| [Tailwind CSS](https://tailwindcss.com/) | 4 | Styling utility-first |
+| [React Router](https://reactrouter.com/) | 7 | Routing côté client |
+| [TanStack Query](https://tanstack.com/query) | 5 | État serveur et cache |
+| [React Leaflet](https://react-leaflet.js.org/) | 5 | Intégration cartographique |
+| [Leaflet Geoman](https://geoman.io/) | - | Outils de dessin |
+| [jsPDF](https://github.com/parallax/jsPDF) | - | Génération de PDF |
+| [React Compiler](https://react.dev/learn/react-compiler) | - | Mémoïsation automatique |
+| [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) | - | PWA avec service worker Workbox |
+| [Sentry](https://sentry.io/) | - | Suivi des erreurs |
+
+</Accordion>
+
+### Les couches de cache
+
+Toutes les réponses d'API ne sont pas traitées pareil. Les données météo sont périmées en quelques minutes, les tuiles de carte restent valables des mois, les données d'environnement changent rarement. La stratégie par type de données :
+
+| Données | Stratégie | Durée de validité |
+|---|---|---|
+| Météo (Open-Meteo) | NetworkFirst | 10 minutes |
+| Indice K (NOAA) | NetworkFirst | 1 heure |
+| Tuiles de carte (OSM) | CacheFirst | 7 jours |
+| Environnement (Overpass) | localStorage | 8 heures |
+| Données d'opération | localStorage | 56 h active / 24 h terminée |
+
+TanStack Query gère le state management de tous les appels d'API et persiste les caches de requêtes dans le localStorage - ainsi, les données météo en cache survivent même à un redémarrage du navigateur. Le service worker via Workbox intercepte les requêtes réseau et renvoie, selon la stratégie, la réponse en cache ou la réponse fraîche.
+
+### Le compromis assumé
+
+Les données ne vivent que sur l'appareil. Pas de synchronisation entre tablette et smartphone. Les opérations actives sont supprimées automatiquement après 56 heures, les opérations terminées après 24 heures. Ce n'est pas un oubli - une opération est une opération, pas une archive. Le rapport PDF, c'est l'archive.
+
+Et l'appli est une PWA : installable comme une appli native, mais sans dépendre d'un store. Un lien suffit. Pas de compte Apple Developer, pas de review Google Play. On déploie la mise à jour, et à la prochaine ouverture, tout le monde a la nouvelle version.
+
+Pourquoi pas simplement une appli classique ? Parce que chaque alternative a des inconvénients qui pèsent lourd dans le bénévolat :
+
+| | Appli native | Appli cloud | PWA local-first |
+|---|---|---|---|
+| Installation | App Store | Aucune | Lien / écran d'accueil |
+| Hors ligne | Oui | Non | Oui (après le premier chargement) |
+| Serveur nécessaire | Non | Oui | Non |
+| Mises à jour | Review du store | Immédiates | Immédiates |
+| Coûts | Licence développeur | Serveur + BDD | Hébergement (statique) |
+| Protection des données | Locale | Cloud | Locale |
+
+> Le bénévolat n'a pas besoin d'abonnements cloud. Il a besoin d'outils qui fonctionnent quand le réseau mobile, lui, ne fonctionne pas.
+
+Mais comment construit-on une appli pareille ? Avec React, TypeScript, des service workers, des cartes, de la génération de PDF, du cache hors ligne - tout ça en même temps ? La réponse : avec l'IA. Mais pas comme on pourrait le croire.
+
+## Ce que l'IA a construit - et ce qu'elle n'a pas construit
+
+Claude Code a été mon partenaire de code sur ce projet. Je savais ce qui devait en sortir à la fin - nous avons formulé les exigences ensemble, mais la vision cible venait de moi. La répartition des tâches était claire - et elle n'avait rien de fortuit.
+
+### Ce que l'IA a livré
+
+L'IA a pu monter l'ossature technique en quelques minutes - interface, cartes, fonctionnement hors ligne, génération de PDF. Pour chacune de ces technologies, j'aurais dû lire de la documentation, chercher des exemples et écrire du boilerplate. Responsive design ? Prompt. Enregistrement du service worker ? Prompt. Tuiles de carte disponibles hors ligne ? Prompt.
+
+Que l'API météo fournisse des valeurs de vent à plusieurs altitudes et que l'IA construise d'elle-même une interpolation pour l'altitude de vol réelle - je n'ai pas eu à l'expliquer. C'est la partie que les outils de code IA maîtrisent bien : l'implémentation technique avec des patterns connus.
+
+<Accordion title="Les technologies que l'IA a mises en œuvre">
+L'étendue technique est remarquable : composants React, layout Tailwind, intégration d'API avec Open-Meteo et Overpass, cache via TanStack Query et service worker, setup PWA avec Workbox, génération de PDF avec jsPDF, intégration cartographique avec Leaflet. Tout ça en même temps, dans une seule base de code, avec des types TypeScript cohérents.
+</Accordion>
+
+### Ce que l'IA ne savait pas
+
+Et c'est là que ça devient intéressant. Voici ce dont l'IA n'avait aucune idée :
+
+- **Les phases EGRED** et leur ordre - qu'une opération drone suit un déroulé fixe, des données de l'opération au débriefing, en passant par le contrôle pré-vol et les vols
+- **La méthode SORA** - comment Ground Risk Class, Air Risk Class et SAIL s'articulent et se calculent
+- **Les procédures Contingency et Emergency** - plus de 15 procédures avec des call-outs spécifiques, des rôles (RPIC, RP, personnel au sol) et des chemins d'escalade
+- **Les limites météo par modèle de drone** - je les ai fournies via le manuel d'utilisation du drone, l'IA en a extrait elle-même les valeurs pertinentes
+- **La structure d'une opération** - qu'une opération peut avoir plusieurs segments avec des positions différentes
+- **Le vocabulaire métier** - « Controlled Ground », « Flight Geography », « Contingency Volume », la différence entre RPIC et RP
+
+Aucun prompt au monde n'aurait produit ces informations. Elles se trouvent dans des manuels d'exploitation, des documents SORA et l'expérience du terrain. L'IA peut implémenter des procédures - mais pas les inventer.
+
+<Callout type="warning">
+Le code généré par IA ne vaut que ce que valent les exigences métier qu'on y met. Sans connaissance du domaine, ce n'est pas la technique qui manque au code, c'est la substance.
+</Callout>
+
+### La vraie répartition des tâches
+
+**Humain** : connaissance du domaine, décisions d'architecture (pas de backend, tout utilisable hors ligne), exigences métier, limites, procédures, validation des résultats.
+
+**IA** : vitesse d'implémentation, étendue technique sur toute la stack - React, TypeScript, Tailwind, service worker, génération de PDF, intégration cartographique - tout en parallèle, tout cohérent.
+
+Ce n'est pas une division du travail entre « penser » et « taper ». Les deux côtés apportent de la substance. Mais l'IA n'apporte de la substance que là où il existe des solutions connues à des problèmes connus. Le domaine métier - les règles spécifiques, les déroulés spécifiques, les limites spécifiques - c'est à un humain de l'apporter.
+
+### Pas de vibe coding
+
+En 2026, on parle beaucoup de vibe coding. « Construis-moi une appli drone » comme prompt donne une jolie UI avec des données inventées. Pas de vraies procédures. Pas de limites correctes. Pas de calcul SORA valide. Rien sur quoi quelqu'un pourrait s'appuyer dans une vraie opération.
+
+Ce qui fonctionne : « Implémente cette procédure Contingency. La phase C4.2 signifie : le personnel au sol signale un aéronef habité, le RPIC engage l'atterrissage selon N6. L'escalade vers E1 a lieu en cas de perte de contrôle. » Ça, c'est une spécification. Et une spécification, l'IA sait la mettre en œuvre.
+
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+
+Même logique que dans les articles précédents : l'IA est un outil puissant - mais les outils ne remplacent pas la compréhension. Pour une appli drone en protection civile, « faux » n'est pas une mauvaise UX, c'est un risque de sécurité.
+
+> Le vibe coding s'arrête là où commence la connaissance du domaine. L'IA peut implémenter des procédures, mais pas les inventer.
+
+## Remplacer le papier, c'est comprendre les processus
+
+Cette appli n'est pas un projet technologique. React, PWA, IA - ce sont des outils. Le vrai travail est ailleurs : dans les processus inscrits sur les checklists papier. Les comprendre, les structurer, puis les reproduire en numérique - c'est ça, le travail.
+
+Numériser sans comprendre les processus, ça produit du papier numérique. Un PDF sur la tablette n'est pas un progrès par rapport à une feuille dans le véhicule. C'est seulement quand je comprends *pourquoi* une étape existe, *qui* l'exécute et *ce qui* se passe quand elle échoue - c'est seulement là que je peux la numériser de façon pertinente.
+
+L'appli est actuellement utilisée par une vraie unité BOS de protection civile. Les retours alimentent les procédures, les procédures alimentent le code. Et comme d'autres unités font face aux mêmes défis, le projet est open source - chacun peut l'utiliser, l'adapter et y apporter ses propres checklists.
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="PWA hors ligne pour les opérations de drones en protection civile - open source sur GitHub"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
+
+### Le pont vers l'architecture logicielle
+
+Si vous connaissez les articles précédents de ce blog, vous allez remarquer quelque chose. Dans le monde du logiciel, il existe des concepts qui résolvent exactement les mêmes problèmes sous d'autres noms - et les parallèles sont frappants :
+
+**Les checklists EGRED sont des Contracts** - c'est-à-dire des accords contraignants sur ce qu'un système doit faire et ne pas faire. Des déroulés définis avec des conditions, des rôles et des chemins d'escalade clairs.
+
+**SORA est une policy engine** - un ensemble de règles qui décide automatiquement. GRC plus ARC donne le SAIL - input en entrée, niveau de risque en sortie. Pas de marge d'appréciation, pas de « ça devrait passer ».
+
+**L'évaluation météo est une Eval** - une vérification structurée selon des critères définis. Comparer des mesures à des limites, attribuer des couleurs de feu tricolore, en déduire des décisions.
+
+**Les procédures d'urgence sont des chemins d'escalade** - des plans de réaction gradués avec des déclencheurs clairs. C0 mène à E1, E1 peut déclencher E3. Chaque niveau a ses propres règles et responsabilités.
+
+Les concepts sont les mêmes. Le domaine est différent. Et c'est justement ce qui les rend transposables - que ce soit dans un système d'Agents ou dans un véhicule d'intervention.
+
+> Les meilleurs outils numériques ne naissent pas de la technologie, mais de la compréhension des processus - que ce soit dans un véhicule d'intervention ou dans un système d'Agents.

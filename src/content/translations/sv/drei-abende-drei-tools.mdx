@@ -1,0 +1,136 @@
+---
+title: "Tre kvällar, tre verktyg: när mjukvara för ideella plötsligt blir möjlig"
+description: "Ideella organisationer behöver egen mjukvara – men har aldrig haft råd med den. Hur AI håller på att ändra det, och varför kunskap om deployment är viktigare än kodkunskaper."
+date: 2026-04-12
+tags: ["ai", "software-engineering", "katastrophenschutz"]
+image: ../../blog/_images/drei-abende-drei-tools/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Ideellt arbete behöver egen mjukvara. Hittills har ingen haft råd med det. Det har ändrats.
+
+Tre projekt, tre kvällar, ingen kod skriven av mig själv. Alla i produktion. Ett av dem – en offline-PWA för drönarinsatser inom civilskyddet – beskrev jag i förra inlägget. Där var djup domänkunskap grunden: varje SORA-beräkning specificerad, varje procedur validerad.
+
+<LinkCard url="/sv/blog/papier-fliegt-nicht"/>
+
+De två nya verktygen är en annan historia. Ingen djup domänkunskap. Ingen specifikation rad för rad. Bara ett problem, en prompt – och en AI som gör resten. Som software engineer var mitt jobb inte att skriva kod. Det var att veta hur slutresultatet måste se ut.
+
+## Vad som saknas – och för vem
+
+Nästan 27 miljoner människor i Tyskland engagerar sig ideellt. De organiserar sig i över 650 000 föreningar, hjälporganisationer och initiativ. Det alla de här organisationerna har gemensamt: de arbetar med de verktyg de har råd med. Och det är sällan de rätta.
+
+Två problem som jag känner igen från mitt ideella engagemang:
+
+**Feedback efter övningskvällar.** Ledningen vill veta hur det gick. Hittills: fråga muntligt, samla in lappar, eller – vanligast – inte alls. Det som skulle behövas: skanna en QR-kod, sätta betyg, skriva en kommentar i fritext. Anonymt. Ledningen ser trender över tid. Inte krångligare än en enkät – men det finns inget verktyg för det som går att köra self-hosted och håller för GDPR.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anonymt feedbacksystem för övningskvällar"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+**Dela filer säkert.** Dokument, foton, protokoll – dela internt, utan Dropbox, utan WeTransfer, utan molnabonnemang. Lösenordsskydd, nedladdningsgränser, utgångsdatum. Self-hosted, på egen server, ingen data hos tredje part.
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted fildelning med lösenordsskydd och nedladdningsgränser"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Båda är banala. Feedbackformulär och fildelning – det är inga olösta tekniska utmaningar. Lösningarna finns. Men inte för föreningar.
+
+Förklaringen är ren matematik. En skräddarsydd lösning från en byrå kostar lätt ett femsiffrigt belopp i euro. Hälften av alla allmännyttiga organisationer i Tyskland har en årsbudget på under 10 000 euro – totalt.
+
+> Budgeten räcker till problemet, men inte till lösningen. Hittills.
+
+## Kväll ett, kväll två
+
+Okej. Hur gick det till rent konkret?
+
+För da-feedback var utgångsläget enkelt: vi behöver ett anonymt feedbackverktyg för övningskvällar. Skanna QR-koden, sätt betyg, klart. Jag beskrev problemet – inte lösningen. Stacken valde AI:n: Go, SQLite, HTMX. Jag nickade ja. Om jag förstår Go-templates i detalj? Nej. Det behövde jag inte heller. Efter en kväll stod en Docker-container med CI/CD-pipeline klar. Från noll till deployad.
+
+För easy-fileshare var det samma mönster. Jag beskrev problemet: fillagring med åtkomstkontroll och utgångsdatum. AI:n valde Next.js och MinIO. Chunked uploads, OIDC-autentisering, nedladdningsgränser – allt AI-genererat. Jag testade att uppladdningarna fungerade. Läste jag uppladdningskoden? Nej.
+
+Jag säger inte det här som en bekännelse. Jag säger det som ett faktum. Jag har inte läst koden. Arkitekturbesluten – Go i stället för Node, SQLite i stället för Postgres, HTMX i stället för React – nickade jag oftast bara igenom.
+
+Och nu kommer den viktiga delen: det här handlar inte om att tappa kontrollen. Det är ett beslut.
+
+Jag är software engineer. Jag skulle kunna läsa koden. Jag skulle kunna ifrågasätta varje arkitekturbeslut, granska varje dependency, tänka igenom varje edge case. Men för ett internt föreningsverktyg med en handfull användare? Frågan är inte om jag har läst koden. Frågan är om jag vet vad som händer när den inte fungerar. Och svaret är: då fixar jag det. Eller så fixar AI:n det. Risken är en kvälls förlorat arbete, inte ett produktionsavbrott.
+
+Andrej Karpathy har myntat ett begrepp för det: vibe coding – ”you fully give in to the vibes, embrace exponentials, and forget that the code even exists.” Simon Willison drog gränsen: om du granskar och testar koden är det mjukvaruutveckling. Om inte är det vibe coding. Enligt det kriteriet var det här vibe coding. Och det fungerade – inte för att vibe coding generellt är en bra idé, utan för att insatserna var låga och jag som engineer kunde bedöma att de var låga.
+
+> Frågan är inte om du har läst koden. Frågan är om du vet vad som händer när den inte fungerar.
+
+## Vad jag inte behövde prompta – och vad jag behövde
+
+I båda projekten valde AI:n stacken, designade databasschemat, byggde UI:t, implementerade auth, definierade API-routes, byggde in rate limiting. Imponerande. Men det är bara halva sanningen.
+
+Det här behövde jag veta – även om jag inte implementerade det själv:
+
+- Att jag behöver **Docker** och hur en multi-stage build fungerar
+- Att **OIDC** finns och hur jag konfigurerar PocketID som provider
+- Att **CI/CD** hör till en färdig produkt – även om det bara är ett bygge av en Docker-image
+- Hur **Cloudflare Tunnel** fungerar för att göra tjänsten nåbar
+- Att **SQLite** räcker för de här användningsfallen
+- Att det finns **lagringsalternativ** och vilka frågor jag måste ställa till AI:n för att välja rätt
+
+Inte en enda av de här punkterna är kodkunskap. Det är systemkunskap. Infrastrukturkunskap. Deploymentkunskap.
+
+### Den osynliga tröskeln
+
+Här ligger den blinda fläcken i debatten om vibe coding. Karpathy talar om koden – ”forget that the code even exists.” Men koden är inte flaskhalsen. Deployment är flaskhalsen.
+
+Den som inte har någon aning om Docker får en app som körs lokalt. Den som inte vet vad OIDC är får en app utan auth. Den som inte känner till CI/CD bygger en ny image för hand efter varje ändring. Den som inte vet hur en tjänst blir publikt nåbar får en app på port 3000 – nåbar för ingen annan än en själv.
+
+| Vad AI:n bestämde | Vad jag behövde veta |
+|---|---|
+| Go som språk, HTMX för interaktivitet | Att Docker behövs för deployment |
+| SQLite som databas, Goose för migreringar | Att SQLite räcker för användningsfallet |
+| OIDC-flöde med PocketID | Hur jag konfigurerar OIDC-providern |
+| Next.js med App Router | Att ett automatiskt image-bygge hör till produkten |
+| MinIO för S3-kompatibel lagring | Vilka lagringsalternativ som finns och vilka frågor jag måste ställa |
+| Tailwind för styling | Hur Cloudflare Tunnel gör tjänsten nåbar |
+| Rate limiting per IP | Hur jag får Docker-imagen till min server |
+
+Den vänstra kolumnen är utbytbar. Go eller Rust, Next.js eller Remix – AI:n hade tagit vilken stack som helst och det hade fungerat. Den högra kolumnen är inte utbytbar. Utan den kunskapen förblir appen ett localhost-projekt.
+
+> Vibe coding kräver ingen kodkunskap. Det kräver engineering-kunskap. Det är inte samma sak – och det är precis det som skiljer en demo från en produkt.
+
+## Var gränsen går
+
+Engineering-kunskap gör en demo till en produkt. Men det finns en andra fråga: när räcker produkten – och när behövs mer?
+
+För UAV-appen hade ”bygg en drönarapp åt mig” varit en katastrof. AI:n hade hittat på SORA-beräkningar, hallucinerat procedurer, gissat gränsvärden för vädret. I bästa fall oanvändbart. I värsta fall farligt – för att någon förlitar sig på felaktiga värden.
+
+För da-feedback och easy-fileshare var specifikationen överskådlig – några stycken som beskriver problemet och de önskade funktionerna. Ingen jämförelse med de sidlånga procedurerna i UAV-appen. Och om AI:n implementerade något fel? Då var det ett UX-problem, ingen säkerhetsrisk.
+
+Om du undrar varför tool calls i agentsystem inte är triviala – samma princip gäller här:
+
+<LinkCard url="/sv/blog/tools-sind-keine-prompts"/>
+
+Gränsen går inte vid ”vibe coding, ja eller nej”. Den går vid kostnaden för fel:
+
+- **Låga insatser**: interna verktyg, få användare, ingen regulatorisk kontext. Här fungerar arbetssättet – om den som bygger har grunderna i engineering.
+- **Höga insatser**: säkerhetskritiska system, reglerade domäner, komplex fackkunskap. Här behövs specifikation, review och validering. Här är ”har inte läst koden” inget alternativ.
+
+Alla tre projekten är open source – för att det är hela poängen. Över 650 000 organisationer i Tyskland står inför liknande problem. De flesta kommer aldrig att ha råd att anlita en utvecklare. Men kanske har de någon som ser ett problem, som vet hur mjukvara levereras – och som är beredd att lägga en kväll på det.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anonymt feedbacksystem för övningskvällar"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted fildelning med lösenordsskydd och nedladdningsgränser"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Ideellt arbete behöver ingen utvecklingsavdelning. Det behöver människor som förstår problem och vet vad mjukvara behöver för att rulla i drift.
+
+> Mjukvaran var aldrig problemet. Problemet var att ingen som behövde den kunde bygga den. Det håller på att ändras.

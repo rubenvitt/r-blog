@@ -1,0 +1,192 @@
+---
+title: "Construire, c'était le plus facile : ce que m'ont appris six mois d'exploitation de logiciels associatifs"
+description: "Trois soirées, trois outils - et après ? Comment neuf petites applis associatives sont devenues une seule, pourquoi un health check au vert n'a rien remarqué et ce que je fais quand je suis en vacances."
+date: 2026-10-24
+tags: ["software-engineering", "katastrophenschutz", "release-engineering", "ai"]
+image: ../../blog/_images/ehrenamt-software-betreiben/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Avec l'IA, construire une appli prend une soirée. L'exploiter vous prend un peu de temps chaque soir - multiplié par le nombre d'applis que vous avez.
+
+Imaginez une recherche de personne. Quelqu'un a disparu, la nuit commence à tomber, et un drone survole le bois. Dans le véhicule de commandement, d'où l'opération est dirigée, l'équipe de commandement regarde un écran et veut voir ce que voit le drone. La recherche elle-même se fait sur la radiocommande du pilote, qui affiche de toute façon l'image. Pour qu'elle arrive aussi dans le véhicule de commandement, je suis en train de construire un logiciel sur mon temps libre. Il tourne sur un serveur dont personne ne s'occupe à part moi.
+
+En avril, j'ai écrit à quel point l'IA a rendu facile la construction de logiciels pour le bénévolat. Trois outils en trois soirées, tous utilisés en conditions réelles, et je n'ai pas lu le code. Ma conclusion à l'époque : savoir ce dont un logiciel a besoin pour tourner compte plus que savoir coder.
+
+<LinkCard url="/fr/blog/drei-abende-drei-tools"/>
+
+Les réactions sont presque toutes allées dans le même sens, et elles venaient de gens qui font ça depuis des années. Ce n'est pas la construction qui coûte cher, a écrit l'un d'eux, mais la maintenance et l'exploitation : mises à jour, sauvegardes, failles de sécurité, migrations de données. Pas sorcier, mais il faut le savoir et commencer par le mettre en place. Un autre, qui s'occupe de logiciels associatifs depuis des décennies, a posé la question qui m'accompagne depuis : que se passe-t-il quand le logiciel ne tourne plus et que je suis en vacances ? Et un troisième a résumé ça sèchement : qui construit quelque chose en est propriétaire, et doit aussi l'entretenir.
+
+Ils avaient raison. Voici l'histoire des six mois qui ont suivi.
+
+## Six mois plus tard
+
+Petit rappel de ce dont il était question : la Flugmappe, une checklist numérique pour nos vols de drone, da-feedback pour des retours anonymes après une soirée de service, et easy-fileshare pour partager des fichiers sans prise de tête. Le code, c'est l'IA qui l'a écrit ; moi, j'ai décrit ce qui devait en sortir. Et pour le cas où quelque chose coincerait, l'article de l'époque contenait un plan plutôt détendu : « Alors je le corrige. Ou l'IA le corrige. »
+
+Six mois plus tard, le bilan ressemble à ça :
+
+| Appli | À quoi elle sert | Ce qu'elle est devenue |
+|-----|-------|------------------|
+| **Flugmappe** | checklist pour les vols de drone | tourne toujours, de façon autonome |
+| **da-feedback** | retours anonymes après les soirées de service | vit aujourd'hui comme brique d'une appli commune |
+| **easy-fileshare** | partager des fichiers | remplacée cet été, elle aussi intégrée aujourd'hui à l'appli commune |
+
+Si deux sur trois ne font plus cavalier seul, il y a toute une histoire derrière. Les trois outils n'ont en fait jamais été seuls. Quelques petites applis pour notre unité tournaient déjà avant, d'autres sont arrivées au fil de l'été : un deuxième espace de dépôt pour les uploads, une page d'accueil depuis laquelle on trouve les autres, un générateur de QR codes, un compagnon pour l'entraînement drone, un registre pour notre matériel et pas moins de deux applis pour le prêt et la gestion de nos radios. Avec da-feedback et easy-fileshare, ça faisait neuf petites applis, chacune dans son coin. La Flugmappe tourne toujours de façon autonome.
+
+Techniquement, chacune de ces applis vivait dans son propre conteneur. Imaginez un appartement indépendant, avec son propre compteur électrique, sa propre serrure et sa propre boîte aux lettres. Tous les appartements sont sur le même terrain : un petit serveur, c'est-à-dire un ordinateur qui tourne jour et nuit et qui est joignable depuis Internet. Et chaque appartement avait son propre aménagement : sa propre technique sous le capot, sa propre base de données, autrement dit la mémoire de l'appli, son propre pipeline (la chaîne de montage qui, à chaque modification, construit automatiquement une nouvelle version et l'envoie sur le serveur) et sa propre sauvegarde, c'est-à-dire une copie de sécurité des données. Ou pas de sauvegarde du tout.
+
+Ce que ça veut dire au quotidien, da-feedback le montre assez bien. J'y avais configuré Dependabot, un bot de GitHub (la plateforme où se trouve mon code) qui signale quand des composants utilisés ont besoin de mises à jour, et qui fournit directement la proposition de modification correspondante. En juillet, il a signalé trois mises à jour en attente. Je n'ai repris aucune des propositions, elles sont simplement restées là.
+
+S'y ajoute un deuxième hic. Pour da-feedback, Dependabot ne vérifiait que les meubles, c'est-à-dire les composants tout faits avec lesquels l'appli est assemblée. Les fondations, le système de base sur lequel tourne l'appli (dans le jargon : l'image de base), il ne les a jamais regardées. Même si j'avais repris chaque proposition immédiatement, cette partie serait restée sans contrôle.
+
+Le calcul derrière tout ça est assez simple, et pourtant je ne l'ai pas fait en avril. Chaque appli demande un entretien régulier : passer en revue les mises à jour, vérifier que tout est encore en vie. Pour une appli, ça se fait en passant. Pour neuf, ça devient un deuxième bénévolat, qui a lieu le soir, après le premier. Bon, et il faut bien que quelqu'un s'en charge, et chez nous, ce quelqu'un, c'est moi.
+
+Les mises à jour en souffrance ne sont cependant que la partie silencieuse du problème. La plus désagréable s'était déjà montrée en juin, avec easy-fileshare : quelque chose a cassé, et le contrôle automatique censé vérifier si l'appli est encore en vie n'a rien trouvé à redire pendant tout ce temps.
+
+## Le health check était au vert
+
+En juin 2026, les téléchargements se sont mis à échouer sur easy-fileshare, le petit outil avec lequel on se passe des fichiers dans l'unité. Pas à chaque fois, seulement de temps en temps. Au lieu du fichier, on obtenait alors une page d'erreur de Cloudflare. Chez moi, Cloudflare se tient devant le serveur comme un portier : chaque requête passe d'abord par lui, et si l'appli derrière reste silencieuse trop longtemps, il renvoie les gens avec la mention « délai dépassé ».
+
+C'est en principe à ça que sert le health check. C'est un coup d'œil de contrôle que le serveur jette à intervalles réguliers sur l'appli, un peu comme un détecteur de fumée : « Tu es encore en vie ? » Si l'appli répond, tout est au vert. Et le check était au vert, tout le temps.
+
+Le premier soupçon s'est porté sur la base de données. C'est justement le check au vert qui l'a écarté : dans cette appli, la base de données fonctionne de telle façon qu'un blocage à cet endroit fige toute l'appli, y compris la réponse au coup d'œil de contrôle. Si la base de données avait coincé, le check aurait gelé avec. La coche verte était donc à la fois inutile et un indice - inutile parce qu'elle n'a pas remarqué la panne, un indice parce qu'elle a éliminé une fausse piste.
+
+La cause était ailleurs. Les fichiers eux-mêmes sont stockés dans un espace de stockage séparé, à côté de l'appli, une sorte de réserve. Pour chaque téléchargement, l'appli va chercher le fichier dans cette réserve par une conduite, et des conduites, elle en avait 50. Quand quelqu'un interrompait un téléchargement en cours de route, par exemple parce que le téléphone perdait le réseau, la conduite aurait dû se libérer. Ce n'était pas le cas. Elle restait ouverte, et l'appli continuait d'attendre sagement quelqu'un qui était parti depuis longtemps.
+
+Après environ 50 interruptions de ce genre, il ne restait plus aucune conduite. À partir de là, chaque téléchargement restait bloqué, et l'appli elle-même ne signalait aucune erreur. Seul Cloudflare finissait par abandonner. Tout ce qui n'a pas besoin d'une conduite vers la réserve continuait en revanche de répondre gaiement, health check en tête. Le détecteur de fumée était accroché dans une pièce où rien ne brûlait.
+
+Le correctif, c'est Claude qui l'a construit, l'IA avec laquelle je travaille sur ces outils. Chaque conduite a maintenant une limite de temps, et un téléchargement interrompu rend sa conduite immédiatement. Le coup d'œil de contrôle ne demande plus seulement « Tu es encore en vie ? », il vérifie aussi que la réserve est joignable. La preuve a été faite avec 150 téléchargements interrompus en même temps, trois fois plus qu'il n'en aurait fallu avant pour tout bloquer.
+
+Ensuite est venu un point qui surprend beaucoup de gens qui débutent avec Docker. Docker, c'est le programme qui gère les appartements sur le serveur : il les démarre et les arrête. Quand le détecteur de fumée bipe et signale l'appli comme « unhealthy », donc malade, il se passe... d'abord rien. Au mieux, il y a un redémarrage si l'appli plante complètement, et encore, seulement si on l'a dit explicitement à Docker. Une appli qui respire encore mais ne livre plus rien reste en l'état jusqu'à ce que quelqu'un intervienne à la main. C'est pour ça qu'un petit assistant appelé autoheal est arrivé. Il écoute les détecteurs de fumée et redémarre un appartement dès qu'il est signalé comme malade.
+
+Avec le recul, le health check a fait ce qu'on lui avait demandé. Il a vérifié que l'appli répond. Si elle sait faire ce pour quoi les gens l'ouvrent, à savoir télécharger un fichier, personne ne lui avait posé la question. Un coup d'œil de contrôle ne regarde que là où je l'envoie.
+
+Dans l'article sur la façon d'observer des fonctionnalités IA en production (l'observability), l'une des erreurs typiques était de ne mesurer que le happy path, c'est-à-dire seulement le chemin où tout se passe bien. Visiblement, ça arrive aussi avec un petit outil de fichiers dans le bénévolat.
+
+<LinkCard url="/fr/blog/observability-ai-features"/>
+
+<Accordion title="Pour les curieux : ce qui s'est passé techniquement">
+easy-fileshare est une appli Next.js qui stocke les fichiers dans un stockage compatible S3 (MinIO) et les récupère via l'AWS SDK. Par défaut, le SDK utilise un pool de 50 sockets, et ce sans timeout d'inactivité. Quand un client abandonnait en plein téléchargement, le stream S3 restait ouvert côté serveur, et le socket ne revenait jamais dans le pool. Après une cinquantaine de fuites de ce genre, chaque nouveau téléchargement restait bloqué : 0 % de CPU, aucune nouvelle connexion vers MinIO, et Cloudflare renvoyait une erreur 524 une fois son délai d'attente écoulé.
+
+La base de données (SQLite) a pu être écartée parce que, dans cette appli, elle fonctionne de manière synchrone. Une écriture bloquante aurait figé tout le processus, endpoint de santé compris.
+
+Le correctif comporte plusieurs parties : un pool de sockets limité avec des timeouts, un signal d'abort transmis de la requête interrompue jusqu'à l'appel S3, et un health check qui demande en plus, via un HEAD S3, si le stockage répond. S'y ajoutent une restart policy et autoheal en sidecar, c'est-à-dire un petit conteneur side-car qui redémarre les conteneurs « unhealthy ». Le tout a été vérifié avec 150 interruptions simultanées en plein stream.
+</Accordion>
+
+## Neuf appartements, une maison
+
+En juillet, je me suis retrouvé face à un choix. J'aurais pu offrir à chaque appli un meilleur health check, plus son propre assistant de redémarrage et une vraie sauvegarde. Neuf fois. Et à la panne suivante, j'aurais encore dû fouiller dans neuf coins pour trouver lequel coince cette fois. Neuf appartements, ça veut aussi dire neuf détecteurs de fumée à vérifier et neuf chaînes de montage qui tournent à chaque nouvelle version. J'ai donc retourné la question : comment me débarrasser d'applis sans que les bénévoles y perdent quoi que ce soit ?
+
+Le 19 juillet, j'ai commencé la IuK-Suite (IuK signifie « Information und Kommunikation », information et communication). La suite est la maison commune dans laquelle toutes les applis habitent ensemble. Chaque appli y devient un module et garde sa sonnette, c'est-à-dire son adresse web d'avant. On se connecte à la porte d'entrée, via Pocket ID, un petit service d'authentification qui fournit désormais un seul login pour tous les modules. À l'intérieur, chaque module a sa propre pièce avec sa propre armoire : un fichier de base de données à lui. Ce qui est dans le registre du matériel ne se trouve pas dans le même fichier que la liste des radios. Qui voit quelle pièce, c'est une seule liste centrale qui en décide.
+
+<ProjectCard title="IuK-Suite" description="Suite web pour le travail IuK (information et communication) d’une unité bénévole de la protection civile, avec un seul login pour tous les modules" githubUrl="https://github.com/rubenvitt/iuk-suite"/>
+
+Pour les bénévoles, presque rien n'a changé. Les adresses sont les mêmes, les accès aussi. La seule nouveauté, c'est que tout a maintenant le même look.
+
+Pour moi, en revanche, pas mal de choses ont changé. Il y a un seul chemin par lequel les nouvelles versions entrent dans la maison, et une sauvegarde pour tout. Dependabot n'a plus qu'un seul projet à surveiller pour toutes ces applis. Et quand je veux savoir si tout est en vie, je n'ai plus qu'un seul endroit à regarder. Est-ce que le coup d'œil de contrôle passe aussi dans chaque pièce ? Depuis juin, je me pose la question à chaque check.
+
+Sans grande surprise, je ne suis pas le premier à avoir eu l'idée. L'éditeur Segment a un jour regroupé 140 petits services en un seul, parce qu'avec chaque service supplémentaire, le travail d'exploitation grossissait d'autant.
+
+<LinkCard url="https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices"/>
+
+Le vrai risque, c'était le déménagement lui-même. Pour les déménagements, il existe des instructions écrites, qu'on appelle des runbooks : des checklists qui disent ce qui se passe, et dans quel ordre, quand on quitte les lieux et quand on emménage.
+
+Les instructions pour l'espace de fichiers, dans lequel easy-fileshare et le deuxième dépôt d'uploads ont fusionné, contiennent une règle que je considère comme la plus importante : on ne croit pas qu'il ne reste plus de données dans l'ancienne appli, on les compte. Au démontage, l'ancien appartement disparaît avec son contenu. Un fichier oublié qui part avec le reste est détruit, et « mais il n'y avait plus rien dedans » n'aide alors plus personne.
+
+Pour ce même espace de fichiers, un autre test a été décisif : une porte fermée. Que les personnes autorisées voient leurs fichiers, c'est la partie évidente. Le contraire était plus important : quiconque n'a pas accès au module doit tomber sur « n'existe pas », sur le web la page d'erreur 404. Si une page tout à fait normale s'affiche à la place, l'administration de l'espace de fichiers est ouverte à quiconque possède un compte, n'importe lequel.
+
+Pour l'entraînement drone, l'obstacle était ailleurs. Des codes d'accès et des liens de connexion avaient été distribués depuis longtemps, et même quelqu'un qui avait l'appli ouverte hors ligne sur son téléphone devait pouvoir simplement continuer après le déménagement. Tout cela devait fonctionner sans le moindre changement. Les instructions prévoyaient donc de laisser l'ancienne appli en place deux semaines en réserve, et revenir en arrière aurait été un petit geste : faire de nouveau pointer l'adresse vers l'ancien appartement.
+
+## Ce que coûte une maison commune
+
+Le déménagement m'a retiré beaucoup de travail. Une maison a toutefois une propriété que neuf appartements séparés n'avaient pas : un tableau électrique commun. Si le disjoncteur général saute, c'est le noir dans toutes les pièces, peu importe dans laquelle le court-circuit s'est produit. En technique, on appelle ça le blast radius, c'est-à-dire jusqu'où porte l'onde de choc d'une erreur. Avec neuf applis séparées, une erreur dans une appli ne touchait en général que celle-là. Dans la suite, elle peut toutes les toucher.
+
+Pas besoin de chercher longtemps, les exemples sont dans ma propre documentation de la suite. L'espace de fichiers s'accompagne d'un antivirus qui vérifie les fichiers uploadés. Il tourne dans son propre petit conteneur sur le même terrain, juste à côté de la suite, et la suite attend au démarrage qu'il se déclare prêt.
+
+<Callout type="warning">
+L'antivirus a besoin d'un petit fichier de configuration sur le serveur. S'il manque, Docker crée tout simplement un dossier vide à sa place. L'antivirus démarre alors sans configuration, et son health check échoue. Comme la suite l'attend, elle ne démarre pas du tout. Feedback, registre du matériel, page d'accueil : plus rien n'est accessible, à cause d'un fichier manquant avec lequel aucune de ces applis n'a quoi que ce soit à voir.
+</Callout>
+
+Le deuxième exemple est plus discret. Quand l'espace de fichiers a emménagé dans la suite, trois paramètres sont arrivés sans lesquels toute la maison ne démarre plus. Si on les oublie à l'installation ou qu'on ne les ajoute que plus tard, on a mis entre-temps la page d'accueil hors service elle aussi, alors qu'elle n'a strictement rien à voir avec des fichiers. Une pièce emménage, et soudain la porte d'entrée dépend de son interrupteur.
+
+Et puis il y a une panne qu'aucune maison n'empêche. Le bus factor décrit combien de personnes doivent tomber pour que plus rien ne marche (l'image un peu macabre derrière, c'est un bus qui renverse quelqu'un). Chez nous, il est de 1, avant le déménagement comme après. Regrouper économise du travail, mais ne répartit pas le savoir. Qui d'autre que moi sait que l'antivirus a besoin d'un fichier de configuration ? Voilà.
+
+En cela, on est plutôt dans la norme. Dès fin 2019, dans 22 % des organisations à but non lucratif en Allemagne, personne n'était responsable de l'informatique, selon le [Digital-Report 2020 de la Haus des Stiftens](https://www.hausdesstiftens.org/?p=16381) (en allemand). De toute façon, presque personne n'est payé pour ça : d'après le [ZiviZ-Survey 2023](https://www.ziviz.de/sites/ziv/files/ziviz-survey_2023_trendbericht.pdf) (en allemand), seules 27 % des organisations de la société civile emploient ne serait-ce qu'un salarié. Chez nous, il y a au moins quelqu'un qui s'en occupe. Un seul, exactement.
+
+Petite consolation, ou ironie, selon l'humeur : les outils aussi ont un bus factor. Watchtower était un outil populaire qui met automatiquement à jour les conteneurs vers les nouvelles versions. En décembre 2025, le projet a été archivé, autrement dit abandonné. Les bénévoles derrière n'utilisent eux-mêmes presque plus Docker et n'avaient ni le temps ni l'envie de le poursuivre.
+
+<LinkCard url="https://github.com/containrrr/watchtower"/>
+
+## Qui veille la nuit
+
+Si même l'outil connu pour les mises à jour automatiques n'a plus de mainteneur, reste la question de savoir qui installe les mises à jour chez moi. Jusqu'à la fin de l'été, la réponse était : moi, un soir, avec des instructions à côté. Chaque mise à jour était une petite séance. Récupérer la nouvelle version, la comparer avec l'ancienne, démarrer, vérifier que l'appli répond encore. Rien de difficile là-dedans, c'est juste que je ne l'ai jamais fait deux fois de la même façon.
+
+Aujourd'hui, des tests automatiques tournent après chaque modification du code. Quand une modification est intégrée dans la branche principale du code (dans le jargon : mergée) et que tous les tests sont au vert, la nouvelle version part automatiquement. Un script déroule le rollout, c'est-à-dire la livraison, à chaque fois dans le même ordre. Dans l'article sur la discipline de release, il y avait encore l'objection « On est trop petits pour un tel processus ». Un rollout automatique après chaque merge en est la plus petite version.
+
+<LinkCard url="/fr/blog/ai-rollout-canary-shadow"/>
+
+S'y ajoute un filet de sécurité. Sur le serveur, il y a quelques fichiers de configuration, et de temps en temps, quelqu'un y a changé quelque chose à la main - en pratique : moi. Le rollout retient à quoi ces fichiers doivent ressembler. Si l'un d'eux s'en écarte, il s'arrête avant de toucher à quoi que ce soit. Tout est parti d'un paramètre qui n'existait que sur le serveur et pas dans le modèle dont ces fichiers sont issus. Remplacer simplement le fichier par le modèle lors de la mise à jour, c'était le perdre sans bruit.
+
+<Accordion title="Pour les curieux : mises à jour des composants et un risque assumé">
+Les composants tiers restent l'affaire de Dependabot. Il vérifie maintenant aussi l'image de base, les fondations de la suite. Depuis juillet 2026, il attend par défaut trois jours avant de proposer une nouvelle version. Pendant ce temps, les versions manipulées sont généralement déjà repérées par d'autres, ce qui réduit le risque de tomber sur une version tout juste compromise. Les mises à jour de sécurité, il continue de les proposer immédiatement, mais elles aussi ne sont livrées qu'une fois sa proposition reprise.
+
+Il y a un hic dans tout ça. Pour que le rollout arrive sur le serveur, un assistant de GitHub y tourne, ce qu'on appelle un runner, qui exécute les étapes. En même temps, le code de la suite est public. GitHub lui-même déconseille cette combinaison. J'ai pris ce risque en connaissance de cause et je l'ai sécurisé. Comment, ce n'est volontairement pas écrit ici.
+</Accordion>
+
+Longtemps, la sauvegarde a été une tâche que le serveur lançait tout seul à intervalles réguliers. À strictement parler, ce n'en était pas une. La tâche n'était consignée nulle part ailleurs que sur le serveur, et en regardant le reste, impossible de deviner qu'elle existait. La copie se trouvait sur la même machine que les données : si le serveur brûle, les deux disparaissent. Et si la tâche échouait, personne ne s'en rendait compte.
+
+Désormais, c'est un petit assistant dédié dans la maison qui s'en charge, une sorte de concierge avec une seule mission. Il envoie la copie à un autre endroit et signale quand quelque chose tourne mal. Et il ne dépend volontairement de rien, tout comme rien ne dépend de lui : la suite démarre même si la sauvegarde coince à ce moment-là, et la sauvegarde n'attend pas que la suite soit en bonne santé. Après l'histoire de l'antivirus, je ne voulais surtout pas que ce soit justement la sauvegarde qui entraîne l'exploitation dans sa chute. Il a d'ailleurs déjà eu un raté : deux sauvegardes dans la même seconde ont reçu le même nom de fichier, la seconde a écrasé la première et a gaiement annoncé un succès. Maintenant, dans ce cas-là, le concierge préfère s'arrêter et demander, en substance, si l'horloge est en panne.
+
+Reste la question de savoir qui lit les instructions. Pas seulement pour les déménagements : pour chaque mise à jour importante aussi, il existe un runbook avec des points de contrôle. Ils sont écrits pour deux lecteurs : pour moi et pour Claude Code, c'est-à-dire la même IA que pour le correctif des téléchargements, mais directement sur le serveur, où elle déroule les instructions étape par étape. L'IA qui a aidé à construire les applis aide donc aussi à les exploiter.
+
+La vraie décision se trouve donc dans le merge : ce qui est intégré part en production. Un merge, c'est vite fait, à plus forte raison quand les tests sont de toute façon au vert. Dans l'article sur le human in the loop, c'est-à-dire sur les validations par des humains, j'ai décrit la validation comme une partie de l'architecture de sécurité, avec le danger qu'elle devienne un tampon apposé sur tout sans rien lire. Chez moi, ce tampon, c'est le merge.
+
+<LinkCard url="/fr/blog/human-in-the-loop"/>
+
+Le merge finira-t-il par devenir une simple formalité, sans que personne ne regarde plus ? Pour être honnête : je valide déjà les yeux fermés. Pour un formulaire de feedback ou un registre de matériel, je trouve ça défendable, les tests attrapent le plus gros, et l'enjeu est faible.
+
+## Pourquoi Suchlage n'emménage pas
+
+L'histoire pourrait en fait s'arrêter là : une maison, un rollout automatique, un concierge pour la sauvegarde. Mais une appli n'y habite volontairement pas. Et ce n'est pas parce qu'elle serait plus importante.
+
+Suchlage est mon projet le plus récent et en est encore à l'alpha, c'est-à-dire à une phase de test précoce. Les premiers essais avec le vrai drone sont en cours, la recette sur le terrain reste à faire. L'idée, c'est la scène du début : lors d'une recherche de personne, un drone survole la zone de recherche, et l'équipe de commandement est installée dans le véhicule de commandement. Suchlage transmet l'image en direct de la caméra, la position actuelle et la trace de vol du drone jusque dans ce véhicule, ainsi que sur les téléphones des équipes sur le terrain. La recherche continue de se faire via la radiocommande : là, le pilote voit tout ce que voit le drone, et ça reste la source sur laquelle tout le monde s'appuie. Suchlage offre une paire d'yeux en plus à ceux qui ne sont pas à côté du pilote. Si vous connaissez la Flugmappe d'un article précédent, notre checklist drone numérique : ceci est l'étape suivante dans le même domaine d'intervention.
+
+<LinkCard url="/fr/blog/papier-fliegt-nicht"/>
+
+<ProjectCard title="Suchlage" description="Hub de situation pour les interventions de drones lors de recherches de personnes : image en direct, position et trace de vol dans le véhicule de commandement et sur le téléphone" githubUrl="https://github.com/rubenvitt/suchlage"/>
+
+Techniquement, Suchlage n'a pas grand-chose en commun avec la suite. La position et les autres mesures du drone arrivent via MQTT, un canal de messages conçu pour beaucoup de petites mesures. La vidéo est diffusée en live stream, c'est-à-dire en flux de données continu plutôt qu'en fichier fini. Certaines parties ne sont accessibles que dans un réseau privé, tout simplement invisible de l'extérieur. Et le programme derrière est écrit en Rust, un autre langage de programmation que celui de la suite.
+
+Le rythme est différent, lui aussi. Dans la suite, la sauvegarde tourne automatiquement en arrière-plan. Dans le manuel d'exploitation de Suchlage, à la rubrique sauvegarde, il y a une phrase courte : « Pas pendant un vol. »
+
+Et puis il y a le tableau électrique commun que Suchlage partagerait si elle emménageait dans la suite. Si le registre du matériel a un bug, c'est agaçant, quelqu'un cherche un câble de charge un jour de plus, voilà tout. Si le même bug emporte l'image en direct pendant une recherche en cours, l'équipe de commandement regarde un écran noir. La recherche continue certes via la radiocommande, mais il manque dans le véhicule de commandement précisément ce pour quoi Suchlage a été construit. Et à l'inverse, un problème dans le flux vidéo ne doit priver personne du registre du matériel.
+
+Werner Vogels, le CTO d'Amazon, a écrit dans un [texte sur la question de savoir si l'on peut construire un logiciel d'un seul bloc](https://www.allthingsdistributed.com/2023/05/monoliths-are-not-dinosaurs.html) : « Building evolvable software systems is a strategy, not a religion. » En français, à peu près : construire un logiciel de façon à ce qu'il puisse évoluer, c'est une stratégie, pas une religion. Pour moi, ça veut dire : regrouper ou séparer, je le décide au cas par cas, selon une règle empirique toute simple. Regrouper ce qui tombe en panne de la même manière. Séparer ce qui tombe en panne autrement.
+
+Rester dehors ne veut pas dire rester sans règles pour autant. Pour Suchlage, chaque modification intégrée dans la branche principale du code devient une version numérotée, et une page système dans l'appli montre quelle version tourne en ce moment, pour que personne n'ait à deviner en intervention. Si une nouvelle version pose problème, il existe un chemin de retour écrit vers la précédente. S'y ajoute un test complet qui fait tourner toute l'appli une fois sur mon propre ordinateur et refuse de s'exécuter sur le vrai serveur, pour ne jamais y écraser par mégarde de vraies données ou de vrais identifiants.
+
+Suchlage n'en est pourtant pas tout à fait au même stade que la suite. La sauvegarde y est encore manuelle : arrêter brièvement le serveur, copier les données ailleurs, redémarrer. Est-ce que ça va rester comme ça ? La question reste ouverte. Bon, au moins, je sais qu'elle l'est.
+
+Dans « Trois soirées, trois outils », ma justification pour construire vite était que l'enjeu était faible. Si quelque chose casse, je le répare, et le risque, c'est une soirée perdue. Ça vaut aussi pour Suchlage, et c'est voulu : la radiocommande reste la référence, c'est là qu'on cherche. Si Suchlage tombe, l'équipe de commandement ne voit plus l'image, mais la recherche continue. Si Suchlage reste à part, ce n'est donc pas une question d'enjeu. Elle tombe simplement en panne autrement que le reste.
+
+## Ce que je fais quand je suis en vacances
+
+Retour à la question des commentaires. Que se passe-t-il quand le logiciel ne tourne plus et que je suis en vacances ?
+
+La réponse honnête est plus modeste que je ne le voudrais. Je ne peux pas me rendre remplaçable, le bus factor est à 1, et même la plus belle des maisons n'y change rien. Ce que j'ai pu changer, c'est la quantité de choses à faire en cas d'urgence. Au lieu de neuf appartements avec neuf particularités, il y a une maison, un chemin pour les mises à jour, une sauvegarde qui signale un échec, et pour chaque intervention importante, des instructions écrites. Tant que rien n'est intégré pendant ce temps, aucune nouvelle version ne part non plus. La maison continue de tourner dans l'état où je l'ai laissée.
+
+Et si ça bloque quand même ? Alors ça restera probablement bloqué jusqu'à ce que quelqu'un regarde. L'assistant de redémarrage de l'histoire de juin, la suite ne l'a pas encore ; Docker ne la redémarre que si elle plante vraiment. C'est un point ouvert, et un peu gênant en plus, parce que j'ai déjà appris la leçon une fois.
+
+Pour Suchlage, ma réponse est encore plus mince, mais l'enjeu est aussi plus faible qu'il n'y paraît : si elle tombe, la recherche continue via la radiocommande, simplement sans second écran dans le véhicule de commandement.
+
+Les instructions sont au moins écrites de façon à ce que je ne sois pas le seul à pouvoir les lire. Claude Code les déroule déjà aujourd'hui sur le serveur. Un membre de l'unité pourrait en principe le faire aussi, avec un peu de courage et un login. Trouver quelqu'un pour ça, c'est une autre question, et elle ne se règle pas en une soirée.
+
+En avril, je savais déjà qu'un logiciel a besoin de plus que du code. Ce que j'ai sous-estimé, c'est à quelle fréquence il en a besoin. Construire trois outils en trois soirées, c'est avoir ensuite trois outils à exploiter, tous les soirs qui suivent. La décision la plus importante de ces six derniers mois a donc été de savoir quelles applis emménagent ensemble et lesquelles restent volontairement seules.
+
+> L'appli qui donne le moins de travail, c'est celle qui n'existe plus.

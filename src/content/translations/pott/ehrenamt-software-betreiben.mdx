@@ -1,0 +1,192 @@
+---
+title: "Bauen war der leichte Teil: Wat 'n halbes Jahr Ehrenamt-Software im Betrieb mir beigebracht hat"
+description: "Drei Abende, drei Tools - und getz? Wie aus neun kleinen Vereins-Apps eine einzige wurde, warum 'n grüner Health-Check nix gemerkt hat und wat ich mach, wenn ich im Urlaub bin."
+date: 2026-10-24
+tags: ["software-engineering", "katastrophenschutz", "release-engineering", "ai"]
+image: ../../blog/_images/ehrenamt-software-betreiben/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> 'Ne App bauen dauert mit AI einen Abend. Se zu betreiben dauert jeden Abend 'n bisschen - mal so viele Apps, wie de hast.
+
+Stell dir 'ne Personensuche vor. Ein Mensch wird vermisst, et wird langsam dunkel, und über dem Waldstück steht 'ne Drohne. Im Einsatzleitwagen, dem Fahrzeug, von dem aus der Einsatz geführt wird, guckt die Einsatzleitung auf 'nen Bildschirm und will sehen, wat die Drohne sieht. Gesucht wird dabei über die Fernsteuerung vom Piloten, da is dat Bild sowieso. Damit et auch im Einsatzleitwagen ankommt, bau ich in meiner Freizeit grad 'ne Software. Die läuft auf 'nem Server, um den sich keiner kümmert außer mir.
+
+Im April hab ich darüber geschrieben, wie leicht et mit AI geworden is, Software fürs Ehrenamt zu bauen. Drei Tools an drei Abenden, alle im echten Einsatz, den Code hab ich nich gelesen. Mein Fazit damals: Wichtiger als Code-Wissen is, zu wissen, wat 'ne Software braucht, um zu laufen.
+
+<LinkCard url="/pott/blog/drei-abende-drei-tools"/>
+
+Die Reaktionen darauf gingen fast alle inne gleiche Richtung, und se kamen von Leuten, die dat seit Jahren machen. Dat Bauen wär nich dat Teure, schrieb einer, sondern Wartung und Betrieb: Updates, Backups, Sicherheitslücken, Datenumzüge. Kein Hexenwerk, aber man muss davon wissen und et erstma aufsetzen. Ein anderer, der seit Jahrzehnten Vereinssoftware betreut, stellte die Frage, die mir seitdem nich mehr ausm Kopp geht: Wat passiert, wenn die Software nich läuft und ich im Urlaub bin? Und 'n Dritter hat et kurz und knapp zusammengefasst: Wer wat baut, dem gehört et, und der muss et auch pflegen.
+
+Se hatten recht. Dat hier is die Geschichte vonne sechs Monate danach.
+
+## Ein halbes Jahr später
+
+Zur Erinnerung, worum et ging: die Flugmappe als digitale Checkliste für unsere Drohnenflüge, da-feedback für anonyme Rückmeldungen nach 'nem Dienstabend und easy-fileshare, um Dateien unkompliziert zu teilen. Den Code hat die AI geschrieben, ich hab beschrieben, wat am Ende rauskommen soll. Und für den Fall, dat ma wat klemmt, stand im damaligen Post 'n ziemlich entspannter Plan: "Dann fix ich dat. Oder die AI fixt dat."
+
+Ein halbes Jahr später sieht die Bilanz so aus:
+
+| App | Wofür | Wat draus geworden is |
+|-----|-------|------------------|
+| **Flugmappe** | Checkliste für Drohnenflüge | läuft weiter, eigenständig |
+| **da-feedback** | anonymes Feedback nach Dienstabenden | lebt heute als Baustein von 'ner gemeinsamen App weiter |
+| **easy-fileshare** | Dateien teilen | im Sommer abgelöst, heute ebenfalls Teil vonne gemeinsame App |
+
+Dat zwei von dreien nich mehr alleine stehen, hat 'ne Vorgeschichte. Die drei Tools waren nämlich nie alleine. 'N paar kleine Apps für unsere Bereitschaft liefen schon vorher, andere kamen im Lauf vom Sommer dazu: 'ne zweite Ablage für Uploads, 'ne Startseite, vonne aus de die anderen findest, 'n QR-Code-Generator, 'n Begleiter fürs Drohnentraining, 'n Lagerbuch für unser Material und gleich zwei Apps für die Ausleihe und Verwaltung von unsere Funkgeräte. Zusammen mit da-feedback und easy-fileshare waren dat neun kleine Apps, jede für sich. Die Flugmappe läuft bis heute eigenständig.
+
+Technisch lebte jede von diesen Apps in ihrem eigenen Container. Stell dir dat als abgeschlossene Wohnung vor, mit eigenem Strom, eigenem Schloss und eigenem Briefkasten. Alle Wohnungen liegen auf demselben Grundstück: 'nem kleinen Server, also 'nem Rechner, der rund um die Uhr läuft und ausm Internet erreichbar is. Und jede Wohnung hatte ihre eigene Einrichtung: eigene Technik unter der Haube, 'ne eigene Datenbank, also dat Gedächtnis vonne App, 'ne eigene Pipeline (dat Fließband, dat bei jeder Änderung automatisch 'ne neue Version baut und auf den Server bringt) und 'n eigenes Backup, also 'ne Sicherheitskopie vonne Daten. Oder eben keins.
+
+Wat dat im Alltag heißt, zeigt da-feedback ganz gut. Da hatte ich Dependabot eingerichtet, 'nen Bot von GitHub (die Plattform, wo mein Code liegt), der meldet, wenn verbaute Bauteile Updates brauchen, und den passenden Änderungsvorschlag gleich mitliefert. Im Juli meldete er drei fällige Updates. Übernommen hab ich keinen von den Vorschlägen, die blieben einfach liegen.
+
+Dazu kommt 'n zweiter Haken. Dependabot hat bei da-feedback nur die Möbel geprüft, also die fertigen Bauteile, aus denen die App zusammengesetzt is. Auf dat Fundament, dat Grundsystem, auf dem die App läuft (im Fachjargon Basis-Image), hat der nie geguckt. Selbst wenn ich jeden Vorschlag sofort übernommen hätte, wär dieser Teil ungeprüft geblieben.
+
+Die Rechenaufgabe dahinter is ziemlich schlicht, aufgemacht hab ich se im April trotzdem nich. Jede App will regelmäßig gepflegt werden: Updates durchsehen, nachgucken, ob noch alles lebt. Bei einer App geht dat nebenher. Bei neun wird da 'n zweites Ehrenamt draus, dat abends nachm ersten stattfindet. Naja, und irgendwer muss dat machen, und dieser Irgendwer bin bei uns ich.
+
+Liegengebliebene Updates sind allerdings der leise Teil vom Problem. Der unangenehmere hatte sich schon im Juni gezeigt, bei easy-fileshare: Da ging wat kaputt, und die automatische Kontrolle, ob die App noch lebt, hatte die ganze Zeit nix auszusetzen.
+
+## Der Health-Check war grün
+
+Im Juni 2026 brachen bei easy-fileshare Downloads ab, also bei dem kleinen Tool, über dat wir inne Bereitschaft Dateien weitergeben. Nich jedes Mal, nur manchma. Statt vonne Datei kam dann 'ne Fehlerseite von Cloudflare. Cloudflare steht bei mir vorm Server wie der Pförtner am Zechentor: Jede Anfrage geht erst bei dem durch, und wenn die App dahinter zu lange die Klappe hält, schickt er die Leute mitm Hinweis "Zeitüberschreitung" wieder wech.
+
+Für solche Fälle gibbet eigentlich den Health-Check. Dat is 'n Kontrollblick, den der Server in regelmäßigen Abständen auf die App wirft, ungefähr wie 'n Rauchmelder: "Lebsse noch?" Antwortet die App, steht alles auf Grün. Und der Check stand auf Grün, die ganze Zeit über.
+
+Der erste Verdacht fiel auf die Datenbank. Ausgerechnet der grüne Check sprach dagegen: Die Datenbank arbeitet in dieser App so, dat 'n Hänger da die komplette App anhält, auch die Antwort auf den Kontrollblick. Hätte die Datenbank geklemmt, wär der Check mit eingefroren. Der grüne Haken war also nutzlos und 'n Indiz gleichzeitig - nutzlos, weil er den Ausfall nich gemerkt hat, und 'n Indiz, weil er 'ne falsche Fährte ausgeschlossen hat.
+
+Die Ursache lag woanders. Die Dateien selbst liegen in 'nem eigenen Dateispeicher neben der App, so 'ne Art Lagerraum. Für jeden Download holt die App die Datei über 'ne Leitung aus dem Lager, und von diesen Leitungen hatte se 50. Brach einer 'nen Download mittendrin ab, etwa weil dat Handy dat Netz verloren hat, hätte die Leitung wieder frei werden müssen. Wurde se aber nich. Die blieb offen liegen, und die App wartete brav weiter auf einen, der längst wech war. Wie am Kiosk, wenn der Kunde schon lange um die Ecke is und du hältst ihm immer noch die Tüte Gemischte hin.
+
+Nach ungefähr 50 solcher Abbrüche war keine Leitung mehr übrig. Ab da hing jeder Download, und die App selbst meldete keinen Fehler. Nur Cloudflare gab irgendwann auf. Alles, wat keine Leitung ins Lager braucht, antwortete dagegen fröhlich weiter, allen voran der Health-Check. Der Rauchmelder hing in 'nem Zimmer, wo et nich gebrannt hat.
+
+Den Fix hat Claude gebaut, die AI, mit der ich an diesen Tools arbeite. Jede Leitung hat getz 'n Zeitlimit, und 'n abgebrochener Download gibt seine Leitung sofort zurück. Der Kontrollblick fragt auch nich mehr nur "Lebsse noch?", der guckt zusätzlich nach, ob dat Lager erreichbar is. Nachgewiesen wurde dat mit 150 gleichzeitig abgebrochenen Downloads, dreima so vielen, wie vorher für den Stillstand gereicht hätten.
+
+Dann kam noch wat, dat viele überrascht, die neu mit Docker arbeiten. Docker is dat Programm, dat auffem Server die Wohnungen verwaltet: Et startet und stoppt se. Piept der Rauchmelder und meldet die App als "unhealthy", also krank, passiert... erstma nix. Neu gestartet wird höchstens, wenn die App da drin komplett abstürzt, und auch dat nur, wenn man et Docker ausdrücklich gesacht hat. 'Ne App, die noch atmet, aber nix mehr ausliefert, bleibt so lange liegen, bis einer von Hand eingreift. Deshalb kam 'n kleiner Helfer namens autoheal dazu. Der hört auf die Rauchmelder und startet 'ne Wohnung neu, sobald se als krank gemeldet wird.
+
+Im Rückblick hat der Health-Check getan, wat ihm aufgetragen war. Er hat geprüft, ob die App antwortet. Ob se dat kann, wofür die Leute se aufrufen, nämlich 'ne Datei runterladen, danach hatte ihn keiner gefragt. Ein Kontrollblick sieht halt nur dahin, wo ich ihn hinschick.
+
+Im Post darüber, wie man AI-Funktionen im Betrieb beobachtet (Observability), stand bei den typischen Fehlern, nur den Happy Path zu messen, also nur den Weg, auf dem alles gutgeht. Passiert offensichtlich auch bei 'nem kleinen Dateitool im Ehrenamt.
+
+<LinkCard url="/pott/blog/observability-ai-features"/>
+
+<Accordion title="Für Neugierige: Wat technisch passiert is">
+easy-fileshare is 'ne Next.js-App, die Dateien in 'nem S3-kompatiblen Speicher (MinIO) ablegt und übers AWS-SDK abruft. Dat SDK nutzt standardmäßig 'nen Pool von 50 Sockets, und zwar ohne Inactivity-Timeout. Brach 'n Client mitten im Download ab, blieb der S3-Stream auf Serverseite offen, und der Socket kam nie inn Pool zurück. Nach rund 50 solcher Lecks hing jeder neue Download: 0% CPU, keine neue Verbindung zu MinIO, und Cloudflare lieferte nach Ablauf von seiner Wartezeit 'nen Fehler 524.
+
+Die Datenbank (SQLite) ließ sich ausschließen, weil se in dieser App synchron arbeitet. Ein blockierender Schreibvorgang hätte den ganzen Prozess angehalten, den Health-Endpoint eingeschlossen.
+
+Der Fix besteht aus mehreren Teilen: 'n begrenzter Socket-Pool mit Timeouts, 'n Abort-Signal, dat vom abgebrochenen Request bis zum S3-Aufruf durchgereicht wird, und 'n Health-Check, der zusätzlich per S3 HEAD fragt, ob der Speicher antwortet. Dazu kommen 'ne Restart-Policy und autoheal als Sidecar, also als kleiner Beiwagen-Container, der "unhealthy"-Container neu startet. Verifiziert wurde dat mit 150 gleichzeitigen Abbrüchen mitten im Stream.
+</Accordion>
+
+## Neun Wohnungen, ein Haus
+
+Im Juli stand ich vor 'ner Wahl. Ich hätte jeder App 'nen besseren Health-Check spendieren können, dazu 'nen eigenen Neustart-Helfer und 'n ordentliches Backup. Neunma. Und beim nächsten Ausfall hätte ich wieder in neun Ecken nachgucken müssen, welche denn diesma klemmt. Neun Wohnungen heißen auch neun Rauchmelder, die ich prüfen muss, und neun Fließbänder, die bei jeder neuen Version laufen. Also hab ich die Frage umgedreht: Wie werd ich Apps los, ohne dat den Helferinnen und Helfern wat fehlt?
+
+Am 19. Juli hab ich mit der IuK-Suite angefangen (IuK steht für Information und Kommunikation). Die Suite is dat gemeinsame Haus, wo alle Apps zusammen wohnen. Jede App heißt da Modul und behält ihre Klingel, also ihre bisherige Webadresse. Angemeldet wird anne Haustür, über Pocket ID, 'nen kleinen Anmeldedienst, der getz einen Login für alle Module übernimmt. Drinnen hat jedes Modul sein eigenes Zimmer mit eigenem Schrank: 'ne eigene Datenbank-Datei. Wat im Lagerbuch steht, liegt nich inne gleiche Datei wie die Liste vonne Funkgeräte. Wer welches Zimmer überhaupt sieht, entscheidet 'ne einzige zentrale Liste.
+
+<ProjectCard title="IuK-Suite" description="Web-Suite für die IuK-Arbeit von 'ner ehrenamtlichen Einheit im Bevölkerungsschutz, mit einem Login für alle Module" githubUrl="https://github.com/rubenvitt/iuk-suite"/>
+
+Für die Helferinnen und Helfer hat sich dadurch fast nix geändert. Die Adressen sind dieselben, die Zugänge auch. Neu is nur, dat getz alles gleich aussieht.
+
+Für mich hat sich dafür einiges geändert. Et gibt einen Weg, auf dem neue Versionen ins Haus kommen, und ein Backup für alles. Dependabot hat für all die Apps nur noch ein Projekt im Blick. Und wenn ich wissen will, ob alles lebt, muss ich nur noch an einer Stelle nachgucken. Ob der Kontrollblick da auch in jedes Zimmer guckt, is seit Juni 'ne Frage, die ich mir bei jedem Check stell.
+
+Auf die Idee bin ich, wenig überraschend, nich als Erster gekommen. Die Softwarefirma Segment hat ma 140 kleine Dienste zu einem einzigen zusammengelegt, weil mit jedem weiteren Dienst auch die Maloche im Betrieb um dat gleiche Stück wuchs.
+
+<LinkCard url="https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices"/>
+
+Dat eigentliche Risiko lag im Umzug selbst. Für die Umzüge gibbet schriftliche Anleitungen, sogenannte Runbooks: Checklisten dafür, wat beim Ausziehen und beim Einziehen in welcher Reihenfolge passiert.
+
+Die Anleitung für die Dateiablage, in der easy-fileshare und die zweite Upload-Ablage aufgegangen sind, hat 'ne Regel, die ich für die wichtigste halt: Ob inne alte App noch Daten liegen, wird gezählt, nich geglaubt. Beim Abbau verschwindet die alte Wohnung samt Inhalt. Wer dabei 'ne übersehene Datei mit abreißt, hat se vernichtet, und "da war doch nix mehr drin" hilft dann keinem.
+
+Bei derselben Dateiablage war 'n anderer Test entscheidend: 'ne verschlossene Tür. Dat berechtigte Leute ihre Dateien sehen, is der offensichtliche Teil. Wichtiger war dat Gegenteil: Wer für dat Modul nich freigeschaltet is, muss "gibbet nich" zu sehen kriegen, im Web die Fehlerseite 404. Kommt stattdessen 'ne ganz normale Seite, steht die Verwaltung vonne Dateiablage jedem offen, der irgendein Konto hat.
+
+Beim Drohnen-Training lag die Hürde woanders. Da waren längst Zugangscodes und Anmeldelinks verteilt, und auch wer die App grad offline auffem Handy hatte, sollte nachm Umzug einfach weitermachen können. All dat musste unverändert funktionieren. Die Anleitung sah deshalb vor, die alte App zwei Wochen als Reserve stehen zu lassen, und zurück wär 'n kleiner Handgriff gewesen: die Adresse wieder auf die alte Wohnung zeigen lassen.
+
+## Wat 'n gemeinsames Haus kostet
+
+Der Umzug hat mir viel Arbeit abgenommen. 'N Haus hat allerdings 'ne Eigenschaft, die neun einzelne Wohnungen nich hatten: 'nen gemeinsamen Sicherungskasten. Fliegt da die Hauptsicherung raus, is et in allen Zimmern zappenduster, ganz egal, in welchem Zimmer der Kurzschluss passiert is. Inne Technik heißt dat Blast Radius, also wie weit die Druckwelle von 'nem Fehler reicht. Bei neun getrennten Apps traf 'n Fehler in einer App meistens nur die eine. Inne Suite kann er alle treffen.
+
+Lange suchen muss ich dafür nich, die Beispiele stehen in meinen eigenen Unterlagen zur Suite. Zur Dateiablage gehört 'n Virenscanner, der hochgeladene Dateien prüft. Der läuft in 'nem eigenen kleinen Container auf demselben Grundstück, gleich neben der Suite, und die Suite wartet beim Start, bis er sich als bereit meldet.
+
+<Callout type="warning">
+Der Virenscanner braucht auffem Server 'ne kleine Einstellungsdatei. Fehlt die, legt Docker an ihrer Stelle einfach 'nen leeren Ordner an. Der Virenscanner startet dann ohne Einstellungen, und sein Health-Check schlägt fehl. Weil die Suite auf ihn wartet, startet se gar nich. Feedback, Lagerbuch, Startseite: alles nich erreichbar, wegen einer fehlenden Datei, mit der keine von diesen Apps wat zu tun hat.
+</Callout>
+
+Dat zweite Beispiel is leiser. Als die Dateiablage inne Suite eingezogen is, kamen drei Einstellungen dazu, ohne die dat ganze Haus nich mehr hochfährt. Wer die beim Einrichten vergisst oder erst später nachreicht, hat inne Zwischenzeit auch die Startseite lahmgelegt, obwohl die mit Dateien überhaupt nix zu tun hat. Ein Zimmer zieht ein, und auf einma hängt die Haustür an dem sein Lichtschalter.
+
+Und dann gibbet 'nen Ausfall, den kein Haus verhindert. Der Bus-Faktor beschreibt, wie viele Leute ausfallen müssen, bis nix mehr geht (die etwas makabre Vorstellung dahinter is 'n Bus, der einen erwischt). Bei uns liegt der bei 1, vorm Umzug genauso wie danach. Zusammenlegen spart Arbeit, verteilt aber kein Wissen. Wer außer mir weiß, dat der Virenscanner 'ne Einstellungsdatei braucht? Eben.
+
+Damit sind wir ziemlich normal. Schon Ende 2019 gab et in 22% vonne gemeinnützigen Organisationen in Deutschland keinen, der für IT zuständig war, so der [Digital-Report 2020 vom Haus des Stiftens](https://www.hausdesstiftens.org/?p=16381). Bezahlt wird dafür sowieso kaum einer: Laut [ZiviZ-Survey 2023](https://www.ziviz.de/sites/ziv/files/ziviz-survey_2023_trendbericht.pdf) haben nur 27% vonne zivilgesellschaftlichen Organisationen überhaupt bezahlte Beschäftigte. Bei uns gibbet immerhin einen, der sich kümmert, nur eben genau einen.
+
+'N kleiner Trost, oder Ironie, je nach Laune: Auch Werkzeuge haben 'nen Bus-Faktor. Watchtower war 'n beliebtes Werkzeug, dat Container automatisch auf neue Versionen aktualisiert. Im Dezember 2025 wurde dat Projekt archiviert, also eingestellt. Die Freiwilligen dahinter nutzen Docker selbst kaum noch und hatten weder Zeit noch Bock, et weiterzumachen. Schicht im Schacht.
+
+<LinkCard url="https://github.com/containrrr/watchtower"/>
+
+## Wer nachts aufpasst
+
+Wenn selbst dat bekannte Werkzeug für automatische Updates keinen Betreuer mehr hat, bleibt die Frage, wer bei mir die Updates einspielt. Bis zum Spätsommer war die Antwort: ich, an 'nem Abend, mit 'ner Anleitung daneben. Jedes Update war 'ne kleine Sitzung. Neue Version holen, mit der alten vergleichen, starten, nachgucken, ob die App noch antwortet. Schwer war nix davon, ich hab et nur nie zweima gleich gemacht.
+
+Heute laufen nach jeder Änderung am Code automatische Tests. Wird 'ne Änderung in den Hauptstand vom Code übernommen (im Fachjargon: gemergt) und sind alle Tests grün, geht die neue Version automatisch raus. 'N Skript arbeitet den Rollout ab, also die Auslieferung, jedes Mal inne gleiche Reihenfolge. Im Post über Release-Disziplin stand noch der Einwand "Wir sind zu klein für so 'nen Prozess". 'N automatischer Rollout nach jedem Merge is die kleinste Version davon.
+
+<LinkCard url="/pott/blog/ai-rollout-canary-shadow"/>
+
+Dazu kommt 'n Sicherheitsnetz. Auffem Server liegen 'n paar Dateien mit Einstellungen, und hin und wieder hat da einer von Hand wat geändert - inne Praxis: ich. Der Rollout merkt sich, wie die Dateien aussehen sollen. Weicht eine davon ab, bricht er ab, bevor er irgendwat anpackt. Anlass war 'ne Einstellung, die nur auffem Server stand und nich inne Vorlage, aus der die Dateien stammen. Wer die Datei beim Update einfach durch die Vorlage ersetzt hätte, hätte se still verloren.
+
+<Accordion title="Für Neugierige: Updates vonne Bauteile und 'n bewusstes Risiko">
+Um die fremden Bauteile kümmert sich weiter Dependabot. Der prüft getz auch dat Basis-Image, dat Fundament vonne Suite. Seit Juli 2026 wartet er standardmäßig drei Tage, bevor er 'ne neue Version vorschlägt. In der Zeit fallen manipulierte Versionen meistens schon anderen auf, dat senkt dat Risiko, 'ne frisch kompromittierte zu erwischen. Sicherheitsupdates schlägt er weiterhin sofort vor, ausgeliefert werden aber auch die erst, wenn sein Vorschlag übernommen is.
+
+Einen Haken hat dat Ganze. Damit der Rollout auffem Server ankommt, läuft da 'n Helfer von GitHub, 'n sogenannter Runner, der die Schritte ausführt. Gleichzeitig is der Code vonne Suite öffentlich. GitHub selbst rät von dieser Kombination ab. Ich bin dat Risiko bewusst eingegangen und hab et abgesichert. Wie, steht hier mit Absicht nich.
+</Accordion>
+
+Lange war dat Backup 'ne Aufgabe, die der Server regelmäßig von selbst gestartet hat. Streng genommen war dat gar keins. Die Aufgabe stand nirgends außer auffem Server, und wer sich den Rest angeguckt hat, wusste nix von der. Die Kopie lag auf derselben Maschine wie die Daten: Brennt der Server ab, is beides wech. Und schlug die Aufgabe fehl, hat dat keiner gemerkt.
+
+Inzwischen erledigt dat 'n eigener kleiner Helfer im Haus, so 'ne Art Hausmeister mit 'ner einzigen Aufgabe. Der schickt die Kopie an 'nen anderen Ort und zeigt et an, wenn wat schiefgeht. Und er hängt bewusst an nix, so wie nix an ihm hängt: Die Suite startet auch, wenn dat Backup grad klemmt, und dat Backup wartet nich drauf, dat die Suite gesund is. Nach der Geschichte mitm Virenscanner wollte ich auf keinen Fall, dat ausgerechnet dat Backup den Betrieb mitreißt. 'Ne Panne hatte er auch schon: Zwei Backups inne gleiche Sekunde kriegten denselben Dateinamen, dat zweite hat dat erste überschrieben und fröhlich Erfolg gemeldet. Getz bricht der Hausmeister in so 'nem Fall lieber ab und fragt sinngemäß, ob die Uhr steht.
+
+Bleibt die Frage, wer die Anleitungen liest. Nich nur für die Umzüge, auch für jedes größere Update gibbet 'n Runbook mit Prüfpunkten. Geschrieben sind die für zwei Leser: für mich und für Claude Code, also die gleiche AI wie beim Download-Fix, nur direkt auffem Server, wo se die Anleitungen Schritt für Schritt abarbeitet. Die AI, die die Apps mitgebaut hat, hilft also auch beim Betreiben.
+
+Die eigentliche Entscheidung steckt damit im Merge: Wat übernommen wird, geht raus. 'N Merge is schnell gemacht, erst recht, wenn die Tests sowieso grün sind. Im Post über Human in the Loop, also über Freigaben durch Menschen, hab ich die Freigabe als Teil vonne Sicherheitsarchitektur beschrieben, samt der Gefahr, dat se zum Stempel wird, der ungelesen auf alles draufkommt. Bei mir is dieser Stempel der Merge.
+
+<LinkCard url="/pott/blog/human-in-the-loop"/>
+
+Wird der Merge irgendwann zum Abnicken, ohne dat noch einer hinguckt? Ehrlich gesacht: Ich nick schon ab. Bei 'nem Feedback-Formular oder 'nem Lagerbuch halt ich dat für vertretbar, die Tests fangen dat Gröbste ab, und die Fallhöhe is klein.
+
+## Warum Suchlage nich einzieht
+
+Eigentlich könnte die Geschichte hier zu Ende sein: ein Haus, ein automatischer Rollout, ein Hausmeister fürs Backup. Eine App wohnt aber mit Absicht nich mit drin. Und dat liegt nich daran, dat se wichtiger wär.
+
+Suchlage is mein jüngstes Projekt und steckt noch inne Alpha, also in 'ner frühen Testphase. Grad laufen die ersten Versuche mit der echten Drohne, die Abnahme im Feld steht noch aus. Die Idee is die Szene vom Anfang: Bei 'ner Personensuche fliegt 'ne Drohne übers Suchgebiet, und die Einsatzleitung sitzt im Einsatzleitwagen. Suchlage bringt dat Livebild vonne Kamera, die aktuelle Position und die bisherige Flugspur vonne Drohne dahin und auf die Handys vonne Leute im Gelände. Gesucht wird dabei weiter über die Fernsteuerung: Da sieht der Pilot alles, wat die Drohne sieht, und dat bleibt die Quelle, auf die sich alle verlassen. Suchlage is 'n zusätzlicher Blick für die, die nich neben dem Piloten stehen. Wer die Flugmappe aus 'nem früheren Post kennt, unsere digitale Drohnen-Checkliste: Dat hier is der nächste Schritt im selben Einsatzfeld.
+
+<LinkCard url="/pott/blog/papier-fliegt-nicht"/>
+
+<ProjectCard title="Suchlage" description="Lagehub für Drohneneinsätze bei Personensuchen: Livebild, Position und Flugspur im Einsatzleitwagen und auffem Handy" githubUrl="https://github.com/rubenvitt/suchlage"/>
+
+Technisch hat Suchlage mit der Suite wenig gemeinsam. Die Position und die anderen Messwerte vonne Drohne kommen über MQTT rein, 'nen Nachrichtenkanal, der für viele kleine Messwerte gebaut is. Dat Video läuft als Live-Stream, also als durchgehender Datenstrom statt als fertige Datei. Einige Teile sind nur in 'nem privaten Netz erreichbar, dat von draußen schlicht nich sichtbar is. Und dat Programm dahinter is in Rust geschrieben, 'ner anderen Programmiersprache als die Suite.
+
+Auch der Takt is 'n anderer. Inne Suite läuft dat Backup automatisch im Hintergrund. Inne Betriebsanleitung für Suchlage steht beim Backup 'n kurzer Satz: "Nicht während eines Flugs."
+
+Dazu kommt der gemeinsame Sicherungskasten, den Suchlage im Haus vonne Suite hätte. Steckt im Lagerbuch 'n Fehler, is dat ärgerlich, dann sucht halt einer 'n Ladekabel 'nen Tach länger. Reißt derselbe Fehler bei 'ner laufenden Suche dat Livebild mit, guckt die Einsatzleitung auf 'nen schwarzen Bildschirm. Gesucht wird dann zwar über die Fernsteuerung weiter, aber im Einsatzleitwagen fehlt ausgerechnet dat, wofür Suchlage gebaut is. Und andersrum soll 'n Problem im Videostrom keinem dat Lagerbuch wegnehmen.
+
+Werner Vogels, der Technikchef von Amazon, hat in 'nem [Text darüber, ob man Software in einem großen Stück bauen darf](https://www.allthingsdistributed.com/2023/05/monoliths-are-not-dinosaurs.html), geschrieben: "Building evolvable software systems is a strategy, not a religion." Auf Deutsch etwa: Software so zu bauen, dat se sich weiterentwickeln lässt, is 'ne Strategie und keine Religion. Für mich heißt dat: Ob ich zusammenleg oder trenn, entscheid ich im Einzelfall, und zwar nach 'ner simplen Faustregel. Zusammenlegen, wat auf die gleiche Art ausfällt. Trennen, wat anders ausfällt.
+
+Draußen heißt allerdings nich ohne Regeln. Bei Suchlage wird jede Änderung, die in den Hauptstand vom Code übernommen wird, zu 'ner nummerierten Version, und 'ne Systemseite inne App zeigt, welcher Stand grad läuft, damit im Einsatz keiner raten muss. Macht 'ne neue Version Ärger, gibbet 'nen aufgeschriebenen Rückweg zur vorherigen. Dazu kommt 'n Komplett-Test, der die ganze App einma auf meinem eigenen Rechner durchspielt und sich weigert, auffem echten Server zu laufen, damit er da nie aus Versehen echte Daten oder Zugangsdaten überschreibt.
+
+Ganz so weit wie die Suite is Suchlage trotzdem nich. Dat Backup is da noch Handarbeit: Server kurz anhalten, Daten wechkopieren, wieder starten. Ob dat so bleibt, is offen. Naja, zumindest weiß ich, dat et offen is.
+
+In "Drei Abende, drei Tools" war meine Begründung fürs schnelle Bauen, dat wenig auffem Spiel steht. Geht wat kaputt, fix ich et halt, und dat Risiko is 'n verlorener Abend. Dat gilt auch für Suchlage, und zwar mit Absicht: Die Fernsteuerung bleibt die Wahrheit, da wird gesucht. Fällt Suchlage aus, sieht die Einsatzleitung dat Bild nich mehr mit, die Suche geht trotzdem weiter. Dat Suchlage getrennt bleibt, hat also nix mit der Fallhöhe zu tun. Et fällt einfach anders aus als der Rest.
+
+## Wat ich mach, wenn ich im Urlaub bin
+
+Zurück zur Frage aus den Kommentaren. Wat passiert, wenn die Software nich läuft und ich im Urlaub bin?
+
+Die ehrliche Antwort is kleiner, als ich se gern hätte. Ich kann mich nich ersetzbar machen, der Bus-Faktor steht bei 1, und daran ändert auch dat schönste Haus nix. Wat ich ändern konnte, is die Menge von dem, wat im Notfall zu tun is. Statt neun Wohnungen mit neun Eigenheiten gibbet ein Haus, einen Weg für Updates, ein Backup, dat 'nen Fehlschlag anzeigt, und für jeden größeren Handgriff 'ne aufgeschriebene Anleitung. Solange in der Zeit nix übernommen wird, geht auch keine neue Version raus. Dat Haus läuft auf dem Stand weiter, auf dem ich et verlassen hab.
+
+Und wenn et trotzdem hängt? Dann bleibt et vermutlich hängen, bis einer nachguckt. Den Neustart-Helfer aus der Geschichte vom Juni hat die Suite bisher nich, Docker startet se nur neu, wenn se wirklich abstürzt. Dat is 'ne offene Stelle, und 'ne etwas peinliche dazu, weil ich die Lektion schon ma gelernt hab.
+
+Bei Suchlage is meine Antwort noch dünner, aber auch die Fallhöhe is kleiner, als et klingt: Fällt et aus, wird über die Fernsteuerung weitergesucht, nur eben ohne zweiten Bildschirm im Einsatzleitwagen.
+
+Die Anleitungen sind immerhin so geschrieben, dat se nich nur ich lesen kann. Claude Code arbeitet se heute schon auffem Server ab. 'N Mensch aus der Bereitschaft könnte dat grundsätzlich auch, mit 'n bisschen Mut und 'nem Login. Ob sich dafür einer findet, is 'ne andere Frage, und die lässt sich nich an einem Abend klären.
+
+Im April wusste ich schon, dat Software mehr braucht als Code. Unterschätzt hab ich, wie oft se dat braucht. Wer an drei Abenden drei Tools baut, hat danach drei Tools zu betreiben, an jedem weiteren Abend. Die wichtigste Entscheidung vom letzten halben Jahr war deshalb, welche Apps zusammenziehen und welche bewusst alleine bleiben.
+
+> Die App, die am wenigsten Maloche macht, is die, die et nich mehr gibt.

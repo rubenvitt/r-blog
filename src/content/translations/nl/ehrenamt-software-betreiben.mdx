@@ -1,0 +1,192 @@
+---
+title: "Bouwen was het makkelijke deel: wat een halfjaar vrijwilligerssoftware in productie me heeft geleerd"
+description: "Drie avonden, drie tools, en dan? Hoe negen kleine apps voor de vereniging er één werden, waarom een groene health check niets merkte en wat ik doe als ik op vakantie ben."
+date: 2026-10-24
+tags: ["software-engineering", "katastrophenschutz", "release-engineering", "ai"]
+image: ../../blog/_images/ehrenamt-software-betreiben/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Een app bouwen kost je met AI één avond. Hem draaiende houden kost je elke avond een beetje, keer het aantal apps dat je hebt.
+
+Stel je een zoekactie voor. Iemand wordt vermist, het begint te schemeren, en boven het bos hangt een drone. In de commandowagen, het voertuig van waaruit de inzet wordt geleid, kijkt de inzetleiding naar een scherm en wil zien wat de drone ziet. Het zoeken zelf gebeurt via de afstandsbediening van de piloot; daar is het beeld er toch al. Om het ook in de commandowagen te krijgen, ben ik in mijn vrije tijd software aan het bouwen. Die draait op een server waar niemand naar omkijkt behalve ik.
+
+In april schreef ik over hoe makkelijk het met AI is geworden om software voor vrijwilligerswerk te bouwen. Drie tools op drie avonden, allemaal in echte inzetten gebruikt, de code heb ik niet gelezen. Mijn conclusie toen: belangrijker dan kennis van code is weten wat software nodig heeft om te blijven draaien.
+
+<LinkCard url="/nl/blog/drei-abende-drei-tools"/>
+
+De reacties gingen bijna allemaal dezelfde kant op, en ze kwamen van mensen die dit al jaren doen. Het bouwen is niet het dure deel, schreef iemand, maar onderhoud en beheer: updates, backups, beveiligingslekken, datamigraties. Geen hogere wiskunde, maar je moet het wel weten en het eerst eens inrichten. Een ander, die al decennia software voor verenigingen onderhoudt, stelde de vraag die me sindsdien bezighoudt: wat gebeurt er als de software niet draait en ik op vakantie ben? En een derde vatte het kort samen: wie iets bouwt, is er eigenaar van, en moet het ook onderhouden.
+
+Ze hadden gelijk. Dit is het verhaal van de zes maanden daarna.
+
+## Een halfjaar later
+
+Ter herinnering, waar het om ging: de Flugmappe als digitale checklist voor onze droneflights, da-feedback voor anonieme feedback na een oefenavond en easy-fileshare om eenvoudig bestanden te delen. De code schreef de AI, ik beschreef wat er uiteindelijk uit moest komen. En voor het geval dat er iets zou haperen, stond in die post een behoorlijk relaxed plan: "Dan fix ik het. Of de AI fixt het."
+
+Een halfjaar later ziet de balans er zo uit:
+
+| App | Waarvoor | Wat ervan geworden is |
+|-----|-------|------------------|
+| **Flugmappe** | checklist voor droneflights | draait door, zelfstandig |
+| **da-feedback** | anonieme feedback na oefenavonden | leeft nu voort als bouwsteen van een gezamenlijke app |
+| **easy-fileshare** | bestanden delen | in de zomer vervangen, nu eveneens onderdeel van de gezamenlijke app |
+
+Dat twee van de drie niet meer op zichzelf staan, heeft een voorgeschiedenis. De drie tools stonden namelijk nooit alleen. Een paar kleine apps voor onze eenheid draaiden al eerder, andere kwamen er in de loop van de zomer bij: een tweede opslagplek voor uploads, een startpagina waar je de andere vindt, een QR-codegenerator, een hulpje voor de dronetraining, een magazijnboek voor ons materiaal en maar liefst twee apps voor het uitlenen en beheren van onze portofoons. Samen met da-feedback en easy-fileshare waren dat negen kleine apps, elk op zichzelf. De Flugmappe draait nog steeds zelfstandig.
+
+Technisch woonde elk van deze apps in een eigen container. Zie dat als een afgesloten appartement, met eigen stroom, een eigen slot en een eigen brievenbus. Alle appartementen staan op hetzelfde perceel: een kleine server, dus een computer die dag en nacht draait en vanaf het internet bereikbaar is. En elk appartement had zijn eigen inrichting: eigen techniek onder de motorkap, een eigen database, het geheugen van de app, een eigen pipeline (de lopende band die bij elke wijziging automatisch een nieuwe versie bouwt en op de server zet) en een eigen backup, een reservekopie van de data. Of helemaal geen.
+
+Wat dat in de praktijk betekent, laat da-feedback goed zien. Daar had ik Dependabot ingesteld, een bot van GitHub (het platform waar mijn code staat) die meldt wanneer ingebouwde onderdelen updates nodig hebben, en meteen het passende wijzigingsvoorstel meelevert. In juli meldde hij drie openstaande updates. Ik heb geen van de voorstellen overgenomen, ze bleven gewoon liggen.
+
+En er zat nog een tweede addertje onder het gras. Dependabot controleerde bij da-feedback alleen de meubels, de kant-en-klare onderdelen waaruit de app is opgebouwd. Naar het fundament, het basissysteem waarop de app draait (in vakjargon het base image), keek hij nooit. Zelfs als ik elk voorstel meteen had overgenomen, was dat deel ongecontroleerd gebleven.
+
+De rekensom erachter is behoorlijk simpel, en toch heb ik hem in april niet gemaakt. Elke app vraagt om regelmatig onderhoud: updates doorlopen, nakijken of alles nog leeft. Bij één app doe je dat tussendoor. Bij negen wordt het een tweede vrijwilligersbaan, die je 's avonds na de eerste doet. Tja, en iemand moet het doen, en bij ons ben ik die iemand.
+
+Updates die blijven liggen zijn wel het stille deel van het probleem. Het vervelendere deel had zich al in juni laten zien, bij easy-fileshare: daar ging iets stuk, en de automatische controle of de app nog leeft, had de hele tijd niets aan te merken.
+
+## De health check was groen
+
+In juni 2026 braken downloads bij easy-fileshare af, de kleine tool waarmee we binnen de eenheid bestanden doorgeven. Niet elke keer, alleen soms. In plaats van het bestand kwam er dan een foutpagina van Cloudflare. Cloudflare staat bij mij als een portier voor de server: elk verzoek gaat eerst langs hem, en als de app erachter te lang stil blijft, stuurt hij mensen weer weg met de melding "time-out".
+
+Voor zulke gevallen is er eigenlijk de health check. Dat is een controleblik die de server met vaste tussenpozen op de app werpt, ongeveer zoals een rookmelder: "Leef je nog?" Antwoordt de app, dan staat alles op groen. En de check stond op groen, de hele tijd.
+
+De eerste verdenking viel op de database. Uitgerekend de groene check pleitte daartegen: de database werkt in deze app zo dat een hapering daar de complete app stillegt, ook het antwoord op de controleblik. Als de database had vastgezeten, was de check meebevroren. Het groene vinkje was dus nutteloos en tegelijk een aanwijzing - nutteloos, omdat het de storing niet opmerkte, en een aanwijzing, omdat het een vals spoor uitsloot.
+
+De oorzaak lag ergens anders. De bestanden zelf staan in een eigen bestandsopslag naast de app, een soort opslagruimte. Voor elke download haalt de app het bestand via een lijntje uit die opslag, en van die lijntjes had hij er 50. Brak iemand een download halverwege af, bijvoorbeeld omdat de telefoon geen bereik meer had, dan had het lijntje weer vrij moeten komen. Dat gebeurde niet. Het bleef openliggen, en de app wachtte braaf verder op iemand die allang weg was.
+
+Na ongeveer 50 van die afgebroken downloads was er geen lijntje meer over. Vanaf dat moment hing elke download, en de app zelf meldde geen fout. Alleen Cloudflare gaf het op een gegeven moment op. Alles wat geen lijntje naar de opslag nodig heeft, antwoordde daarentegen vrolijk door, met de health check voorop. De rookmelder hing in een kamer waar geen brand was.
+
+De fix heeft Claude gebouwd, de AI waarmee ik aan deze tools werk. Elk lijntje heeft nu een tijdslimiet, en een afgebroken download geeft zijn lijntje meteen terug. De controleblik vraagt ook niet meer alleen "Leef je nog?", hij kijkt daarnaast of de opslag bereikbaar is. Dat is getest met 150 gelijktijdig afgebroken downloads, drie keer zoveel als er eerder nodig waren om alles plat te leggen.
+
+Toen kwam er nog iets bij dat veel mensen verrast die net met Docker beginnen. Docker is het programma dat op de server de appartementen beheert: het start en stopt ze. Piept de rookmelder en meldt hij de app als "unhealthy", dus ziek, dan gebeurt er... eerst helemaal niets. Opnieuw gestart wordt hooguit als de app daarbinnen volledig crasht, en ook dat alleen als je Docker dat uitdrukkelijk hebt opgedragen. Een app die nog ademt maar niets meer uitlevert, blijft zo hangen tot iemand handmatig ingrijpt. Daarom kwam er een klein hulpje bij, autoheal. Dat luistert naar de rookmelders en herstart een appartement zodra het als ziek wordt gemeld.
+
+Achteraf heeft de health check gedaan wat hem was opgedragen. Hij controleerde of de app antwoordt. Of de app ook kon waarvoor mensen hem openen, namelijk een bestand downloaden: daar had niemand naar gevraagd. Een controleblik kijkt nu eenmaal alleen waar ik hem heen stuur.
+
+In de post over hoe je AI-functies in productie in de gaten houdt (observability), stond bij de typische fouten: alleen het happy path meten, dus alleen de route waarop alles goed gaat. Gebeurt dus blijkbaar ook bij een klein bestandstooltje voor vrijwilligers.
+
+<LinkCard url="/nl/blog/observability-ai-features"/>
+
+<Accordion title="Voor wie het wil weten: wat er technisch gebeurde">
+easy-fileshare is een Next.js-app die bestanden opslaat in een S3-compatibele opslag (MinIO) en ze via de AWS-SDK ophaalt. De SDK gebruikt standaard een pool van 50 sockets, en wel zonder inactivity-timeout. Brak een client halverwege een download af, dan bleef de S3-stream aan serverkant open en kwam de socket nooit terug in de pool. Na zo'n 50 van die lekken hing elke nieuwe download: 0% CPU, geen nieuwe verbinding met MinIO, en Cloudflare gaf na afloop van zijn wachttijd een fout 524.
+
+De database (SQLite) kon worden uitgesloten, omdat die in deze app synchroon werkt. Een blokkerende schrijfactie had het hele proces stilgelegd, het health-endpoint inbegrepen.
+
+De fix bestaat uit meerdere delen: een begrensde socket-pool met timeouts, een abort-signal dat van de afgebroken request helemaal tot aan de S3-aanroep wordt doorgegeven, en een health check die daarnaast via een S3 HEAD vraagt of de opslag antwoordt. Daarbij komen een restart-policy en autoheal als sidecar, een kleine zijspan-container die "unhealthy" containers herstart. Geverifieerd met 150 gelijktijdig afgebroken downloads midden in de stream.
+</Accordion>
+
+## Negen appartementen, één huis
+
+In juli stond ik voor een keuze. Ik had elke app een betere health check kunnen geven, plus een eigen herstart-hulpje en een fatsoenlijke backup. Negen keer. En bij de volgende storing had ik weer in negen hoeken moeten kijken welke het deze keer was. Negen appartementen betekenen ook negen rookmelders die ik moet controleren, en negen lopende banden die bij elke nieuwe versie draaien. Dus heb ik de vraag omgedraaid: hoe raak ik apps kwijt zonder dat de vrijwilligers iets missen?
+
+Op 19 juli ben ik begonnen met de IuK-Suite (IuK staat voor Information und Kommunikation, de informatie- en communicatie-eenheid). De suite is het gezamenlijke huis waarin alle apps samenwonen. Elke app heet daar module en houdt zijn eigen deurbel, dus zijn bestaande webadres. Inloggen gebeurt bij de voordeur, via Pocket ID, een kleine inlogdienst die nu één login voor alle modules regelt. Binnen heeft elke module een eigen kamer met een eigen kast: een eigen databasebestand. Wat in het magazijnboek staat, zit niet in hetzelfde bestand als de lijst met portofoons. Wie welke kamer überhaupt ziet, bepaalt één centrale lijst.
+
+<ProjectCard title="IuK-Suite" description="Web-suite voor het IuK-werk van een vrijwillige eenheid in de rampenbestrijding, met één login voor alle modules" githubUrl="https://github.com/rubenvitt/iuk-suite"/>
+
+Voor de vrijwilligers is er daardoor bijna niets veranderd. De adressen zijn hetzelfde, de toegang ook. Nieuw is alleen dat alles er nu hetzelfde uitziet.
+
+Voor mij is er daarentegen flink wat veranderd. Er is één route waarlangs nieuwe versies het huis binnenkomen, en één backup voor alles. Dependabot hoeft voor al deze apps nog maar één project in de gaten te houden. En als ik wil weten of alles leeft, hoef ik nog maar op één plek te kijken. Of de controleblik daar ook in elke kamer kijkt, is sinds juni een vraag die ik mezelf bij elke check stel.
+
+Op het idee ben ik, weinig verrassend, niet als eerste gekomen. Het softwarebedrijf Segment heeft ooit 140 kleine services samengevoegd tot één enkele, omdat elke extra service er weer een even groot stuk beheerwerk bij gaf.
+
+<LinkCard url="https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices"/>
+
+Het eigenlijke risico zat in de verhuizing zelf. Voor de verhuizingen zijn er geschreven handleidingen, zogeheten runbooks: checklists voor wat er bij het uit- en intrekken in welke volgorde gebeurt.
+
+De handleiding voor de bestandsopslag, waarin easy-fileshare en de tweede uploadplek zijn opgegaan, bevat een regel die ik de belangrijkste vind: of er in de oude app nog data staat, wordt geteld, niet geloofd. Bij de sloop verdwijnt het oude appartement met inhoud en al. Wie daarbij een over het hoofd gezien bestand meesloopt, heeft het vernietigd, en "er zat toch niks meer in" helpt dan niemand.
+
+Bij dezelfde bestandsopslag was een andere test doorslaggevend: een dichte deur. Dat bevoegde mensen hun bestanden zien, is het voor de hand liggende deel. Belangrijker was het omgekeerde: wie niet voor de module is vrijgegeven, moet "bestaat niet" te zien krijgen, op het web de foutpagina 404. Komt er in plaats daarvan een heel normale pagina, dan staat het beheer van de bestandsopslag open voor iedereen die een of ander account heeft.
+
+Bij de dronetraining lag de drempel ergens anders. Daar waren al lang toegangscodes en inloglinks uitgedeeld, en ook wie de app op dat moment offline op zijn telefoon had, moest na de verhuizing gewoon verder kunnen. Dat moest allemaal ongewijzigd werken. De handleiding schreef daarom voor om de oude app twee weken als reserve te laten staan, en terugdraaien was een kleine ingreep geweest: het adres weer naar het oude appartement laten wijzen.
+
+## Wat een gezamenlijk huis kost
+
+De verhuizing heeft me veel werk bespaard. Een huis heeft alleen een eigenschap die negen losse appartementen niet hadden: een gezamenlijke meterkast. Springt daar de hoofdzekering, dan is het in alle kamers donker, ongeacht in welke kamer de kortsluiting zat. In de techniek heet dat de blast radius, hoe ver de drukgolf van een fout reikt. Bij negen gescheiden apps raakte een fout in één app meestal alleen die ene. In de suite kan hij ze allemaal raken.
+
+Lang zoeken hoef ik daarvoor niet, de voorbeelden staan in mijn eigen documentatie van de suite. Bij de bestandsopslag hoort een virusscanner die geüploade bestanden controleert. Die draait in een eigen kleine container op hetzelfde perceel, vlak naast de suite, en de suite wacht bij het opstarten tot hij zich als gereed meldt.
+
+<Callout type="warning">
+De virusscanner heeft op de server een klein instellingenbestand nodig. Ontbreekt dat, dan maakt Docker op die plek gewoon een lege map aan. De virusscanner start dan zonder instellingen, en zijn health check faalt. Omdat de suite op hem wacht, start die helemaal niet. Feedback, magazijnboek, startpagina: allemaal onbereikbaar, door één ontbrekend bestand waar geen van die apps iets mee te maken heeft.
+</Callout>
+
+Het tweede voorbeeld is stiller. Toen de bestandsopslag bij de suite introk, kwamen er drie instellingen bij zonder welke het hele huis niet meer opstart. Wie ze bij het inrichten vergeet of pas later aanvult, heeft in de tussentijd ook de startpagina platgelegd, terwijl die helemaal niets met bestanden te maken heeft. Er trekt één kamer in, en opeens hangt de voordeur aan de lichtschakelaar van die kamer.
+
+En dan is er een uitval die geen enkel huis voorkomt. De busfactor beschrijft hoeveel mensen moeten uitvallen voordat niets meer werkt (het wat macabere beeld erachter is een bus die iemand schept). Bij ons is die 1, vóór de verhuizing net zo goed als erna. Samenvoegen bespaart werk, maar verspreidt geen kennis. Wie behalve ik weet dat de virusscanner een instellingenbestand nodig heeft? Precies.
+
+Daarmee zijn we behoorlijk normaal. Al eind 2019 was er bij 22% van de Duitse non-profitorganisaties niemand verantwoordelijk voor IT, volgens het [Digital-Report 2020 van het Haus des Stiftens](https://www.hausdesstiftens.org/?p=16381) (in het Duits). Betaald krijgt daar sowieso bijna niemand voor: volgens de [ZiviZ-Survey 2023](https://www.ziviz.de/sites/ziv/files/ziviz-survey_2023_trendbericht.pdf) (in het Duits) heeft maar 27% van de maatschappelijke organisaties überhaupt betaalde medewerkers. Bij ons is er tenminste iemand die zich erom bekommert, alleen is het er precies één.
+
+Een kleine troost, of ironie, afhankelijk van je humeur: ook tools hebben een busfactor. Watchtower was een populaire tool die containers automatisch bijwerkt naar nieuwe versies. In december 2025 werd het project gearchiveerd, oftewel stopgezet. De vrijwilligers erachter gebruiken Docker zelf nauwelijks nog en hadden geen tijd of zin meer om het voort te zetten.
+
+<LinkCard url="https://github.com/containrrr/watchtower"/>
+
+## Wie 's nachts oplet
+
+Als zelfs de bekende tool voor automatische updates geen beheerder meer heeft, blijft de vraag wie bij mij de updates doorvoert. Tot de nazomer was het antwoord: ik, op een avond, met een handleiding ernaast. Elke update was een kleine sessie. Nieuwe versie ophalen, vergelijken met de oude, starten, kijken of de app nog antwoordt. Moeilijk was daar niets aan, ik deed het alleen nooit twee keer op dezelfde manier.
+
+Tegenwoordig draaien er na elke codewijziging automatische tests. Wordt een wijziging in de hoofdtak van de code opgenomen (in vakjargon: gemerged) en zijn alle tests groen, dan gaat de nieuwe versie automatisch de deur uit. Een script werkt de rollout af, dus de uitlevering, elke keer in dezelfde volgorde. In de post over release-discipline stond nog het bezwaar "We zijn te klein voor zo'n proces". Een automatische rollout na elke merge is de kleinste versie daarvan.
+
+<LinkCard url="/nl/blog/ai-rollout-canary-shadow"/>
+
+Daar komt een vangnet bij. Op de server staan een paar bestanden met instellingen, en af en toe heeft iemand daar met de hand iets veranderd. In de praktijk: ik. De rollout onthoudt hoe die bestanden eruit moeten zien. Wijkt er een af, dan breekt hij af voordat hij ook maar iets aanraakt. De aanleiding was een instelling die alleen op de server stond en niet in de template waaruit die bestanden komen. Wie het bestand bij de update gewoon door de template had vervangen, was die instelling stilletjes kwijtgeraakt.
+
+<Accordion title="Voor wie het wil weten: updates van onderdelen en een bewust risico">
+Om de externe onderdelen bekommert Dependabot zich nog steeds. Hij controleert nu ook het base image, het fundament van de suite. Sinds juli 2026 wacht hij standaard drie dagen voordat hij een nieuwe versie voorstelt. In die tijd vallen gemanipuleerde versies meestal al bij anderen op; dat verkleint het risico dat je net een vers gecompromitteerde te pakken krijgt. Beveiligingsupdates stelt hij nog steeds meteen voor, maar ook die worden pas uitgerold als zijn voorstel is overgenomen.
+
+Er zit wel een addertje onder het gras. Om de rollout op de server te krijgen, draait daar een hulpje van GitHub, een zogeheten runner, dat de stappen uitvoert. Tegelijk is de code van de suite openbaar. GitHub raadt die combinatie zelf af. Ik ben het risico bewust aangegaan en heb het afgedekt. Hoe, staat hier met opzet niet.
+</Accordion>
+
+Lange tijd was de backup een taak die de server regelmatig vanzelf startte. Strikt genomen was het er helemaal geen. De taak stond nergens behalve op de server, en wie naar de rest keek, wist niet eens dat ze bestond. De kopie stond op dezelfde machine als de data: brandt de server af, dan is alles weg. En als de taak faalde, merkte niemand dat.
+
+Inmiddels regelt een eigen klein hulpje in huis dat, een soort conciërge met één enkele taak. Hij stuurt de kopie naar een andere plek en meldt het als er iets misgaat. En hij hangt bewust nergens van af, net zoals niets van hem afhangt: de suite start ook als de backup net hapert, en de backup wacht niet tot de suite gezond is. Na het verhaal met de virusscanner wilde ik absoluut niet dat uitgerekend de backup de hele boel meesleurt. Een blunder heeft hij ook al op zijn naam: twee backups in dezelfde seconde kregen dezelfde bestandsnaam, de tweede overschreef de eerste en meldde vrolijk succes. Nu breekt de conciërge in zo'n geval liever af en vraagt hij zo'n beetje of de klok soms stilstaat.
+
+Blijft de vraag wie de handleidingen leest. Niet alleen voor de verhuizingen, ook voor elke grotere update is er een runbook met controlepunten. Ze zijn geschreven voor twee lezers: voor mij en voor Claude Code, dezelfde AI als bij de downloadfix, maar dan direct op de server, waar hij de handleidingen stap voor stap afwerkt. De AI die de apps mee heeft gebouwd, helpt dus ook bij het beheer.
+
+De eigenlijke beslissing zit daarmee in de merge: wat wordt overgenomen, gaat live. Een merge is zo gedaan, zeker als de tests toch al groen zijn. In de post over human in the loop, over goedkeuringen door mensen, beschreef ik de goedkeuring als onderdeel van de beveiligingsarchitectuur, inclusief het gevaar dat ze een stempel wordt dat ongelezen op alles terechtkomt. Bij mij is dat stempel de merge.
+
+<LinkCard url="/nl/blog/human-in-the-loop"/>
+
+Wordt de merge op den duur een reflexmatig knikje, zonder dat er nog iemand kijkt? Eerlijk gezegd: ik knik nu al. Bij een feedbackformulier of een magazijnboek vind ik dat verdedigbaar, de tests vangen het ergste af, en er staat weinig op het spel.
+
+## Waarom Suchlage er niet intrekt
+
+Eigenlijk zou het verhaal hier kunnen eindigen: één huis, een automatische rollout, een conciërge voor de backup. Eén app woont er echter bewust niet in. En dat komt niet doordat hij belangrijker zou zijn.
+
+Suchlage is mijn jongste project en zit nog in de alpha, een vroege testfase. Op dit moment lopen de eerste proeven met de echte drone, de acceptatie in het veld moet nog komen. Het idee is de scène van het begin: bij een zoekactie vliegt een drone boven het zoekgebied, en de inzetleiding zit in de commandowagen. Suchlage brengt het livebeeld van de camera, de actuele positie en het vliegspoor van de drone tot dan toe daarheen, en naar de telefoons van de mensen in het terrein. Gezocht wordt daarbij nog steeds via de afstandsbediening: daar ziet de piloot alles wat de drone ziet, en dat blijft de bron waar iedereen op vertrouwt. Suchlage is een extra blik voor wie niet naast de piloot staat. Wie de Flugmappe kent uit een eerdere post, onze digitale dronechecklist: dit is de volgende stap in hetzelfde werkveld.
+
+<LinkCard url="/nl/blog/papier-fliegt-nicht"/>
+
+<ProjectCard title="Suchlage" description="Hub voor het situatiebeeld bij drone-inzetten bij zoekacties naar vermiste personen: livebeeld, positie en vliegspoor in de commandowagen en op de telefoon" githubUrl="https://github.com/rubenvitt/suchlage"/>
+
+Technisch heeft Suchlage weinig gemeen met de suite. De positie en de andere meetwaarden van de drone komen binnen via MQTT, een berichtenkanaal dat gebouwd is voor veel kleine meetwaarden. De video loopt als livestream, dus als doorlopende datastroom in plaats van als kant-en-klaar bestand. Sommige delen zijn alleen bereikbaar in een privénetwerk dat van buitenaf simpelweg niet zichtbaar is. En het programma erachter is geschreven in Rust, een andere programmeertaal dan die van de suite.
+
+Ook het ritme is anders. In de suite loopt de backup automatisch op de achtergrond. In de bedieningshandleiding van Suchlage staat bij de backup een kort zinnetje: "Niet tijdens een vlucht."
+
+Daar komt de gezamenlijke meterkast bij die Suchlage in het huis van de suite zou hebben. Zit er een fout in het magazijnboek, dan is dat vervelend: dan zoekt iemand een dag langer naar een oplaadkabel. Sleurt dezelfde fout tijdens een lopende zoekactie het livebeeld mee, dan kijkt de inzetleiding naar een zwart scherm. Er wordt dan wel via de afstandsbediening verder gezocht, maar in de commandowagen ontbreekt uitgerekend datgene waarvoor Suchlage gebouwd is. En omgekeerd mag een probleem in de videostroom niemand het magazijnboek afnemen.
+
+Werner Vogels, de CTO van Amazon, schreef in een [tekst over de vraag of je software in één groot stuk mag bouwen](https://www.allthingsdistributed.com/2023/05/monoliths-are-not-dinosaurs.html): "Building evolvable software systems is a strategy, not a religion." Vrij vertaald: software zo bouwen dat je hem verder kunt ontwikkelen, is een strategie en geen religie. Voor mij betekent dat: of ik samenvoeg of scheid, beslis ik per geval, en wel op basis van een simpele vuistregel. Samenvoegen wat op dezelfde manier uitvalt. Scheiden wat anders uitvalt.
+
+Buiten het huis betekent overigens niet: zonder regels. Bij Suchlage wordt elke wijziging die in de hoofdtak van de code wordt opgenomen een genummerde versie, en een systeempagina in de app laat zien welke versie er op dit moment draait, zodat tijdens een inzet niemand hoeft te gokken. Geeft een nieuwe versie gedoe, dan is er een uitgeschreven weg terug naar de vorige. Daarbij komt een volledige test die de hele app één keer op mijn eigen computer doorloopt en weigert op de echte server te draaien, zodat hij daar nooit per ongeluk echte data of inloggegevens overschrijft.
+
+Zo ver als de suite is Suchlage nog niet. De backup is daar nog handwerk: server even stoppen, data wegkopiëren, weer starten. Of dat zo blijft, is nog de vraag. Tja, ik weet in elk geval dát het nog de vraag is.
+
+In "Drie avonden, drie tools" was mijn argument voor snel bouwen dat er weinig op het spel staat. Gaat er iets stuk, dan fix ik het gewoon, en het risico is een verloren avond. Dat geldt ook voor Suchlage, en wel met opzet: de afstandsbediening blijft de waarheid, daar wordt gezocht. Valt Suchlage uit, dan ziet de inzetleiding het beeld niet meer mee, maar de zoekactie gaat gewoon door. Dat Suchlage apart blijft, heeft dus niets te maken met wat er op het spel staat. Het valt gewoon anders uit dan de rest.
+
+## Wat ik doe als ik op vakantie ben
+
+Terug naar de vraag uit de reacties. Wat gebeurt er als de software niet draait en ik op vakantie ben?
+
+Het eerlijke antwoord is kleiner dan ik zou willen. Ik kan mezelf niet vervangbaar maken, de busfactor staat op 1, en daar verandert ook het mooiste huis niets aan. Wat ik wel kon veranderen, is de hoeveelheid werk die er in een noodgeval te doen is. In plaats van negen appartementen met negen eigenaardigheden is er één huis, één route voor updates, een backup die een mislukking meldt, en voor elke grotere handeling een uitgeschreven handleiding. Zolang er in die tijd niets wordt overgenomen, gaat er ook geen nieuwe versie live. Het huis draait door op de stand waarin ik het heb achtergelaten.
+
+En als het toch hangt? Dan blijft het waarschijnlijk hangen tot iemand gaat kijken. Het herstart-hulpje uit het verhaal van juni heeft de suite tot nu toe niet; Docker herstart hem alleen als hij echt crasht. Dat is een gat, en eerlijk gezegd een wat gênant gat, want die les heb ik al eens geleerd.
+
+Bij Suchlage is mijn antwoord nog dunner, maar er staat ook minder op het spel dan het klinkt: valt het uit, dan wordt er via de afstandsbediening verder gezocht, alleen zonder tweede scherm in de commandowagen.
+
+De handleidingen zijn in elk geval zo geschreven dat niet alleen ik ze kan lezen. Claude Code werkt ze nu al op de server af. Een mens uit de eenheid zou dat in principe ook kunnen, met wat lef en een login. Of zich daar iemand voor meldt, is een andere vraag, en die los je niet op één avond op.
+
+In april wist ik al dat software meer nodig heeft dan code. Wat ik onderschat heb, is hoe vaak ze het nodig heeft. Wie op drie avonden drie tools bouwt, heeft daarna drie tools te beheren, elke avond weer. De belangrijkste beslissing van het afgelopen halfjaar was daarom welke apps samen gaan wonen en welke bewust alleen blijven.
+
+> De app die het minste werk kost, is de app die niet meer bestaat.

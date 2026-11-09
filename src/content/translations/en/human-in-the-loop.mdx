@@ -1,0 +1,217 @@
+---
+title: "Approval Isn't a UX Bug: Why Agent Systems Need to Know When to Ask"
+description: "Human in the loop isn't a weakness, it's security architecture. Why pause/resume for critical agent actions may be the most important feature of all."
+date: 2026-04-06
+tags: ["ai", "software-engineering", "security"]
+image: ../../blog/_images/human-in-the-loop/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import approvalComparison from '../../blog/_images/human-in-the-loop/approval-comparison.png';
+import approvalFlow from '../../blog/_images/human-in-the-loop/approval-flow.png';
+
+> The more autonomous an agent gets, the more it matters how good the points are where humans can step in - not whether we get rid of them.
+
+A customer wants a refund. The refund agent proposes `refund_order`, the parameters are correct, permissions are checked. And then: an approval banner. The workflow pauses. Nothing happens until a human clicks "Confirm".
+
+The first reflex? "Why can't it just do it?"
+
+I know that reflex. We build agents so they get things done for us - and then we put a stop sign in their way. It feels like friction. Like a step backwards. Like the opposite of automation. The thing is: `refund_order` moves money. Real money. And an agent that can move money autonomously isn't a feature - it's a risk.
+
+The `requiresApproval: true` in the refund agent's tool catalog is no accident. It's an architectural decision - in the previous post I introduced the policy gate as part of the "Definition of Done" for agent tools. There, `require_approval` was one item among many. Here, it takes center stage.
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+
+## Pausing isn't a bug, it's governance
+
+An approval point in an agent system follows a simple principle: the agent proposes, the human decides, the system executes. Three steps, clear responsibility. That sounds like overhead - but it's architecture.
+
+It's important to separate two concepts that often get lumped together: **elicitation** and **governance gates**. Elicitation means the agent actively asks for information - "Which order number do you mean?" or "Should I generate the test report as PDF or Markdown?". The agent needs input to keep working. A governance gate is something else: the system enforces a sign-off before an irreversible action is executed. Not because the agent is unsure, but because the action requires it.
+
+Elicitation is UX. Governance is security architecture.
+
+Pull request reviews make a useful analogy: yes, PR reviews cost time. Yes, they're a bottleneck. And yet they're standard in almost every professional team - because the damage from uncontrolled code in production outweighs the overhead. Approval gates for agents are the same principle: an enforced stopping point before a state change that can't simply be undone.
+
+Anthropic's analysis of Claude Code offers an interesting observation here: the model pauses on its own in over 16% of complex turns - more than twice as often as humans interrupt the agent (around 7%). The model recognizes its own uncertainty and acts on it. It doesn't wait to be stopped - it stops itself.
+
+<LinkCard url="https://www.anthropic.com/research/measuring-agent-autonomy"/>
+
+Anthropic's "Building Effective Agents" recommends exactly that: agents should be able to pause at checkpoints and wait for human feedback. The philosophy behind it boils down to a principle I consider central - **least agency**: give the agent only as much autonomy as the task actually requires. No more.
+
+<LinkCard url="https://www.anthropic.com/research/building-effective-agents"/>
+
+If you looked closely at my post on evals, you might remember: the contract explicitly said `User approval: the workflow should pause` - as a deliberate design decision, not a stopgap.
+
+<LinkCard url="/en/blog/ai-evals-ci-pipeline"/>
+
+> Pause/resume is to agent systems what pull request reviews are to code: not optional, but quality assurance.
+
+## When approval is mandatory - and when it isn't
+
+Not every agent action needs a human. Asking a human to sign off on `lookup_order` would be absurd. But letting `refund_order` go through without a sign-off would be negligent. The question isn't binary - it's a tiered model.
+
+| Risk tier | Example | Action |
+|---|---|---|
+| Read-only | `lookup_order`, `faq_search` | Auto-allow |
+| Low-risk mutation | `reset_password` | Log, no approval |
+| High-risk mutation | `refund_order` | Approval required |
+| Irreversible | `delete_account` | Approval + four-eyes principle |
+
+**Read-only** is harmless - the agent reads data but doesn't change any state. Here, an approval gate only slows down the flow without adding any security. **Low-risk mutations** change state, but the impact is limited and reversible. If a password gets reset, users can reset it again on their own. Logging is enough to keep the audit trail complete. **High-risk mutations** move money, change contracts or touch sensitive data - here a human has to explicitly sign off before the system executes. And **irreversible actions** like account deletions need not just approval, but a four-eyes principle: a second person confirms what the first one approved.
+
+Which tool lands in which tier isn't an exact science - it's a deliberate product decision. In the refund agent, it looks like this:
+
+<Callout type="info">
+**Refund agent tool mapping:** `lookup_order` and `verify_customer` go through without approval - pure reads. `faq_search` too. `refund_order` is `requiresApproval: true` and `isDestructive: true` - this is where the workflow pauses. Interesting: `reset_password` is marked `isDestructive: true` but doesn't need approval. A deliberate design decision - and changeable at any time via a toggle in the contracts UI.
+</Callout>
+
+This tiered model isn't a theoretical framework. Starting in August 2026, regulators care about it, too.
+
+<Accordion title="EU AI Act Art. 14: five mandatory capabilities from August 2, 2026">
+
+For high-risk systems, the EU AI Act prescribes five concrete human oversight capabilities:
+
+1. **Understand & monitor** - capacities, limitations and anomaly detection (Art. 14(4)(a))
+2. **Automation bias awareness** - awareness of over-reliance on AI output (Art. 14(4)(b))
+3. **Correctly interpret output** - using interpretation tools (Art. 14(4)(c))
+4. **Override or reverse** - being able to reverse or disregard any AI decision (Art. 14(4)(d))
+5. **Intervene or stop** - safe halt via a stop button or similar (Art. 14(4)(e))
+
+Worth noting: Art. 14(4)(b) explicitly addresses automation bias - behavioral science in hard law. Violations can cost up to EUR 15 million or 3% of global annual turnover.
+
+</Accordion>
+
+Not every action needs a human. But every risky action needs the *possibility* of a human. And that has to be designed into the architecture - not bolted on afterwards.
+
+## How an approval flow works technically
+
+From the tiered model to the implementation. The basic pattern is surprisingly simple - the complexity isn't where most people expect it.
+
+### The pattern
+
+Every approval flow follows the same sequence: the agent formulates a tool intent. A policy gate checks whether this intent requires approval. If so, execution pauses, the intent lands in an approval queue, a human decides - and only then is the tool call actually executed. Or not.
+
+<Figure src={approvalFlow} alt="Approval flow: Agent → Intent → Policy Gate → Pause → Human → Execute" caption="The approval flow: the policy gate decides. On allow, things go straight on; on require approval, the system pauses and waits for the human."/>
+
+In code, it takes remarkably little. In the Vercel AI SDK, a single flag on the tool definition is enough:
+
+```typescript
+const refundOrder = tool({
+  description: 'Process a refund for an order',
+  parameters: z.object({
+    orderId: z.string(),
+    reason: z.string(),
+  }),
+  needsApproval: true,
+  execute: async ({ orderId, reason }) => {
+    return await processRefund(orderId, reason);
+  },
+});
+```
+
+`needsApproval: true` - that's all. The server waits until the client sends a decision via `addToolApprovalResponse`. Approved? The tool call is executed. Denied? The agent gets the rejection as context and can respond.
+
+The real challenge isn't the pattern itself, but what has to happen around it: state persistence, crash recovery, and the question of what happens to an approval that only comes in after three hours.
+
+### SDK comparison
+
+| Dimension | Vercel AI SDK | OpenAI Agents SDK | LangGraph | Temporal |
+|---|---|---|---|---|
+| Pause mechanism | `needsApproval` on tool | `needs_approval` on tool | `interrupt()` in node | `workflow.wait_condition()` |
+| State persistence | Client state (React) | Explicit via `RunState.to_json()` | Automatic checkpointer | Automatic event history |
+| Crash recovery | Session-dependent | Manual (rehydrate from DB) | Checkpointer-dependent | Fully automatic replay |
+| Best fit | React/Next.js chat UIs | Lightweight agent tools | Graph-based workflows | Enterprise long-running |
+
+Vercel and OpenAI rely on declarative flags right on the tool - the easiest way in. LangGraph checkpoints automatically, but code before an `interrupt()` has to be idempotent, because the entire node runs from the start on resume. Temporal plays in a different league: practically unlimited wait time, fully automatic replay after a crash, signals for external decisions.
+
+<Accordion title="Approval with the OpenAI Agents SDK (Python)">
+
+```python
+result = await Runner.run(agent, "Delete temp files no longer needed.")
+if result.interruptions:
+    state = result.to_state()
+    serialized = state.to_json()        # persist to DB for async approval
+    # ... later, after human decision ...
+    state = RunState.from_json(agent, serialized)
+    state.approve(result.interruptions[0])
+    result = await Runner.run(agent, state)
+```
+
+</Accordion>
+
+MCP now offers a relevant primitive, too: elicitation lets an MCP server wait for user input during tool execution - primarily for missing information, not for governance. But the underlying pause/resume pattern (`accept`, `decline`, `cancel`) is the same. MCP still lacks a standardized governance gate protocol - but the primitive for it is there.
+
+### What the approver needs to see
+
+Technically, all of this works. But an approval flow is only as good as the information the approver gets. Who wants what, on which object, why, with what risk - that has to be clear at a glance. Not the entire chat history, not every intermediate step of the agent conversation. Just what you need to decide, condensed.
+
+In the refund agent, it looks like this: an approval banner shows the tool name and arguments as JSON. Approve or deny. And every decision becomes part of a structured audit trail - with actor, subject, `approvalOutcome`, `approvalId` and prompt version hash.
+
+> The approval flow isn't a technical problem. It's a product problem: what does a human need to make the right decision in three seconds?
+
+### Durable execution
+
+In the demo, session state is enough. In production, it isn't. Approvals that take hours or days need durable execution. A browser tab that gets closed must not send an approved refund into the void.
+
+<ProjectCard
+  title="Refund-Agent"
+  description="Multi-agent support system with policy gate, approval flow and audit trail - open source"
+  appUrl="https://refund-agent.pages.dev"
+  githubUrl="https://github.com/rubenvitt/refund-agent"
+/>
+
+## The rubber-stamp problem: when approval becomes a farce
+
+We now know how approval flows are built. The question isn't whether we *can* build them - but whether they *work*. The most honest counterargument is obvious: what good is an approval step if the human waves everything through anyway?
+
+The answer is uncomfortable. Because that's exactly what happens - and it happens systematically.
+
+### Automation complacency
+
+The phenomenon has a name: automation complacency. The more reliably a system works, the less critically the human checks its output. That's not an individual failure, but a well-documented cognitive effect. And it gets worse the better the AI gets.
+
+The numbers are clear. Clinical decision support systems show override rates of 90-95% - nine out of ten warnings get clicked away. Part of that is rational, because many alerts are clinically irrelevant. But that's exactly the problem: if 90% of warnings are noise, the system trains people to stop looking. A JAMA study with 457 clinicians went further: when the AI deliberately gave flawed recommendations, diagnostic accuracy dropped from 73% to 61.7%. The AI didn't make the decisions better - it made the humans worse.
+
+### When rubber-stamping becomes system failure
+
+The Dutch childcare benefits scandal of 2021 shows what happens when rubber-stamping escalates at the administrative level. Technically, the system was HITL - caseworkers had to review and approve the ML-based fraud assessments. In practice, nobody questioned the output. Thousands of families were wrongly labeled as fraudsters. The government resigned.
+
+In 2023, the European Court of Justice drew the legal consequence in the SCHUFA ruling (C-634/21): if a human merely waves the AI output through without substantive review, that counts as "solely automated decision-making" under GDPR Art. 22. Rubber-stamping isn't just a UX problem - it's a compliance risk.
+
+### Design patterns against rubber-stamping
+
+But research also shows: rubber-stamping isn't a law of nature. It's a design problem.
+
+**Cognitive forcing functions** (Buçinca et al. 2021) force the reviewer to form an independent judgment *before* the AI recommendation becomes visible. It sounds trivial, but it has the strongest effect on overreliance.
+
+**Variable challenge injection** mixes known good/bad items into the review queue - so-called trap tasks. If you get three planted cases wrong in a row, you get feedback. That keeps attention up.
+
+**Mandatory justification** replaces the approve button with a structured justification field. Not "Approve/Reject", but "What exactly did you check, and why is the result correct?"
+
+<Figure src={approvalComparison} alt="Comparison: rubber-stamp approval (left) vs. cognitive forcing approval (right)" caption="Left: an approve button with raw JSON - one click, no friction. Right: context, risk badge, amount typed in by hand, mandatory justification. Inconvenient - but effective."/>
+
+A 2025 systematic review (Springer) distills the core finding: AI explanations alone - i.e. transparency about *why* the AI decided the way it did - aren't enough. The most effective lever is active user engagement. The human has to work, not just watch.
+
+<Callout type="warning">An approve button without context isn't a security feature, it's security theater.</Callout>
+
+And this is where it gets uncomfortable: Buçinca et al. found that precisely the designs that reduced overreliance the most got the worst subjective ratings from users. Users didn't *like* the cognitive forcing functions. Good approval design is uncomfortable - by design. If you design the approval process so that it feels good, you probably haven't solved the problem.
+
+> Anyone who sees HITL as a UX bug has never read a production incident report.
+
+## Control isn't a step backwards
+
+The question was never "HITL yes or no". The question is: how much autonomy can each action handle - and how does that change over time?
+
+The risk tier model determines which tool needs which gate. But there's a second axis: how much oversight does the *overall system* need? A new tool in an untested domain starts in audit mode - the human reviews every action. With measured performance (accuracy, override frequency, exception rates), the system can gradually move to assist mode: the AI acts, the human monitors. And at some point it operates almost autonomously within clearly defined boundaries - but the boundaries remain enforced by the architecture, not built on trust.
+
+In 2026, Jakob Nielsen made an uncomfortable observation: *verifying* AI output is often cognitively harder than *producing* it yourself. But that verification is exactly the role left for humans. And it becomes all the more important the better the systems get.
+
+The infrastructure for controlled autonomy is there. The SDKs deliver the primitives. The only question left is whether we use them.
+
+> An agent that doesn't know when to pause isn't an autonomous agent - it's an uncontrolled process.

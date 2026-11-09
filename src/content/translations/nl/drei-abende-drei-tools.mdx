@@ -1,0 +1,136 @@
+---
+title: "Drie avonden, drie tools: als software voor vrijwilligers ineens haalbaar wordt"
+description: "Vrijwilligersorganisaties hebben eigen software nodig, maar konden die nooit betalen. Hoe AI dat nu verandert, en waarom deployment-kennis belangrijker is dan kunnen programmeren."
+date: 2026-04-12
+tags: ["ai", "software-engineering", "katastrophenschutz"]
+image: ../../blog/_images/drei-abende-drei-tools/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Vrijwilligerswerk heeft eigen software nodig. Tot nu toe kon niemand dat betalen. Dat is veranderd.
+
+Drie projecten, drie avonden, zelf geen regel code geschreven. Alle drie in productie. Eén daarvan, een offline PWA voor drone-inzetten bij rampenbestrijding, heb ik in de vorige post beschreven. Daar was diepe domeinkennis het fundament: elke SORA-berekening gespecificeerd, elke procedure gevalideerd.
+
+<LinkCard url="/nl/blog/papier-fliegt-nicht"/>
+
+De twee nieuwe tools zijn een ander verhaal. Geen diepe domeinkennis. Geen specificatie regel voor regel. Alleen een probleem, een prompt, en een AI die de rest doet. Als software engineer was mijn taak niet om code te schrijven. Maar om te weten wat er aan het eind uit moet komen.
+
+## Wat er ontbreekt, en voor wie
+
+Bijna 27 miljoen mensen in Duitsland doen vrijwilligerswerk. Ze zijn georganiseerd in meer dan 650.000 verenigingen, hulporganisaties en initiatieven. Wat al die organisaties gemeen hebben: ze werken met de tools die ze kunnen betalen. En dat zijn zelden de juiste.
+
+Twee problemen die ik uit het vrijwilligerswerk ken:
+
+**Feedback na oefenavonden.** De leiding wil weten hoe het ging. Tot nu toe: mondeling vragen, briefjes ophalen, of (het vaakst) helemaal niet. Wat je eigenlijk nodig hebt: QR-code scannen, cijfer geven, vrije tekst achterlaten. Anoniem. De leiding ziet trends over tijd. Niet ingewikkelder dan een enquête, maar er bestaat geen tool voor die self-hosted draait en AVG-proof is.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anoniem feedbacksysteem voor oefenavonden"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+**Bestanden veilig delen.** Documenten, foto's, verslagen intern delen, zonder Dropbox, zonder WeTransfer, zonder cloudabonnement. Wachtwoordbeveiliging, downloadlimieten, vervaldatum. Self-hosted, op je eigen server, geen data bij derden.
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted filesharing met wachtwoordbeveiliging en downloadlimieten"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Allebei banaal. Feedbackformulieren en filesharing zijn geen onopgeloste technische uitdagingen. De oplossingen bestaan. Alleen niet voor verenigingen.
+
+De reden is rekenwerk. Maatwerk bij een bureau kost al snel vijf cijfers. De helft van alle non-profitorganisaties in Duitsland heeft minder dan 10.000 euro jaarbudget. In totaal.
+
+> Het budget is genoeg voor het probleem, maar niet voor de oplossing. Tot nu toe.
+
+## Avond één, avond twee
+
+Goed dan. Hoe zag dat er concreet uit?
+
+Bij da-feedback was het uitgangspunt simpel: we hebben een anonieme feedbacktool nodig voor oefenavonden. QR-code scannen, rapportcijfer geven, klaar. Ik heb het probleem beschreven, niet de oplossing. De stack heeft de AI gekozen: Go, SQLite, HTMX. Ik heb ja geknikt. Of ik Go-templates in detail begrijp? Nee. Hoefde ook niet. In één avond stond er een Docker-container met CI/CD-pipeline. Van nul naar deployed.
+
+Bij easy-fileshare hetzelfde patroon. Probleem beschreven: bestandsopslag met toegangscontrole en vervaldata. De AI koos Next.js en MinIO. Chunked uploads, OIDC-authenticatie, downloadlimieten: allemaal door AI gegenereerd. Ik heb getest of de uploads werken. De uploadcode gelezen? Nee.
+
+Ik zeg dat niet als bekentenis. Ik zeg het als feit. Ik heb de code niet gelezen. De architectuurbeslissingen (Go in plaats van Node, SQLite in plaats van Postgres, HTMX in plaats van React) heb ik meestal alleen afgetekend.
+
+En nu het deel dat ertoe doet: dit is geen controleverlies. Het is een keuze.
+
+Ik ben software engineer. Ik zou de code kunnen lezen. Ik zou elke architectuurbeslissing kunnen bevragen, elke dependency kunnen checken, elke edge case kunnen doordenken. Maar bij een interne verenigingstool met een handjevol gebruikers? De vraag is niet of ik de code heb gelezen. De vraag is of ik weet wat er gebeurt als hij niet werkt. En het antwoord is: dan fix ik het. Of de AI fixt het. Het risico is een avond werk kwijt, geen productie-uitval.
+
+Andrej Karpathy heeft er een term voor bedacht: vibe coding, "you fully give in to the vibes, embrace exponentials, and forget that the code even exists." Simon Willison heeft de grens getrokken: als je de code reviewt en test, is het softwareontwikkeling. Zo niet, dan is het vibe coding. Volgens dat criterium was dit vibe coding. En het werkte. Niet omdat vibe coding in het algemeen een goed idee is, maar omdat de stakes laag waren en ik als engineer kon inschatten dat ze laag waren.
+
+> De vraag is niet of je de code hebt gelezen. De vraag is of je weet wat er gebeurt als hij niet werkt.
+
+## Wat ik niet hoefde te prompten, en wat wel
+
+De AI heeft bij beide projecten de stack gekozen, het databaseschema ontworpen, de UI gebouwd, auth geïmplementeerd, API-routes gedefinieerd en rate limiting ingebouwd. Indrukwekkend. Maar het is maar de halve waarheid.
+
+Wat ik moest weten, ook al heb ik het niet zelf geïmplementeerd:
+
+- Dat ik **Docker** nodig heb en hoe een multi-stage build werkt
+- Dat **OIDC** bestaat en hoe ik PocketID als provider configureer
+- Dat **CI/CD** bij een af product hoort, ook al is het maar een Docker-image-build
+- Hoe **Cloudflare Tunnel** werkt om de service bereikbaar te maken
+- Dat **SQLite** voor deze use cases volstaat
+- Dat er **storage-opties** zijn en welke vragen ik de AI moet stellen om de juiste te kiezen
+
+Geen van deze punten is codekennis. Het is systeemkennis. Infrastructuurkennis. Deployment-kennis.
+
+### De onzichtbare drempel
+
+Hier zit de blinde vlek van het vibe-coding-debat. Karpathy heeft het over de code: "forget that the code even exists." Maar code is niet de bottleneck. Deployment is de bottleneck.
+
+Wie geen verstand heeft van Docker, krijgt een app die lokaal draait. Wie niet weet wat OIDC is, krijgt een app zonder auth. Wie CI/CD niet kent, bouwt na elke wijziging handmatig een nieuwe image. Wie niet weet hoe een service publiek bereikbaar wordt, krijgt een app op poort 3000, bereikbaar voor niemand behalve zichzelf.
+
+| Wat de AI besliste | Wat ik moest weten |
+|---|---|
+| Go als taal, HTMX voor interactiviteit | Dat Docker nodig is voor deployment |
+| SQLite als database, Goose voor migraties | Dat SQLite voor de use case volstaat |
+| OIDC-flow met PocketID | Hoe ik de OIDC-provider configureer |
+| Next.js met App Router | Dat een automatische image-build bij het product hoort |
+| MinIO voor S3-compatibele storage | Welke storage-opties er zijn en welke vragen ik moet stellen |
+| Tailwind voor styling | Hoe Cloudflare Tunnel de service bereikbaar maakt |
+| Rate limiting per IP | Hoe ik de Docker-image op mijn server krijg |
+
+De linkerkolom is inwisselbaar. Go of Rust, Next.js of Remix: de AI had elke stack gepakt en het had gewerkt. De rechterkolom is niet inwisselbaar. Zonder die kennis blijft de app een localhost-project.
+
+> Vibe coding heeft geen codekennis nodig. Het heeft engineeringkennis nodig. Dat is niet hetzelfde, en precies dat maakt het verschil tussen een demo en een product.
+
+## Waar de grens ligt
+
+Engineeringkennis maakt van een demo een product. Maar er is nog een tweede vraag: wanneer is het product goed genoeg, en wanneer heb je meer nodig?
+
+Bij de UAV-app was "bouw een drone-app voor me" een ramp geworden. De AI had SORA-berekeningen verzonnen, procedures gehallucineerd, weergrenswaarden gegokt. In het beste geval nutteloos. In het slechtste geval gevaarlijk, omdat iemand op verkeerde waarden vertrouwt.
+
+Bij da-feedback en easy-fileshare was de specificatie overzichtelijk: een paar alinea's die het probleem en de gewenste features beschrijven. Niet te vergelijken met de paginalange procedures van de UAV-app. En als de AI iets verkeerd had geïmplementeerd? Dan was dat een UX-probleem, geen veiligheidsrisico.
+
+Wie zich afvraagt waarom tool-calls in agent-systemen niet triviaal zijn: hier geldt hetzelfde principe.
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+
+De grens ligt niet bij "vibe coding ja of nee". Hij ligt bij wat een fout kost:
+
+- **Lage stakes**: interne tools, weinig gebruikers, geen regelgevende context. Hier werkt de aanpak, als de bouwer de basis van engineering beheerst.
+- **Hoge stakes**: veiligheidskritische systemen, gereguleerde domeinen, complexe vakkennis. Hier heb je specificatie, review en validatie nodig. Hier is "code niet gelezen" geen optie.
+
+Alle drie de projecten zijn open source, want dat is precies het punt. Meer dan 650.000 organisaties in Duitsland lopen tegen vergelijkbare problemen aan. De meeste zullen nooit een developer kunnen inhuren. Maar misschien hebben ze iemand die een probleem ziet, die weet hoe software wordt opgeleverd, en die bereid is er een avond in te steken.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anoniem feedbacksysteem voor oefenavonden"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted filesharing met wachtwoordbeveiliging en downloadlimieten"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Vrijwilligerswerk heeft geen ontwikkelafdeling nodig. Het heeft mensen nodig die problemen begrijpen en weten wat software nodig heeft om te draaien.
+
+> De software was nooit het probleem. Het probleem was dat niemand die hem nodig had, hem kon bouwen. Dat verandert nu.

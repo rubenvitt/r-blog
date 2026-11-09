@@ -1,0 +1,431 @@
+---
+title: "Fra incident til regresjonstest: Slik havner produksjonsfeil i eval-settet ditt"
+description: "En eval-suite som ikke vokser med incidentene, krymper i forhold til virkeligheten. Hvordan postmortem-til-eval-loopen ser ut i praksis - fra trace-ID-en til det obligatoriske feltet i postmortem-malen."
+date: 2026-05-13
+tags: ["AI Engineering", "Evals", "Observability", "Incident Response", "Compliance"]
+image: ../../blog/_images/incident-zu-regressionstest/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+> En eval-suite som ikke vokser med incidentene, krymper i forhold til virkeligheten.
+
+I rollout-innlegget sto det en fotnote helt til slutt: *«Ta produksjons-incidents på alvor som testdatasett. Fra post-mortem til eval. Men det er et annet innlegg.»* Dette er det innlegget.
+
+Se for deg situasjonen: Alle gates var grønne. Pre-merge-eval grønn. Shadow grønn. Canary grønn. To uker etter 100 %-rollout melder en bruker: «Kontoen min er borte, jeg ville jo bare melde meg av markedsføringsmailene.» I tracen står det klart: Brukeren skriver «Vennligst skru av markedsføringsmailene til adressen min», og agenten kaller direkte `delete_account(user_id=...)` - i stedet for `unsubscribe_marketing(email=...)`. Tool-callet går rent gjennom, `success: true`. Agenten svarer: «Jeg har gjennomført ønsket ditt.» Tre dager senere vil brukeren se fakturahistorikken sin - den forsvant sammen med kontoen. Routing-feil på et destruktivt verktøy, utløst av en harmløs formulering fra brukeren - akkurat det tilfellet ingen eksisterende eval tester mot, fordi ingen har formulert det på forhånd.
+
+Hva skjer typisk nå? Hotfix i prompten, ticket lukket, videre med hverdagen. Det som *burde* skje: først testen, så fiksen - akkurat som med klassiske bugs. Ellers gjentar den samme feilen seg ved neste modelloppdatering, neste prompt-refaktorering, neste endring i tool-skjemaet. En suite som ikke tar inn slike tilfeller, glemmer dem - og glemte feil kommer tilbake.
+
+<LinkCard url="/nb/blog/ai-rollout-canary-shadow"/>
+
+<Callout type="info">
+I de andre innleggene i denne serien går en refund-agent igjen som eksempel - her bytter jeg bevisst til en selvbetjeningsagent for kontoinnstillinger. Loopen ser du tydeligst når feilklassen er en annen enn den vi vanligvis illustrerer evals med. Routing på et destruktivt verktøy er akkurat en slik klasse: irreversibel, lett å reprodusere, vanskelig å fange med et eval-sett bygget på forhånd.
+</Callout>
+
+## Hvorfor AI-systemer uten incident-loop stagnerer
+
+Eval-sett er kuraterte verdener. Produksjon er en long tail-fordeling.
+
+Det er sprekken. Når jeg bygger en eval-suite, bygger jeg den av det jeg kan forestille meg: happy paths, noen bevisste edge cases, kanskje en håndfull adversarial prompts fra red team-workshopen. Det dekker midtpartiet av fordelingen. Kanten - de virkelig rare, dyre feilene - ser vi først når ekte brukere begynner å bryne seg på systemet.
+
+Syntetiske tester dekker det kjente. Ekte incidents avdekker det ukjente. Vi trenger begge deler. Men bare den ene vokser av seg selv.
+
+### Et gammelt pattern, ny kontekst
+
+Ideen er ikke ny. Martin Fowler formulerte den i 2005 for klassiske kodebaser:
+
+> "The usual reaction of a team using self-testing code is to first write a test that exposes the bug, and only then to try to fix it."
+
+<LinkCard url="https://martinfowler.com/bliki/SelfTestingCode.html"/>
+
+Grunnen: at bugen, når den først er fikset, forblir fikset. Fra denne disiplinen kommer den populære forkortelsen «every bug becomes a test case». Hos Fowler står den ikke ordrett slik - men holdningen bak gjør det absolutt: Hver bug er ikke bare en svikt i koden, men også i testsuiten.
+
+Akkurat denne holdningen mangler i mange AI-eval-oppsett. Det finnes en suite. Den kjører i CI. Den er grønn. Og den eldes stille og rolig, mens produksjon for lengst serverer nye failure modes.
+
+### Det praktikerne har sagt lenge
+
+Hamel Husain setter ord på det: «remove all friction from the process of looking at data.» Det er ikke en anbefaling, det er en forutsetning. Den som ikke ser på ekte traces, ser ikke long tail. Og det jeg ikke ser, kan jeg ikke løfte inn i eval-settet mitt.
+
+Anthropic beskriver patternet i [Demystifying Evals for AI Agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) som livssyklusen til én enkelt eval: Capability-evals «graduate to become a regression suite» så snart en oppførsel fungerer pålitelig. Suiten blir et skjold rundt det som allerede har fungert én gang. Det er Fowlers logikk, bare med et annet vokabular.
+
+### Tre klasser som intet eval-sett forutser
+
+Det finnes minst tre failure modes som strukturelt mangler i en rent syntetisk bygget eval-suite:
+
+- **Tool-description-drift.** En MCP-tool-description endrer seg etter approval, eller rendres annerledes for modellen enn for brukeren ved approval. Det har jeg gått gjennom i [innlegget om tool-sikkerhet](/nb/blog/tools-sind-keine-prompts). Sett fra eval-suiten er det en failure mode ingen tenker på før den skjer.
+- **False success ved tool-feil.** Agenten bekrefter en hotellreservasjon selv om `create_reservation` returnerte en 503. Brukeren dukker opp i resepsjonen, og systemet kjenner ham ikke. Hvem tester som standard tilfellet «verktøyet svarer med feil, men modellen later som alt er i orden»?
+- **Hull i kunnskapsbasen som modellen fyller med hallusinasjoner.** Cursors support-bot [«Sam»](https://www.helpscout.com/blog/ai-curse-of-cursor/) hallusinerte i april 2025 en single-device-login-policy som aldri hadde eksistert - med det resultat at brukere sa opp abonnementene sine. I eval-settet ville ingen noensinne ha formulert det spørsmålet. Helt til en ekte bruker stilte det.
+
+Fellesnevneren: Hvert av disse tilfellene er *i ettertid* trivielt å støpe inn i en test. På forhånd tenker ingen på det. Nettopp derfor trenger suiten en kanal fra produksjon tilbake til repoet. Forfatterne bak Applied LLMs - Yan, Husain, Bischof, Frye, Liu, Shankar - formulerer det som en minstebetingelse: *"When we spot a new issue, we can immediately write an assertion or eval around it."*
+
+<LinkCard url="https://www.oreilly.com/radar/what-we-learned-from-a-year-of-building-with-llms-part-ii/"/>
+
+Uten denne kanalen skjer det som alltid har skjedd med testsuiter i klassisk programvare uten regresjonstester for bugs: For hver release måler de mindre av det som faktisk går i stykker.
+
+> Syntetiske tester eldes. Incident-tester gjør det også - men de vokser i det minste med.
+
+Hvordan veien fra et postmortem til en konkret regresjonstest ser ut - i sju steg - ser vi på i neste kapittel.
+
+## Postmortem-til-eval-loopen
+
+Når en incident blir snakket i hjel i teamchatten, begravd med en hotfix og glemt innen fredag, er det neste bruker som betaler. Loopen jeg viser her, er disiplinen som hindrer det. Eugene Yan beskriver denne rytmen som eval-driven development - observe, annotate, hypothesize, experiment, measure - og akkurat denne syklusen brukes her på produksjons-incidents.
+
+<LinkCard url="https://eugeneyan.com/writing/eval-process/"/>
+
+```
+Incident → frys tracen → failure mode → forventning → sanitize → suite → fiks
+```
+
+Sju steg. De bygger på hverandre. Hopper du over ett, velter det neste. Kontoeksempelet fra innledningen går med som en rød tråd: Brukeren ville melde seg av markedsføringsmailene, agenten slettet kontoen.
+
+### 1. Incident oppdaget - **hvor kommer signalet fra?**
+
+Samme hvor: En sampling-eval slår ut, en drift-detektor viser en forskyvning i tool-call-fordelingen, en support-ticket havner i køen, en bruker poster et skjermbilde. Triggeren kan være hva som helst. Det som teller, er en trace-ID. Uten den finnes incidenten bare som en anekdote, og anekdoter havner ikke i suiten.
+
+I kontoeksempelet: En bruker skriver «Kontoen min er borte, jeg ville jo bare melde meg av markedsføringsmailene». Support åpner den tilhørende tracen - conversation-ID-en matcher.
+
+### 2. Frys tracen - **hva reproduserer tilfellet?**
+
+Nå betaler observability-stacken seg. Ta et snapshot: hele tracen, prompt-versjon, modell-pin, snapshot av tool-description, tool-outputs, system-prompt, retrieval-treff. Alt som gjør tilfellet reproduserbart om to uker. Den som her sier «vi ser på det i morgen», har ingenting å se på i morgen, fordi prompten i mellomtiden er rullet ut og modellen er oppdatert automatisk.
+
+<LinkCard url="/nb/blog/observability-ai-features"/>
+
+I eksempelet: Tracen viser brukermeldingen «Vennligst skru av markedsføringsmailene til adressen min», rett etterpå tool-callet `delete_account(user_id=...) → { "success": true }`. Assistant-output: «Jeg har gjennomført ønsket ditt.» Strukturelt feil verktøy, teknisk vellykket, irreversibelt. Reproduserbart feil.
+
+### 3. Gi failure moden et navn - **hva er det egentlig som er ødelagt?**
+
+«Agenten var rar» er ingen failure mode. «Destruktivt verktøy kalt, selv om brukerens intensjon var reversibel» er en. En failure mode er en kort, kategorisk betegnelse som kan gjenfinnes som tag i suiten - f.eks. `routing/destructive-on-soft-intent`, `false-success-on-tool-failure`, `tool-misuse-on-restricted-action`.
+
+Så snart failure moden har et navn, kan du søke etter den, aggregere den og knytte neste lignende trace til den i løpet av sekunder. Ikke før. Hold vokabularet konsistent på tvers av alle tester - ellers blir suiten umulig å aggregere senere.
+
+### 4. Formuler forventningen - **hva burde ha skjedd?**
+
+Ingen forventning, ingen test. Ingen test, ingen loop. Spørsmålet er ikke «var det bra?», men «nøyaktig hvordan burde systemet ha oppført seg?». Hvilke tool-calls i hvilken rekkefølge? Hvilken svarform? Refusal eller eskalering?
+
+I eksempelet: Ved brukermeldingen «skru av markedsføringsmailene» må agenten (a) kalle `unsubscribe_marketing` i stedet for `delete_account`, (b) stille et oppfølgingsspørsmål ved enhver tvetydighet mellom en reversibel og en destruktiv handling, i stedet for å gjette, og (c) aldri trigge destruktive verktøy uten eksplisitt bekreftelse fra brukeren - selv om brukeren tilsynelatende har bedt om det. Tre etterprøvbare betingelser, alle avledet fra tracen. Det er eval-spesifikasjonen.
+
+### 5. Sanitize - **hva må ut, hva blir igjen?**
+
+Produksjons-traces inneholder PII: e-postadresser, ordrenumre, noen ganger betalingsdata. Det skal ikke inn i en testsuite som alle engineers kan lese i repoet. Reduser til et minimum: erstatt identifiserende felt med syntetiske, behold struktur og edge case-egenskaper. En tom streng på et relevant sted forblir en tom streng. En ødelagt ordre-ID forblir strukturelt ødelagt.
+
+Tommelfingerregel: Det sanitiserte datapunktet må fortsatt utløse feilen. Blir testen plutselig grønn med falske data, har du fjernet det vesentlige.
+
+### 6. Skriv det inn i suiten - **hvilken grader gjelder?**
+
+Nå blir incidenten et datapunkt. Tags: `incident:<ticket-id>`, `failure-mode:<name>`, eventuelt `severity:<...>`. Uten tags finner du ikke igjen testen om et halvt år.
+
+Så grader-spørsmålet: kodebasert, LLM-as-judge eller workflow-eval? Tommelfingerregel: korrekt tool-bruk → kode-grader (deterministisk, billig, rask). Tone, kvalitet på refusals, forklaringsatferd → LLM-as-judge med presis rubric. Flerstegsatferd over flere turns → workflow-eval som vurderer hele tracen.
+
+I kontotilfellet: En kode-grader sjekker verktøyvalget (`assert tool_calls[0].name in {"unsubscribe_marketing", "ask_clarification"} and "delete_account" not in tool_calls`). En LLM-judge sjekker om det ble stilt et fornuftig oppfølgingsspørsmål ved tvetydighet, og om tonen passer til brukerens intensjon. To gradere, ett datapunkt.
+
+<LinkCard url="/nb/blog/ai-evals-ci-pipeline"/>
+
+### 7. Utvikle fiksen - **med testen som gate**
+
+Testen er rød nå. Bra. Først nå fikses det. Alternativer som ligger snublende nær:
+
+- **Skjerpe prompten**: eksplisitt liste over destruktive verktøy (`delete_*`, `cancel_*`) med plikt til å spørre tilbake ved tvetydig intensjon
+- **Confirmation-gate**: irreversible handlinger trenger en ekstra terskel - eksplisitt bekreftelse fra brukeren, ikke bare et «ja, gjerne» fra modellen
+- **Tool-pin / skjema-hash**: beskytter mot tool-description-drift som feilklasse
+- **Deterministisk output-sjekk**: en post-prosessor som ikke engang slipper gjennom destruktive tool-calls uten foregående bekreftelse
+
+Hvilken kombinasjon du velger, avhenger av failure moden. Bare én ting er viktig: Testen blir grønn fordi systemet reproduserbart forhindrer bugen - ikke fordi bugen tilfeldigvis ikke lenger trigges. Det er akkurat det Applied LLMs mener med «spot a new issue, write the assertion immediately» - med en gang, ikke senere.
+
+> Den som løser incidenten uten å oppdatere suiten, kjøper seg tid på kreditt.
+
+Loopen lukkes når den grønne testen kjører i neste CI-run - og i den neste igjen, og i den hundrede. Hver incident som går denne veien, etterlater en permanent bit kunnskap i systemet.
+
+## Hva som kjennetegner en god incident-eval
+
+Loopen fra forrige kapittel produserer tester. Hver incident blir en. Og akkurat der starter neste problem: Hvis alt havner i suiten på refleks, kveles den av seg selv. Flaky tester, duplikater, døde oppføringer som ingen forstår lenger. En incident-eval som bommer på formålet sitt, er verre enn ingen - den brenner opp tilliten til suiten.
+
+Hva holder en incident-test levedyktig? Seks egenskaper jeg går gjennom for hver test før den merges.
+
+- **Reproduserbar**: Inputene er pinnet - hele tracen, ikke bare brukerprompten. Modell-ID med versjon, tool-snapshot (skjema og implementasjon på tidspunktet for incidenten), seed hvis mulig. Den som ser på testen om et halvt år, må kunne rekonstruere incident-verdenen uten å grave i gamle logger.
+- **Spesifikk**: Testen sjekker failure moden, ikke den eksakte formuleringen i outputen. Eksempel: Var incidenten «agenten kaller `delete_user` uten bekreftelse», tester evalen tool-call-sekvensen og fraværet av bekreftelsessteget - ikke ordlyden i svaret. Ellers blir evalen flaky så snart modellen blir høfligere eller en patch-release flytter stilen en anelse.
+- **Eksplisitt forventning**: Pass/fail må være målbart. «Ser jo rart ut» er ingen test. Enten en deterministisk sjekk (tool-call-mønster, refusal-nøkkelord, skjemavaliditet) eller en LLM-as-judge med tydelig rubric. Hvis jeg ikke kan skrive ned forventningen i to setninger, er failure moden ikke forstått ennå.
+- **Tagget**: failure mode-kategori, incident-ID, dato, severity. Høres ut som byråkrati, men er forutsetningen for at suiten forblir analyserbar. Hvilke failure modes hoper seg opp? Hvilken severity-klasse har flest regresjoner? Uten tags er suiten en kirkegård.
+- **Livssyklus**: Når får en incident-test lov til å forsvinne igjen? Sjelden. Bare med begrunnelse i commiten: featuren er deprecated, failure moden er gjort strukturelt umulig (f.eks. verktøyet er fjernet), eller den er erstattet av en mer omfattende eval. «Testen er flaky» er ingen grunn - da er testen dårlig skrevet, ikke incidenten irrelevant. Applied LLMs formulerer det motsatte som en plikt: «ensure that holdout datasets are current and reflect the most recent types of user interactions». Å holde det oppdatert betyr: legge til, ikke rydde ut.
+- **Ingen snapshot av svaret**: Snapshot-tester fungerer ikke med stokastiske outputs. Selv med seed flytter svaret seg ved neste modelloppdatering. Det som fungerer: snapshot av tool-call-sekvensen (deterministisk nok), snapshot av trace-strukturen (hvilke steg i hvilken rekkefølge), og en rubric-basert judge for svarkvaliteten. Testen sjekker formen, ikke ordlyden.
+
+> En incident-test som bare sjekker en output-streng, faller sammen så snart modellen blir høfligere.
+
+### Tre varianter av samme incident
+
+Det blir først konkret når vi tester den samme feilen på tre forskjellige måter. Anta: En support-agent nektet å gi en bruker oppsigelsesvilkårene med setningen «Det har jeg ikke lov til å svare på» - selv om informasjonen er offentlig. Refusalen var bugen, ikke svaret.
+
+- **For snever**: `assert response == "Her er oppsigelsesvilkårene dine: ..."`. Første eval mot det fiksede systemet: grønn. Andre uke: rød, fordi modellen nå begynner med «Klart, gjerne!». Testen måler stil, ikke atferd. Etter tre flaky runs flyttes den ut av CI - og regresjonsgarantien går samme vei.
+- **For vid**: `assert len(response) > 0`. Fanger ikke refusalen. Fanger ingenting. Er fasade. Slike tester oppstår når noen ville «bare fikse noe kjapt» og ingen gjorde review.
+- **Akkurat passe**: Tre sjekker kombinert. (1) Tool-call-tracen må inneholde `lookup_cancellation_terms` - agenten må faktisk ha slått det opp. (2) Responsen får ikke inneholde noen refusal-markør (liste fra postmortemet). (3) LLM-judge med rubricen «Svarer svaret på det konkrete spørsmålet og forblir empatisk?» - med begrunnelsestekst i outputen, slik at regresjoner kan debugges.
+
+Den tredje testen overlever modelloppdateringer fordi den treffer failure moden - ikke hvordan den tilfeldigvis artet seg den gangen. Det er nettopp forskjellen mellom en suite som vokser med virkeligheten, og en som konserverer den.
+
+## PII, sikkerhet og personvernrefleksen
+
+Her, om ikke før, kommer innvendingen. Som oftest fra juridisk, noen ganger fra din egen magefølelse:
+
+> «Vi kan da ikke putte produksjonsdata i testsettet.»
+
+Stemmer. Det skal vi heller ikke. Refleksen er riktig - konklusjonen «da dropper vi incident-tester» er feil.
+
+<Callout type="warning">
+Produksjons-traces skal aldri rett inn i repoet i rå form. Det er ikke den ekte tracen som er testcasen, men feilstrukturen den avdekker.
+</Callout>
+
+En trace fra produksjon er råmateriale. Fra den trekker vi ut det som utgjør feilen: routing, tool-sekvens, tool-resultat, feil antakelse hos modellen. Det som *ikke* hører hjemme i testcasen: `customer_id`, ordrenumre, e-postadresser, IP-adresser, postadresser, fritekst fra brukermeldinger. Testen sjekker atferd, ikke dataposten.
+
+### Tre strategier som fungerer i praksis
+
+- **Redaction i trace-pipelinen.** PII maskeres før trace-backenden i det hele tatt ser den. I Langfuse via `mask=`-hooken på klienten, i Weave via `postprocess_inputs` på `@weave.op`-dekoratoren. Fordelen: Backenden får aldri dataene umaskert - maskeringen skjer på klientsiden før sending.
+- **Syntetiske datasett fra feilmønstre.** Fra den (anonymiserte) tracen destillerer vi skjemaet: hvilket tool-call med hvilke parametere, hvilket tool-resultat, hvilken reaksjon fra modellen. Ut fra det bygger vi en testcase med demodata - eller genererer den syntetisk. Automatisert PII-gjenkjenning dekker de vanlige entitetene (`PERSON`, `EMAIL_ADDRESS`, `PHONE_NUMBER`, `LOCATION`, `US_SSN`) og erstatter dem med plassholdere.
+- **Eval-repo med begrensede rettigheter.** Selv etter redaction har et eval-sett som har vokst ut av ekte feil, et annet sensitivitetsnivå enn hovedkoden. Eget repo, egen tilgangsliste, egen review-prosess. Den som ikke har lov til å lese en produksjons-trace, ser heller ikke testcasen.
+
+<CodeTabs labels={["Langfuse (Python)", "Weave (Python)"]}>
+
+```python
+from langfuse import Langfuse
+
+def mask(data):
+    if isinstance(data, str) and data.startswith("SECRET_"):
+        return "REDACTED"
+    if isinstance(data, dict):
+        return {k: mask(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [mask(x) for x in data]
+    return data
+
+langfuse = Langfuse(mask=mask)
+```
+
+```python
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
+
+analyzer, anonymizer = AnalyzerEngine(), AnonymizerEngine()
+
+def redact(inputs):
+    r = analyzer.analyze(text=inputs["text_block"],
+        entities=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+        language="en")
+    inputs["text_block"] = anonymizer.anonymize(
+        text=inputs["text_block"], analyzer_results=r).text
+    return inputs
+
+# Inne i en weave.Model-subklasse:
+@weave.op(postprocess_inputs=redact)
+async def predict(self, text_block: str): ...
+```
+
+</CodeTabs>
+
+### Fra konto-tracen til testcasen
+
+Konkret: Selvbetjeningsagenten kalte `delete_account` i stedet for `unsubscribe_marketing` på «Vennligst skru av markedsføringsmailene». Den opprinnelige tracen inneholder `user_id=usr_8a72f...`, en ekte e-postadresse, IP, nettleser-fingerprint og hele brukermeldingen med fullt navn på slutten.
+
+Testcasen inneholder ikke det. Den inneholder:
+
+- `user_id="user_demo_001"`, `email="demo@example.test"`
+- brukermeldingen i sanitisert form: «Vennligst skru av markedsføringsmailene til adressen min.»
+- den tilgjengelige verktøykatalogen (`unsubscribe_marketing`, `delete_account`, `ask_clarification`)
+- assertionen: Agenten får ikke kalle et destruktivt verktøy ved tvetydig myk intensjon; den må velge `unsubscribe_marketing` eller spørre tilbake
+
+Strukturen i brukermeldingen, verktøykatalogen, tvetydigheten, assertionen - alt som reproduserer failure moden - forblir intakt. Den ekte brukeren er ute.
+
+> Feilstruktur er ikke produksjonsdata. Den som blander de to, bygger verken tester eller personvern.
+
+### Compliance-spaken denne loopen drar i på kjøpet
+
+Den som drifter et høyrisikosystem under EUs KI-forordning (EU AI Act), bygger denne loopen uansett - bevisst eller ubevisst. Art. 72 krever å *"actively and systematically collect, document and analyse relevant data ... on the performance of high-risk AI systems throughout their lifetime"*. Det er nettopp kanalen fra produksjon tilbake til eval-settet. En dokumentert vei fra postmortem til test er post-market monitoring i kode.
+
+Og når en serious incident inntreffer: Art. 73 setter en standardfrist på 15 dager, 2 dager ved et utbredt lovbrudd eller en forstyrrelse av kritisk infrastruktur, 10 dager ved dødsfall. I det tidsrommet vil vi ikke sitte og lete etter evidens - vi vil allerede ha den. Den anonymiserte testcasen med trace-ID, hypotese, fiks og dato er en del av beviskjeden.
+
+<Accordion title="Hvilke artikler i EU AI Act loopen konkret dekker">
+
+- **Art. 9 - Risk Management:** incident-til-test-loopen er et kontinuerlig risk mitigation-tiltak gjennom hele livssyklusen.
+- **Art. 12 - Record-Keeping:** trace-ID-er, test-ID-er og postmortem-referanser er nettopp de automatisk genererte loggene artikkelen krever.
+- **Art. 17 - Quality Management:** en dokumentert vei fra incident til regresjonstest er en del av QMS-et.
+- **Art. 72 nr. 2 - Post-Market Monitoring:** *"actively and systematically collect, document and analyse relevant data ... on the performance of high-risk AI systems throughout their lifetime"* - loopen *er* dette systemet.
+- **Art. 73 - Reporting of Serious Incidents:** rapporteringsplikt ved serious incidents (15 dager standard, 2 dager ved utbredt lovbrudd eller forstyrrelse av kritisk infrastruktur, 10 dager ved dødsfall). Testcasen med postmortem-lenke er en del av evidensen.
+
+</Accordion>
+
+Den som uansett må gjøre det, bør gjøre det slik at det virker - i stedet for å ta det unna som compliance-fasade på siden.
+
+## Tooling: det som støtter workflowen
+
+Loopen står og faller ikke med et verktøy. Men den som limer sammen «trace → annotation → dataset» for hånd hver sprint, brenner tid som hører hjemme i failure mode-analysen. En rekke plattformer bygger nå akkurat denne mekanikken rett inn i UI-et. Her er seks av dem i kjapp gjennomgang, slik at du kjenner igjen mønsteret neste gang du evaluerer et verktøy.
+
+- **[LangSmith](https://docs.langchain.com/langsmith/annotation-queues)**: Annotation queues. Fra trace-visningen et «Add to Annotation Queue», fra runs-tabellen flere på en gang - eller filtrert via automation. Annotatorer vurderer single eller pairwise mot en rubric, korrigerer input og output ved behov og klikker «Add to Dataset». Køen kan også kobles til et default-datasett allerede når den opprettes, og da slipper du det siste klikket.
+- **[Braintrust](https://www.braintrust.dev/docs/guides/datasets)**: Logs → datasets med ett klikk. Velg spans i logs-visningen, «+ Dataset», ferdig. Span-input blir dataset-input, span-output blir `expected`. Hver endring er versjonert; eksperimenter pinner til en bestemt versjon. `origin`-feltet lenker hver dataset-rad tilbake til kilde-spanet - sporbarhet til produksjon er forankret strukturelt, ikke bare semantisk.
+- **Phoenix (Arize)**: Open source-motstykket med samme mønster. Annotasjoner er label eller score på et span; enkeltspans eller filtrerte mengder av spans trekkes inn i datasettet via «add to dataset». Annotering går via UI, SDK eller LLM-judge - alle tre veiene via det samme grensesnittet, som du kan hoste selv.
+- **Humanloop**: Datasett fra filtrerte produksjonslogger. Filtrer logger etter prompt-versjon, multi-select, «Add to Dataset», nytt eller eksisterende. Hver endring gir en uforanderlig versjon - eval-runen du kjører i dag, er fortsatt reproduserbar i morgen, selv om noen legger til tester i mellomtiden.
+- **Langfuse og Weave**: Begge bygger veien inkludert et maskeringslag - trace med PII-hooks, deretter eval-pipeline på det maskerte datasettet. Vil du ha loopen og compliance-koblingen fra forrige kapittel i én stack, finner du den korteste veien her.
+- **OpenAI Evals**: ikke noe trace-UI, men målformatet. JSONL, én linje per case, obligatorisk felt `input`, pluss `ideal` for match-templatene (equality ved `Match`, substring ved `Includes`):
+
+```jsonl
+{"input": "What is the capital of France?", "ideal": "Paris"}
+{"input": "Who wrote Romeo and Juliet?", "ideal": ["William Shakespeare", "Shakespeare"]}
+```
+
+Uansett hvilken plattform du kuraterer med: Til slutt bør testene kunne eksporteres til dette formatet. Det er den minste fellesnevneren for alle eval-suiter - og veien tilbake hvis du bytter tooling.
+
+Nesten alle bygger den samme loopen: velg trace, annoter, inn i datasettet, versjoner. Rekkefølgen er ikke tilfeldig - motsatt vei får du ikke produksjonsdata rent inn i et testsett.
+
+<Accordion title="Mini-implementasjon: JSONL-skjema og Vitest-loader">
+```typescript
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { runAgent } from "../src/agent";
+
+const cases = readdirSync("evals/cases/incidents")
+  .filter((f) => f.endsWith(".jsonl"))
+  .flatMap((f) =>
+    readFileSync(`evals/cases/incidents/${f}`, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => ({ file: f, ...JSON.parse(line) })),
+  );
+
+describe("Incident regressions", () => {
+  for (const c of cases) {
+    it(`${c.file}: ${c.input.slice(0, 40)}`, async () => {
+      const out = await runAgent(c.input);
+      const ideals = Array.isArray(c.ideal) ? c.ideal : [c.ideal];
+      expect(ideals.some((i) => out.includes(i))).toBe(true);
+    });
+  }
+});
+```
+
+Loaderen gjør her substring-match (tilsvarer `Includes`-templaten i OpenAI Evals, ikke `Match`) - med stokastiske LLM-outputs er det det mer robuste default-valget. Dette er startpunktet. Først når annoteringen blir flaskehalsen - ikke loaderen - lønner det seg å oppgradere til en plattform.
+</Accordion>
+
+Hva betyr det for valg av verktøy? Den som annoterer 50 incidents i kvartalet og koordinerer et team på ti reviewere, har nytte av køer, pinning og uforanderlige versjoner. Et engineering-team på tre personer med to incidents i måneden trenger ikke det - der holder patternet fra snippeten over: et repo med `evals/cases/incidents/<id>.jsonl` pluss en enkel Vitest-loader. Loopen blir ikke bedre av dyrere verktøy - den blir bedre av disiplin i annoteringen.
+
+> Tooling skalerer med volum, ikke med ambisjon.
+
+## Driftsmodell: hvem gjør det, når, hvor ofte
+
+Det som får ambisjonen gjennomført, er rytmen. En suite vokser ikke fordi et verktøy kan det - den vokser fordi noen har et forpliktende ansvar for den. Uten fast rytme havner loopen på samme haug som «vi tar noen postmortems når vi får tid». Teamet vet hva som skjer: ingenting.
+
+Når du bygger loopen inn i det faktiske oppsettet, trenger du tre rytmer. Hver med trigger, output og owner.
+
+<Callout type="tip">
+Et tiltak med stor effekt og bitteliten innsats: Gjør feltet **Eval-Case-ID** obligatorisk i postmortem-malen. Ingen avsluttede postmortems uten enten en lenket ny eval-case eller en kort skriftlig begrunnelse for hvorfor det ikke trengs. Dermed tvinger du loopen inn i den eksisterende incident-workflowen - uten ny prosess, uten nytt møte.
+</Callout>
+
+### Per incident: hvert postmortem skriver en test
+
+- **Trigger**: En incident er utbedret, postmortemet starter.
+- **Output**: En eval-case i regresjonssuiten. Eller en dokumentert begrunnelse for hvorfor feilen ikke er reproduserbar nok til en test.
+- **Owner**: Den som skriver postmortemet - som regel on-call.
+
+Rekkefølgen er viktig: først testen som avdekker feilen, så fiksen - eller i det minste begge i samme PR. Den som fikser først og så skriver en test «når det blir tid», kommer aldri dit. En fikset bug føles ferdig. Testen som spikrer den fast, føles som ekstraarbeid. Derfor må den være obligatorisk.
+
+> Et postmortem uten ny testcase er en dagbokoppføring, ikke en forbedring.
+
+### Per uke: triage av åpne produksjonsfeil
+
+- **Trigger**: En fast slot på 30-60 minutter, én gang i uken i kalenderen.
+- **Output**: Feil fra sampling-evalen og fra support-tickets går gjennom en rask triage. Hver oppføring får én av tre labels: *ny test*, *for svak for suiten*, *allerede dekket*.
+- **Owner**: Rullerende round-robin i teamet, ikke AI-lead alene.
+
+Poenget med dette møtet er ikke fullstendighet. Det handler om å gå gjennom ukens åpne feil mens alle fortsatt husker dem. Det som ikke blir sortert denne uken, kommer tilbake tre ganger så stort neste uke - og da husker ingen detaljene lenger.
+
+### Per kvartal: suite-review
+
+- **Trigger**: Kvartalsslutt, med AI-teamet og product owner for featuren.
+- **Output**: Tre lister. Hvilke tester er foreldet (featuren deprecated, failure moden strukturelt umulig)? Hvilke failure modes hoper seg opp (det blir undersøkelses-backloggen for neste kvartal)? Hvor mangler det tester (hvilke use cases har knapt coverage)?
+- **Owner**: AI-teamet leder, feature-teamet validerer.
+
+Kvartals-reviewen er det eneste møtet der tester i det hele tatt får lov til å ryke ut igjen. Ikke etter magefølelse, men fra denne listen, med begrunnelse i commiten.
+
+### Ansvaret ligger hos feature-teamet, ikke AI-teamet
+
+Den som drifter featuren, skriver testene - ikke et sentralt eval-crew. On-call ser incidenten, on-call kjenner failure moden best, on-call skriver testen. Applied LLMs formulerer akkurat dette som forutsetningen for en levende suite: Holdningen må forankres i organisasjonen ved at annotering av input og output blir en del av on-call-rotasjonen.
+
+AI-teamet bygger infrastrukturen, reviewer testkvaliteten, hjelper med formatet. Men det erstatter ikke domenekunnskapen til teamet som hadde feilen på bordet.
+
+### Anti-pattern: eval-championen
+
+I hvert team finnes det én person som forstår «det der med evals» veldig godt og liker å holde på med det. Hvis du ikke styrer mot, havner hele vedlikeholdet av suiten på denne personen. Det fungerer en stund - helt til hen blir syk, bytter team eller brenner ut. Da kjenner ingen andre oppbygningen, ingen tør røre en test, og suiten forsteines i akkurat den tilstanden championen forlot den i.
+
+Bus factor 1 er ingen driftsmodell. Tre heuristikker mot det: pairing når hver test skrives. Rullerende triage i stedet for faste owners. Kvartals-review med hele teamet, ikke i en 1:1 mellom champion og lead.
+
+<Accordion title="Postmortem-mal med obligatorisk eval-felt">
+
+```markdown
+# Postmortem: <kort tittel>
+
+- **Trigger**: Hva utløste incidenten? (brukerinput, modelloppdatering, tool-endring, ...)
+- **Trace-ID**: <lenke til hele tracen i observability-verktøyet>
+- **Failure-Mode**: Hvilken kategori? (refusal, hallusinasjon, tool-misuse, format-drift, ...)
+- **Eval-Case-ID**: <lenke til den nye eval-casen i regresjonssuiten>
+  - *Hvis tomt: begrunnelse for hvorfor ingen eval-case er mulig - blokkerer ellers avslutningen.*
+- **Fiks**: Hva ble endret? (prompt, tool-skjema, retrieval, modell, ...)
+- **Rollout-trinn**: Canary / Staged / Full
+- **Owner**: <feature-team>
+```
+
+</Accordion>
+
+## Typiske motargumenter
+
+Den som setter opp loopen for et team for første gang, får tilbake en rekke innvendinger som knapt skiller seg fra selskap til selskap. De fleste er berettigede - men de fører sjelden til «trenger vi ikke», snarere til «trenger vi i mindre skala». Her er de seks som går igjen, hver med et svar du kan formulere selv.
+
+### «Da blir eval-settet vårt så stort at det ikke lar seg vedlikeholde.»
+
+Størrelse er målet her, ikke feilen. En suite som etter et år i drift er like slank som første dag, har ikke sett virkeligheten. Vedlikeholdbarhet løser vi med tags og sub-suiter: `regression`, `tool-contract`, `routing`, `pii-redaction`. Pre-merge kjører bare det kritiske utvalget, nightly kjører alt - og den dyre kjøringen er dyr nettopp fordi den er verdt noe.
+
+### «Produksjonsdata hører ikke hjemme i repoet.»
+
+Korrekt. Det skal de heller ikke. Det er nettopp derfor vi har redaction i trace-pipelinen og syntetiske tester som bare konserverer feilstrukturen - det var temaet i PII-kapittelet. Testcase-filen kjenner `customer_id="cust_demo_001"`, ikke den ekte brukeren. Den som leser «ingen produksjonsdata i repoet» som «ingen incident-tester», har gjort to forskjellige ting om til én.
+
+### «Vi rekker knapt postmortems, og nå skal det en test i tillegg?»
+
+Testen er postmortem-outputen. Ikke en ekstra artefakt ved siden av, men det som blir igjen av postmortemet når møtet er over. Hvis et postmortem ikke gir en reproduserbar test, har det ikke gitt noe - da var det bare et møte, ikke et postmortem. Det obligatoriske feltet i malen er den billigste formen for disiplin som fungerer her.
+
+### «Med ikke-deterministiske systemer er det uansett vanskelig å 'reprodusere'.»
+
+Det som er reproduserbart, er ikke den eksakte outputen - det er triggeren og den forventede failure moden. Testen spør ikke «kommer det samme ut token for token», den spør «oppstår feilklassen fortsatt». I stedet for én enkelt kjøring bruker vi en pass rate over flere kjøringer og definerer en terskel: 8 av 10 grønne betyr grønt, 2 av 10 grønne betyr rødt. Det som er flaky, er flaky - det blir ikke bedre av å se en annen vei. Ikke-determinisme er et argument for mer statistikk i evalen, ikke for mindre eval.
+
+### «Vi har ingen sampling-eval, altså ingen incidents.»
+
+Jo, de kommer. Via support-tickets, eskaleringer fra salg, CTO-en direkte og den ene meldingen utenfra. Det er ikke sampling i teknisk forstand, men det er signal fra produksjon - og akkurat det signalet må inn i loopen før det går i glemmeboken i ticketsystemet. Inntil en ekte sampling-eval er på plass, er support-innboksen evalen. Tag i ticketsystemet, obligatorisk felt «failure mode» ved lukking, ukentlig triage-møte med eval-ownership. Mer mekanikk trengs ikke for å komme i gang.
+
+### «Dette er compliance-fasade.»
+
+Det ville det vært hvis loopen bare fantes som forberedelse til en revisjon. Her er det omvendt: Loopen er substansen - kontinuerlig forbedring av suiten mot ekte failure modes - og compliance-dokumentasjonen faller av på kjøpet. Som vist i PII-kapittelet dekker veien akkurat det art. 72/73 i EU AI Act krever. Fasade ville vært å dokumentere resultatet uten å kjøre loopen.
+
+> Den som har et «ja, men» til suiten, har som regel ikke et problem med suiten, men med postmortemet.
+
+## Suiten puster i takt med virkeligheten
+
+En god eval-suite er ikke en artefakt fra prosjektstart. Den er en levende oversikt over det som allerede har gått i stykker én gang - og dermed over det som ikke får gå i stykker igjen. Den puster i takt med virkeligheten, fordi virkeligheten ikke holder seg til testplanene våre. Hver incident vi tar på alvor, gjør den litt større og litt mer presis.
+
+Dermed sluttes ringen til de tidligere innleggene i serien. Ingen av dem holder alene - sammen utgjør de en driftsmodell:
+
+- **[Arkitektur-innlegget](/nb/blog/ai-systems-architecture)**: gir systemet i det hele tatt strukturen der modell-output blir testbar og observerbar.
+- **[Eval-pipeline-innlegget](/nb/blog/ai-evals-ci-pipeline)**: definerer settet som kjører i CI mot hver endring.
+- **[Tools er ikke prompts](/nb/blog/tools-sind-keine-prompts)**: dekker en hel klasse drift-bugs som ingen syntetisk test noensinne ser.
+- **[Human-in-the-loop](/nb/blog/human-in-the-loop)**: stopper irreversible handlinger ved approval-gaten før agenten utfører dem.
+- **[Observability-innlegget](/nb/blog/observability-ai-features)**: leverer tracene som i det hele tatt gjør en feil synlig.
+- **[Rollout-innlegget](/nb/blog/ai-rollout-canary-shadow)**: fanger regresjonene før de treffer 100 % av brukerne.
+- **Dette innlegget**: gjør settet om til et levende system som vokser for hver postmortem-runde.
+
+<LinkCard url="/nb/blog/ai-systems-architecture"/>
+<LinkCard url="/nb/blog/human-in-the-loop"/>
+<LinkCard url="/nb/blog/ai-rollout-canary-shadow"/>
+
+Byggeklossene virker bare sammen. Veien fra incident til test er den eneste av dem som gjør de andre bedre over tid i stedet for å la dem eldes.
+
+Enhver type endring må gjennom denne loopen. Kode-refaktorering i agenten. Endret system-prompt. Ny modell, fordi den gamle er faset ut. En MCP-tool-description som en vendor stille har omformulert. Et datasett som er reindeksert for RAG. Går bare én av disse live uten en kjøring mot suiten, har suiten ikke gjort jobben sin - da er den fasade igjen.
+
+Og så finnes det en annen spak som dette innlegget ikke dekker: I stedet for å beskytte agenten mot `delete_account` i den hundrede testen, kunne vi la være å gi den verktøyet på det stedet i det hele tatt. Når flyten er gitt som struktur og modellen bare tar beslutninger på tydelig avgrensede punkter, oppstår hele klasser av routing-feil ikke lenger - og ingen trenger den hundrede testen. Men det er et annet innlegg.
+
+> Håp er ingen strategi. En suite som vokser med hver incident, er det.

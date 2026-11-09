@@ -1,0 +1,225 @@
+---
+title: "Att samla kunskap var aldrig problemet: Mycel, tankeverktyg och den nya arbetsfördelningen i tänkandet"
+description: "Klassisk PKM faller på underhållet. En wiki som sköts av en LLM löser det, och gör tankeverktyg från en bok i hyllan till en skill på begäran."
+date: 2026-04-15
+tags: ["ai", "knowledge-management", "thinking-tools"]
+image: ../../blog/_images/wissen-sammeln-war-nie-das-problem/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+
+> Att samla kunskap var aldrig problemet. Att aktivera den i rätt ögonblick - det är problemet.
+
+Jag har ägnat år åt att samla kunskap. Först Notion med Second Brain, prydligt strukturerat enligt PARA och CODE. Sedan bytet till Obsidian - hundratals Markdown-anteckningar, länkar, Daily Notes, backlinks. Quick capture från mobilen fungerar numera, men att hämta fram saker i mobilen är fortfarande en öppen fråga.
+
+Verktygen blev bättre. Underhållet förblev min flaskhals. Det berodde inte på verktyget - det berodde på att jag hela tiden låg efter: fånga upp hinner jag, men förtäta, länka och rensa hinner jag inte.
+
+Det är inget personligt misslyckande. Det är strukturellt. Och just här håller något på att förskjutas i mitt setup - inte för att jag har blivit mer disciplinerad, utan för att arbetsfördelningen har förändrats.
+
+## Varför klassisk PKM strukturellt misslyckas
+
+Metoderna är inte fel. De är bara byggda för en värld där kunskap var knapp och uppmärksamhet fanns i överflöd. I dag är det tvärtom på båda punkterna.
+
+### Zettelkasten fungerar - om du är Luhmann
+
+Niklas Luhmann lämnade efter sig runt 90 000 lappar, som i praktiken hela hans sociologi vilar på. Sönke Ahrens skrev 2017 ner systemet för resten av världen i ”How to Take Smart Notes”: atomicitet, länkning, egna ord, fleeting/literature/permanent notes. De begreppen är för övrigt Ahrens tillägg - Luhmann själv använde dem aldrig.
+
+Principerna är rätt. Problemet är genomförandet. ”Evernote-effekten”, som zettelkasten.de beskriver den, drabbar varje system som växer: ju mer du samlar, desto mer energi slukar underhållet - tills avkastningen inte längre motiverar skötseln. Vem av oss har 30 minuter om dagen till att förtäta sina tankar? Precis.
+
+### Second Brain har diagnostiserat sitt eget problem
+
+Tiago Forte präglade en hel generation med ”Building a Second Brain” (CODE: Capture-Organize-Distill-Express, PARA: Projects-Areas-Resources-Archive). Och han har själv satt namn på problemet att samlingen blir en kyrkogård - ungefär så här: en Second Brain ska inte vara ett lagerhus, utan en fabrik som förvandlar idéer till konkreta resultat. Forte formulerar det själv: *”information only becomes knowledge when we put it to use”*.
+
+Diagnosen är träffsäker. Haken är bara att lösningen återigen kräver mänsklig disciplin. Distill och Express är arbete. Mycket arbete. Och det är just på de två stegen som systemet faller i praktiken, inte på capture.
+
+<LinkCard url="https://fortelabs.com/blog/basboverview/"/>
+
+### Moderna verktyg, gammal arbetsfördelning
+
+Obsidian, Notion, Tana - alla har fått AI-funktioner de senaste två åren. Smart Connections hittar semantiska grannar. Copilot for Obsidian svarar på frågor om ditt vault. Notion AI erbjuder ett query-lager som ofta inte förstår relationer mellan databaser och inte ens ser externa embeds. Tana går längst med Agent Nodes, triggers och supertags. Men även Tana är regelbaserat, inte autonomt tänkande.
+
+Allt det där är assistenter. Ingen av dem är maintainer. Ingen skriver nya anteckningar utan att bli ombedd, förtätar ämnen, upptäcker motsägelser mellan gamla och nya tankar eller arkiverar material som legat still. Arbetet ligger kvar hos dig - verktygen gör det bara bekvämare.
+
+### Den gemensamma blinda fläcken
+
+Oavsett om det är Zettelkasten, Second Brain eller modern PKM-tooling: varje metod förutsätter en disciplinerad mänsklig maintainer. Någon som regelbundet städar, länkar, förtätar, rensar. Den personen finns i teorin. I praktiken sitter där en kunskapsarbetare med full kalender, som är glad om hen över huvud taget hinner fånga upp något.
+
+> Metoderna har inte misslyckats. Antagandet att människan samtidigt kan vara författare, kurator och arkivarie har misslyckats.
+
+Det är inte hyllorna som är problemet. Inte taggarna, inte länkarna, inte mapparna. Problemet är rollfördelningen. Och det är precis där vi måste börja om.
+
+## Mycel - den nya arbetsfördelningen
+
+Om maintainers är sällsynta måste rollen försvinna - inte arbetet. Det är exakt det tankeskifte som Andrej Karpathy fångade i ett inlägg den 2 april 2026: LLM:er som kuratorer av personliga kunskapsbaser. Nästan 20 miljoner visningar, och strax efteråt en gist med en arkitekturskiss. Karpathy beskriver sin egen wiki: runt 100 artiklar, ungefär 400 000 ord, helt kompilerade och underhållna av LLM:en - själv redigerar han den knappt längre.
+
+<LinkCard url="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f"/>
+
+Arkitekturen som jag parallellt har tagit fram för egen del och slipat mot Karpathys skiss har tre lager:
+
+- **`raw/`** - oföränderliga källor. Artiklar, transkript, skärmdumpar, papers. Här läser LLM:en bara. Den skriver aldrig.
+- **`wiki/`** - kompilerad kunskap. Source pages per källa, entity pages per person/organisation/produkt, concept pages per idé, synthesis pages som väver ihop flera källor, och question pages som håller koll på öppna frågor. Helt skrivna av LLM:en.
+- **Schema/skills** - reglerna för hur arbetet görs. Vilka sidtyper som finns, hur det länkas, vad som är ett bra format för en concept page. Schemat lever och blir skarpare för varje ingest.
+
+Skillnaden mot klassisk PKM är inte ”mer automatisering”. Det är en annan rollfördelning. Jag bestämmer vad som kommer in och vilka frågor jag har till materialet. LLM:en destillerar, länkar, underhåller.
+
+### Varför Mycel?
+
+För att metaforen är träffande. Ett mycel är en svamps underjordiska nätverk av trådar. Det tar upp näring, kopplar ihop sig med allt inom räckhåll och bildar till slut fruktkroppar - de synliga svampar som vi tror är ”svampen”.
+
+| Biologi | Kunskapssystem |
+|---|---|
+| Tar upp näring | Läser in källor (`raw/`) |
+| Hyferna knyts samman | Wikilänkar mellan sidor |
+| Organisk tillväxt | Varje ingest förtätar nätet |
+| Fruktkroppar | Synteser och koncept som synliga resultat |
+| Symbios | Människan kuraterar, maskinen kompilerar |
+
+Två av de här egenskaperna bär hela arkitekturen:
+
+**Ränta-på-ränta-tillväxt.** Mycel växer inte linjärt, utan exponentiellt. Hos mig berör en ny källa i praktiken oftast 5 till 20 befintliga sidor: uppdaterar entities, skärper concepts, öppnar eller stänger questions. Värdet ligger inte i antalet poster, utan i hur tätt de är länkade. Compound framför completeness.
+
+**Osynlig infrastruktur.** Den största delen av ett mycel ligger under jorden. Det mest värdefulla med wikin är inte den enskilda sammanfattningen som jag ser på ytan. Det är nätet av korsreferenser, motsägelser mellan källor och öppna frågor däremellan. Fruktkropparna - synteser, concept pages - är bara den synliga toppen.
+
+> Människan kuraterar inte mindre. Hon kuraterar bara annorlunda: på frågornas nivå, inte på lapparnas.
+
+Där går skiljelinjen. Jag sköter inte längre anteckningar - jag sköter riktningen. Vad intresserar mig just nu? Vilka frågor är öppna? Var finns motsägelserna? LLM:en tar över den del som människor strukturellt inte kan skala: att konsekvent uppdatera alla kanter, varje gång nytt material tillkommer någonstans.
+
+Kvar står en fråga som tränger sig på så fort man har sett systemet en gång - särskilt för alla som redan har byggt med LLM:er: om LLM:en kompilerar en wiki ur mappen `raw/`, är det då inte bara RAG med fler steg?
+
+## Compiled knowledge är inte RAG
+
+Innan vi kommer till själva poängen - att hämta fram kunskapen - är en kort teknisk avstickare värd besväret. Annars blir RAG-frågan hängande i luften, och den förtjänar ett tydligt svar. Nej, det är inte RAG. Skillnaden ligger inte i antalet steg, utan i när syntesen sker. RAG tänker när svaret ska ges. Compiled knowledge har redan tänkt innan frågan ställdes.
+
+Innan vi går djupare: ”compiled knowledge” är inget etablerat fackbegrepp. Du hittar det inte i någon lärobok, och inte heller i LLM-communityn är det en fast term. Inramningen går i huvudsak tillbaka till Karpathys kompilatoranalogi från april 2026 - råa källor behandlas som källkod: först kompilera, sedan köra. Resultatet är tätare, mer strukturerat och snabbare att hämta fram. Jag lånar begreppet eftersom det sätter fingret på principen.
+
+### Vad RAG faktiskt gör
+
+RAG delar upp dokument i chunks, kör varje chunk genom en embedding-modell och lägger vektorerna i en vector store. Vid en query embeddas frågan också, storen returnerar de mest likartade chunkarna, och LLM:en får de här snuttarna som kontext. Allt sker just-in-time. Själva tankeprocessen - vad betyder det här, hur hänger det ihop, var motsäger det sig självt - delegeras på nytt till modellen vid varje enskild fråga.
+
+Jag menar här klassisk, icke-agentisk RAG. Moderna angreppssätt med hybrid search, re-ranking eller agentic RAG suddar ut gränsen - skillnaden blir då en gradfråga, inte en principfråga.
+
+### Vad compiled knowledge gör annorlunda
+
+Syntesen sker vid ingest, inte vid svaret. En ny källa blir inte bara mekaniskt sönderhackad och vektoriserad, utan läst, destillerad och uttryckligen inlänkad i det befintliga nätet. Det blir strukturerade Markdown-sidor med korsreferenser, öppna frågor och dokumenterade motsägelser. Det dyra arbetet är redan gjort när materialet tas in. Frågan hämtar färdiga tankar, inte råvaror.
+
+### Skillnaderna i praktiken
+
+RAG hittar en liknande chunk. Compiled knowledge levererar en färdig sida som redan har ställt källa A och källa B mot varandra - inklusive de ställen där de motsäger varandra. Och medan RAG börjar från noll vid varje query berikar varje ny källa compound-nätet ytterligare: varje korsreferens höjer värdet på sidorna som redan finns.
+
+### Där modellen når sina gränser
+
+För att vara ärlig: Mycel körs i mitt setup just nu utan embedding-infrastruktur. Det fungerar så länge kunskapsnätet är överskådligt och länkarna är ordentligt underhållna. Skalar det till tiotusentals sidor? Antagligen inte utan en hybridlösning - compiled knowledge som kuraterad bas, embeddings som fulltext-fallback för det som ännu inte har destillerats. Jag har inte pressat det till gränsen än. Den som påstår att en enda modell löser alla fall försöker sälja något.
+
+Men inte ens en perfekt underhållen, kompilerad wiki löser det egentliga problemet. Att ha en sida som innehåller exakt svaret hjälper inte om den inte plockas fram i rätt ögonblick. Att lagra är halva jobbet. Den andra halvan är att hämta fram.
+
+> 30 välkopplade sidor är mer värda än 200 isolerade sammanfattningar. Men båda är värdelösa om de inte finns till hands i det avgörande ögonblicket.
+
+## Det egentliga problemet var aldrig samlandet
+
+Vi hade löst allt. En wiki som sköter sig själv. Ränta-på-ränta-tillväxt i stället för bäst före-datum. Inga fler motsägelser sopade under mattan, inga tre halvfärdiga anteckningar om samma ämne, ingen kyrkogård av Markdown-filer. På papperet var problemet ur världen.
+
+Och ändå.
+
+Jag hade skött min kunskap, länkat den, syntetiserat den - och i de ögonblick då den spelade roll kom jag inte på den. På mötet, i arkitekturbeslutet, i den snabba code reviewn. Där fanns den inte. Den låg i wikin, prydligt sorterad, perfekt länkad, och hjälpte mig precis noll.
+
+Att hämta fram kunskap är en annan disciplin än att lagra den. Det är den obekväma insikten. Att lagra är asynkront, kontrollerat, i lugn och ro. Att hämta fram sker under press, mitt i ett samtal, i den sekund då beslutet fattas.
+
+Den klassiska PKM-debatten har en blind fläck: den kretsar nästan bara kring input. Hur organiserar jag? Vilket system? Atomic notes eller Folgezettel? Taggar eller mappar? Den andra halvan - vad plockar jag fram i vilken situation? - förblir obesvarad. Som om att hämta fram vore en löst biprodukt av prydlig lagring. Det är det inte.
+
+När det gäller tankeverktyg blir det här smärtsamt konkret. Jag kan inversion. Jag kan second-order thinking. Jag kan Ishikawa, pre-mortem, alternativkostnad. Jag har läst böcker om dem, gjort anteckningar, länkat ihop dem. Och ändå använder jag dem inte när jag skulle behöva dem.
+
+Mentala modeller aktiverar System 2-tänkande - det långsamma, medvetna, analytiska. Men under press tar System 1 över. Snabbt, reflexmässigt, mönsterstyrt. Så lyder i alla fall den populära läsningen av Kahneman. Boken i hyllan hjälper inte på mötet. Anteckningen i wikin hjälper inte i diskussionen om en pull request. Och just det är gapet som klassisk PKM aldrig har tagit itu med: mellan ”jag känner till konceptet” och ”jag använder det i rätt ögonblick”.
+
+Konsekvensen är obekväm, men tydlig. Att samla mer kunskap löser inte det här problemet. Att organisera bättre gör det inte heller. Till och med en Mycel-wiki som en LLM sköter perfekt förblir passiv - den väntar tills jag frågar. Och det är just det jag inte gör i det avgörande ögonblicket.
+
+Det som behövs är något annat: tankeverktyg som finns tillgängliga i rätt ögonblick. Inte som bok, inte som anteckning, inte som kapitel i wikin. Som en skill på begäran.
+
+> Att samla kunskap är halva jobbet. Att aktivera den i rätt ögonblick är resten - och den svårare delen.
+
+## Tankeverktyg på begäran
+
+”Skill på begäran” låter abstrakt, så jag gör det konkret: ett tankeverktyg är ett verktyg först när det finns till hands i den situation där jag behöver det. Inte tio minuter senare. Inte efter mötet. Inte när jag på kvällen kommer på att jag egentligen borde ha inverterat i förmiddags.
+
+Exakt det var mitt problem med ramverk i åratal: jag kände till dem. Jag hade till och med antecknat och destillerat dem, plikttroget enligt CODE. Och ändå fanns de inte där i beslutsögonblicket.
+
+### untools.co som råmaterial
+
+<LinkCard url="https://untools.co"/>
+
+Adam Amran, produktdesigner från Tjeckien, kuraterar på untools.co över 25 tankeverktyg i fyra kategorier: Decision Making, Problem Solving, Systems Thinking och Communication. Uppdraget beskrivs torrt: *”Collection of thinking tools and frameworks to help you solve problems, make decisions and understand systems.”*
+
+Som bokmärke är sajten värdelös. Som ingestat råmaterial i mitt Mycel - concept-sidor per verktyg, plus en Claude-skill per verktyg, plus en synthesis-sida som navigator - är den något helt annat.
+
+<Accordion title="Inversion">
+Fråga inte ”hur når jag X?”, utan ”hur kan jag garanterat förhindra X?”. Listan över saker att undvika är ofta mer konkret än listan över vägar dit. Typisk användning: pre-mortem inför ett beslut.
+</Accordion>
+
+<Accordion title="Second-order thinking">
+”And then what?” Stanna inte vid den första konsekvensen, utan tänk igenom kaskaden av följder. Passar när ett beslut ser uppenbart bra ut - det är oftast signalen att tänka minst två steg längre.
+</Accordion>
+
+<Accordion title="Issue trees">
+MECE-strukturerad uppdelning av ett problem i delproblem, sedan 80/20-fokus på grenarna med störst hävstång. Passar när ett problem känns för stort för att ta tag i.
+</Accordion>
+
+<Accordion title="Eisenhower Matrix">
+Fyra kvadranter av viktighet och brådska. Den populariserades av Stephen Covey i ”7 Habits” (Habit 3: Put First Things First). Låter banalt, men är det skarpaste filter jag känner till för veckoplanering - framför allt för att ärligt sätta namn på ”brådskande, men oviktigt”.
+</Accordion>
+
+### Den avgörande förskjutningen
+
+Navigatorn fungerar som ett routing-lager. Jag beskriver situationen: *”Problemet är för komplext, jag vet inte var jag ska börja.”* Förslag: issue trees. *”Jag ser bara ideallösningar.”* Förslag: inversion. *”Beslutet känns rätt för snabbt.”* Förslag: second-order thinking.
+
+Jag behöver inte längre veta vilket verktyg jag behöver. Jag behöver bara beskriva min situation. Resten är navigering - och den tar assistenten hand om.
+
+> Ett ramverk som jag inte kan aktivera i rätt ögonblick är inget verktyg. Det är ett minnesföremål.
+
+### Integration i rutiner - Fenixprogressionen
+
+Min egen produktivitetsrutin - jag kallar den Fenixprogressionen - kombinerar 12 Week Year-principen från Moran och Lennington (*”In 12 weeks, there just isn't enough time to get complacent, and urgency increases and intensifies.”*) med en cyklisk rytm i fem tidsnivåer: era (5 år), cykel (6 månader), eldstorm (12 veckor), veckoeld (1 vecka), låga (2 timmar).
+
+Varje nivå har sina egna ritualer. Och det är i just de ritualerna som tankeverktygen kopplar in.
+
+För en **låga** - ett deep work-block på två timmar - får jag förslag på metoder som passar situationen när jag går in i den. För **veckoeldsreviews** andra. Vid **eldstormsretrospektiven** föreslås inversion som pre-mortem för nästa cykel. I dagsplaneringen kommer Eisenhower-matrisen in när listan blir för lång. I cykelplaneringen first principles, när jag märker att jag bara skriver fram målen i stället för att tänka om dem.
+
+Jag plockar inte fram det här själv. Skillen kliver in när situationen passar - metoden växer ur mycelet som en fruktkropp i rätt ögonblick.
+
+Skillnaden är subtil, men avgörande: den kognitiva ansträngningen att ens komma att tänka på rätt ramverk försvinner. Ramverket står inte längre i hyllan. Det finns i situationen - som en skill som laddas när kontexten stämmer.
+
+Inget ”hade jag bara tänkt på inversion”. Inget bläddrande i gamla anteckningar. Jobbet att minnas tar skillen hand om.
+
+Det låter färdigt. Det är det inte.
+
+## Vad som förändras just nu - och vad som (ännu) inte fungerar
+
+Det jag beskriver ovan är en pågående förhandling - ingen färdig produktivitetslösning som man kan kopiera.
+
+### Vad som förändras just nu
+
+**Att skriva anteckningar känns annorlunda.** Jag samlar mindre. Inte för att jag läser mindre, utan för att jag vet att LLM-maintainern förtätar vid ingest. Jag behöver inte längre spara varje passage ordagrant för att kunna hitta den senare. Det ändrar vad jag tycker är värt att anteckna.
+
+**Att tänka i ramverk har blivit lättare.** Inte för att jag kan fler ramverk - utan för att de dyker upp i rätt ögonblick. En dialectic-skill som hör av sig när jag måste fatta ett beslut är något annat än en bok i hyllan som jag aktivt skulle behöva slå upp.
+
+**Kopplingar dyker upp som jag aldrig hade sett.** Vid ingest uppstår wikilänkar som jag aldrig hade kommit på själv. Vissa är triviala, vissa ändrar hur jag ser på ett ämne. Det är den del som känns mest som kompilering och minst som sökning.
+
+<Callout type="warning">
+**Det här fungerar inte än:**
+
+- **Jag ingestar för lite.** Att få fram källorna är fortfarande flaskhalsen. Ett system som kompilerar är bara så bra som materialet som går in.
+- **Inaktuellt innehåll är ett verkligt problem.** Lint-körningar hjälper, men de fångar inte allt. Wikisidor blir inaktuella, motsägelser blir stående, källor förskjuts.
+- **Det blir inte en del av vardagen.** Systemet griper bara in där jag medvetet anropar det. Glömmer jag det finns det i praktiken inte.
+- **Förtroende kommer inte automatiskt.** Hallucinerade fakta, felaktiga wikilänkar, missade motsägelser förekommer. Jag måste fortsätta hålla maintainern under uppsikt.
+- **Cognitive outsourcing är en verklig risk.** Ethan Mollick påpekar gång på gång att minsta motståndets väg vid LLM-användning är att passivt lägga ut sitt eget tänkande - med risken att de mentala musklerna för djupt tankearbete förtvinar. Den som låter LLM:en sköta wikin lämnar över auktoritet till systemet. Jag måste aktivt motarbeta det - annars sköter maintainern till slut en wiki som jag inte längre läser kritiskt.
+</Callout>
+
+Och öppna frågor finns kvar. Hur skalar det bortom 500 sidor, när kopplingarna växer exponentiellt? Vad händer när jag vill ändra schemat i grunden - migrerar maintainern wikin, eller börjar den från noll? Jag vet inte.
+
+Det här är inget färdigt produktivitetssystem att kopiera. Det är en pågående förhandling mellan mig och en maskin som blir allt bättre på att förtäta kunskap. Och allt bättre på att ta över arbete som jag kanske inte alls borde lämna ifrån mig. Hävstången ligger i arbetsfördelningen. Jag bestämmer vad som är viktigt, vad som stannar, vilken riktning helheten tar. Maskinen destillerar, länkar och tar fram det situationen kräver. Att hålla den gränsen är arbete - och det är den egentliga uppgiften.
+
+Poängen är inte att veta mer. Poängen är att ha rätt sak till hands i rätt ögonblick.
+
+> Människan kuraterar, maskinen kompilerar.

@@ -1,0 +1,175 @@
+---
+title: "Plus qu'un lockfile : l'Agent Contract pour les features LLM"
+description: "Une feature LLM dépend de cinq choses : Output Schema, prompt, modèle, tools et Eval-Set. Qui ne versionne que le prompt ne sait pas ce qu'il a déployé."
+date: 2026-10-10
+tags: ["ai", "software-engineering", "evals", "release-engineering"]
+image: ../../blog/_images/agent-contract/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Qui ne versionne que le prompt d'une feature LLM ne sait pas ce qu'il a déployé.
+
+Vendredi après-midi, quelqu'un affine une phrase dans le prompt du refund-agent. Pendant le week-end, le provider bascule un nouveau modèle derrière un alias. Ou bien le serveur MCP qui fournit `refund_order` modifie sa tool description (on a déjà eu le cas dans le [post sur les Canaries](/fr/blog/ai-rollout-canary-shadow)). Dans le repo du service, il n'y a pour ça ni commit ni release. Et pourtant, le lundi, l'agent ne rembourse pas comme le vendredi.
+
+Quelle version du refund-agent tournait au juste le 12 septembre ? La réponse habituelle, c'est un SHA Git. Mais il dit seulement quel code tournait. Quel prompt du CMS de prompts allait avec, quel modèle se cachait derrière l'alias et quelle tool description venait du serveur tiers, ça n'y figure pas. Même quand le prompt est dans le repo, on voit à peine ses modifications dans l'historique : dans une étude portant sur 243 repos GitHub, à peine plus d'un commit sur cinq modifiant un prompt le mentionnait dans le message de commit (21,9 %, [Prompting in the Wild, MSR 2025](https://arxiv.org/abs/2412.17298)).
+
+Sur [ai-systems-architecture.com](https://ai-systems-architecture.com/), Michael Seel et moi appelons le paquet qui répond à cette question l'**Agent Contract**. C'est notre terme d'ingénierie, il n'existe pas de standard pour ça. Dans la recherche, le terme désigne autre chose : chez [Ye & Tan](https://arxiv.org/abs/2601.08815), les Agent Contracts sont des contrats formels d'exécution avec des budgets de ressources. Le nôtre est un artefact de release : qu'est-ce qui est livré, et contre quoi est-ce vérifié ? Michael a développé le terme en détail. La version longue est ici (en allemand) :
+
+<LinkCard url="https://michaelseel.com/blog/2026-08-14-agent-contract/"/>
+
+L'exemple reste le refund-agent des derniers posts.
+
+<ProjectCard
+  title="Refund-Agent"
+  description="Système de support multi-agents avec Evals, Observability et Contracts"
+  appUrl="https://refund-agent.pages.dev"
+  githubUrl="https://github.com/rubenvitt/refund-agent"
+/>
+
+## Cinq choses, une feature
+
+Que déployons-nous quand nous déployons le refund-agent ? Le code est dans le repo, évidemment. Mais qu'un client qui écrit « Je veux être remboursé » arrive sur la bonne route, et que la bonne chose s'y passe, ça se joue à cinq endroits, et ils ne sont pas tous dans le repo.
+
+| Maillon | Ce qu'il contient | refund-agent, Contract v1 |
+| --- | --- | --- |
+| **Output Schema** | la forme sur laquelle le code s'appuie | décision de routage sous forme d'enum (`refund`, `lookup`, `faq`, `account`, `clarify`), imposée via le tool `route` |
+| **Prompt** | les instructions données au modèle | instructions de l'Orchestrator et des agents métier dans une version figée, par ex. `NEVER call refund_order without first calling lookup_order.` |
+| **Modèle + provider** | ID de modèle épinglé | Anthropic, `claude-haiku-5-5` |
+| **Tools autorisés** | ce que l'agent a le droit d'appeler, description et Input Schema compris | allowlist par route : la route de remboursement peut appeler `lookup_order`, `verify_customer`, `refund_order` (destructif, nécessite une approbation) et `faq_search`, mais pas `reset_password`. Les définitions des tools figurent dans le Contract sous forme de hash |
+| **Eval-Set + baseline** | des cas de test avec le résultat attendu, plus le taux de réussite de cette version | 32 cas de test dans 9 catégories (entre autres `positive_refund`, `auth_bola`, `idempotency`) avec route attendue, tools obligatoires et interdits, et approbation attendue ; plus le taux de réussite que v1 y a obtenu |
+
+Dans le repo de démo, on peut encore changer de modèle via un réglage. Le tableau montre à quoi ressemble v1 avec un ID épinglé.
+
+Dans le refund-agent, il n'y a d'Output Schema que pour la décision de routage. La réponse au client reste du texte libre, et sa justesse, nous la vérifions via les tool calls et leurs effets de bord, par exemple si `refund_order` a tourné pour la bonne commande et si un `lookup_order` a eu lieu avant. Dans le [post sur l'architecture des systèmes d'IA](/fr/blog/ai-systems-architecture), « Contract-first » était déjà le principe, mais à l'époque uniquement pour l'Output Schema.
+
+Pourquoi un paquet plutôt que cinq fichiers versionnés séparément ? Parce que les maillons s'imbriquent. Chaque tool description atterrit dans le prompt. Si un serveur MCP tiers modifie la description de `refund_order`, ce que lit le modèle change, sans que personne ait touché au fichier de prompt. Dans le Contract, c'est alors le hash des définitions de tools qui diverge.
+
+Et chaque modèle se comporte différemment avec le même prompt et les mêmes tools. Michael le formule ainsi : « L'Eval-Set est le maillon qui tient les quatre autres ensemble. » Ce n'est qu'à travers les cas de test que nous voyons si les autres maillons fonctionnent encore ensemble. Ce qui fait respecter le Contract, c'est l'implémentation : le Policy Gate et la validation de schéma.
+
+<figure class="not-prose my-8">
+  <svg viewBox="0 0 904 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ac-glieder-title ac-glieder-desc" class="w-full max-w-full h-auto">
+    <title id="ac-glieder-title">Les cinq maillons de l'Agent Contract</title>
+    <desc id="ac-glieder-desc">Un cadre portant l'inscription refund-agent, Contract v1. À l'intérieur, en haut, quatre maillons épinglés côte à côte : Output Schema, prompt, modèle et provider, tools autorisés avec leurs définitions. En dessous, sur toute la largeur, comme une accolade, l'Eval-Set avec la baseline de cette version. Sous le cadre, la règle de modification : si l'un des quatre maillons change, l'Eval-Set est relancé. Si l'Eval-Set change, l'étalon change.</desc>
+
+    <rect x="24" y="16" width="856" height="226" rx="12" fill="none" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="6 4"/>
+    <text x="44" y="44" text-anchor="start" font-family="var(--font-mono)" font-size="12" fill="var(--color-accent)">refund-agent · Contract v1</text>
+
+    <rect x="44" y="62" width="190" height="72" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="139" y="94" text-anchor="middle" font-family="var(--font-display)" font-weight="600" font-size="13" fill="var(--color-text)">Output Schema</text>
+    <text x="139" y="115" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--color-text-secondary)">enum route</text>
+
+    <rect x="252" y="62" width="190" height="72" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="347" y="94" text-anchor="middle" font-family="var(--font-display)" font-weight="600" font-size="13" fill="var(--color-text)">Prompt</text>
+    <text x="347" y="115" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--color-text-secondary)">instructions en version figée</text>
+
+    <rect x="460" y="62" width="190" height="72" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="555" y="94" text-anchor="middle" font-family="var(--font-display)" font-weight="600" font-size="13" fill="var(--color-text)">Modèle + provider</text>
+    <text x="555" y="115" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--color-text-secondary)">claude-haiku-5-5</text>
+
+    <rect x="668" y="62" width="190" height="72" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="763" y="94" text-anchor="middle" font-family="var(--font-display)" font-weight="600" font-size="13" fill="var(--color-text)">Tools autorisés</text>
+    <text x="763" y="115" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--color-text-secondary)">allowlist + définitions (hash)</text>
+
+    <path d="M 44 146 L 44 156 L 858 156 L 858 146" fill="none" stroke="var(--color-signal)" stroke-width="1.5"/>
+    <line x1="451" y1="156" x2="451" y2="168" stroke="var(--color-signal)" stroke-width="1.5"/>
+
+    <rect x="44" y="172" width="814" height="52" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-signal)" stroke-width="1.5"/>
+    <text x="451" y="194" text-anchor="middle" font-family="var(--font-display)" font-weight="600" font-size="13" fill="var(--color-text)">Eval-Set + baseline</text>
+    <text x="451" y="213" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--color-accent)">32 cas · taux de réussite obtenu par v1</text>
+
+    <text x="452" y="268" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--color-text-muted)">Si l'un des quatre maillons change : l'Eval-Set est relancé · Si l'Eval-Set change : nouvel étalon</text>
+  </svg>
+  <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Quatre maillons épinglés, et en dessous l'Eval-Set qui les relie. Ce n'est qu'ensemble qu'ils forment une version du Contract.</figcaption>
+</figure>
+
+Rust nous offre un découpage similaire. D'après le [guide Cargo](https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html), le `Cargo.toml` décrit les dépendances « in a broad sense », tandis que le `Cargo.lock` contient « exact information about your dependencies ». Transposé au refund-agent, « prends n'importe quel Haiku, sois serviable » serait le manifeste, et les quatre maillons épinglés vont dans le lockfile.
+
+La [FAQ de Cargo](https://doc.rust-lang.org/cargo/faq.html) décrit le but d'un lockfile comme « the state of the world at the time of a successful build ». Un lockfile prouve donc que le build a eu lieu. Il ne dit pas si ce qui a été construit se comporte correctement. Pour ça, Cargo a des tests, et ils sont séparés du fichier de lock. Dans l'Agent Contract, l'Eval-Set fait partie du paquet, et la version inclut le taux de réussite qu'a donné le run d'Evals.
+
+Pour l'épinglage aussi, la comparaison boite. Cargo épingle des versions exactes avec leur somme de contrôle, un ID de modèle épingle les poids et rien de plus. Anthropic l'écrit [elle-même](https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions) : « Model weights are fixed for a given ID, but the serving infrastructure around the model can change over time. » Le Contract ne peut donc pas garantir que tout reste identique. Les écarts, c'est le prochain run de l'Eval-Set qui les montre.
+
+## On versionne le paquet
+
+Si les maillons vont ensemble, les modifications qu'on leur apporte ont besoin d'une règle. Et celle-ci est volontairement asymétrique :
+
+- **Le schéma, le prompt, le modèle ou la panoplie de tools changent :** nouvelle version du Contract. L'Eval-Set tourne en entier, et ce n'est qu'ensuite que la version passe en production.
+- **L'Eval-Set change :** nouvelle version aussi, parce que l'étalon se déplace. La configuration en production est mesurée contre le nouveau set, ce qui donne la nouvelle baseline. On ne peut comparer que des versions qui ont tourné contre le même Eval-Set.
+
+Comme une même version ne répond jamais deux fois à l'identique, les cas tournent plusieurs fois, et la baseline s'accompagne d'une tolérance. Les catégories de sécurité comme `auth_bola` bloquent quand même sans discussion : vert avant, rouge maintenant, pas de release.
+
+Un scénario inventé pour le refund-agent : de v1 à v2, le schéma, les tools et le prompt restent les mêmes, seul le modèle est nouveau. L'Eval-Set tourne, et les cas `auth_bola` échouent, c'est-à-dire les requêtes dans lesquelles un client veut accéder aux commandes de quelqu'un d'autre. L'Auth Gate bloque toujours, mais le nouveau modèle annonce au client un remboursement qui n'a jamais eu lieu. La version 2 ne passe pas en production. Sans Contract, ça aurait été une mise à jour de modèle qui n'apparaissait que dans la config.
+
+Parfois, la casse est même bruyante. Claude Haiku 4.5 accepte `temperature`, `top_p` et `top_k`. Avec [Haiku 5.5](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide#remove-sampling-parameters), toute valeur autre que celle par défaut renvoie une erreur 400, et c'est pareil pour Opus à partir de 4.7 et Sonnet à partir de 5. Si vous avez `temperature: 0.2` dans votre config et que vous « montez juste l'ID du modèle », vous vous retrouvez donc avec une feature qui renvoie une erreur à chaque requête. Je n'appellerais pas ça un upgrade.
+
+J'ai montré dans le post sur les Evals en CI comment l'Eval-Set devient un gate dans la CI.
+
+<LinkCard url="/fr/blog/ai-evals-ci-pipeline"/>
+
+Michael résume le problème en [une phrase](https://michaelseel.com/blog/2026-08-14-agent-contract/) : « Une modification de prompt est un déploiement invisible. » Chez lui, l'Eval-Set tourne en plus chaque nuit contre la version gelée, parce que le provider ou un serveur MCP tiers bougent même quand nous ne touchons à rien. Si le taux de réussite s'écarte alors de la baseline, il y a une alerte, mais pas de nouvelle version.
+
+## Cinq, c'est le noyau
+
+Sur les cinq maillons, Michael et moi sommes d'accord. Là où je vais plus loin : le Contract n'est pas défini une fois pour toutes. Ce qui s'y ajoute, je préfère le décider sur un critère clair plutôt que sur une longue liste.
+
+<Callout type="tip">
+
+**Question test :** est-ce que ça modifie le comportement de la feature - et est-ce que je devrais le connaître pour pouvoir dire plus tard avec quel état un cas a été traité ? Si oui, ça va dans le paquet et ça déclenche un run d'Evals.
+
+</Callout>
+
+Le candidat le plus évident, c'est l'**index de Retrieval**. Si le refund-agent recevait pour `faq_search` une base de connaissances via RAG, la version de l'index et le modèle d'embedding iraient dans le paquet. Les cas FAQ de l'Eval-Set devraient alors correspondre à la version de l'index, sinon un cas de test vérifie une règle de retour qui, dans l'index, est formulée autrement depuis longtemps. Dans le manifeste de release du post sur les Canaries, l'index RAG figurait d'ailleurs déjà.
+
+<LinkCard url="/fr/blog/ai-rollout-canary-shadow"/>
+
+Plus intéressant, le **modèle de fallback**. Sous charge, par exemple quand le provider répond 429, un autre modèle prend le relais, souvent chez un autre provider. Pour le client qui est en train de demander son remboursement, c'est toujours le même refund-agent. L'Eval-Set doit donc tourner aussi contre le fallback, et pour ses paramètres, le piège `temperature` décrit plus haut vaut tout autant. Sinon, c'est justement au pic de charge que répond un setup qui n'a jamais été mesuré.
+
+Il y a ensuite des choses qui sont rattachées au Contract sans déclencher de run d'Evals : owner, validation, classification du risque. Ce sont des métadonnées. Elles pilotent des processus, c'est-à-dire qui valide une nouvelle version ou quelle doc est nécessaire, mais ne changent rien à l'output de l'agent. Pour les frontières de données, ça dépend : tant qu'elles ne font que documenter, ce sont des métadonnées. Si elles filtrent ce qui atterrit dans le prompt, elles vont dans le paquet. Dans le [post sur le logging](/fr/blog/revisionssicheres-logging-agent-contract), la signature et `approved_by` sont rattachés au Contract comme métadonnées de ce genre. Que les métadonnées soient dans le même fichier ou dans un document à côté, honnêtement, ça m'est assez égal. L'essentiel, c'est qu'un changement d'owner ne crée ni nouvelle version du Contract ni run d'Evals.
+
+## Ça existe déjà ?
+
+Par morceaux, oui. Pour presque chaque maillon, il existe un outil qui le versionne, et certains en regroupent même plusieurs.
+
+[Google Dotprompt](https://google.github.io/dotprompt/reference/frontmatter/) met quatre des cinq maillons dans un seul fichier : le prompt, `output.schema`, les `tools` autorisés et le modèle, épinglé via `config.version` jusqu'au checkpoint. Il n'y a pas de champ pour les Evals. Des registries comme [Langfuse](https://langfuse.com/docs/prompt-management/features/config) versionnent le prompt et la config du modèle ensemble, les Evals tournent ailleurs. Chez [MLflow](https://mlflow.org/docs/latest/genai/prompt-registry/), en revanche, la config du modèle reste modifiable après coup : « Model configuration is mutable and can be updated after a prompt version is created. »
+
+Le plus proche, c'est [Docker Agent](https://docs.docker.com/ai/docker-agent/features/evaluation/). La définition de l'agent (un `agent.yaml`), les Evals et une comparaison avec une baseline y sont réunies. La règle est stricte : « An evaluation that passed and now fails always gates, regardless of the tolerance. » La baseline, toutefois, est le JSON d'un run précédent et se trouve à côté de l'artefact de l'agent. Et le fait qu'une modification du modèle ou de `refund_order` déclenche le run d'Evals, c'est à nous de le câbler dans la CI. L'Eval-Set avec sa baseline dans le même paquet, plus la règle qui dit quand il doit tourner : aucun de ces outils n'apporte tout ça d'emblée.
+
+<Accordion title="Qui regroupe quoi ?">
+
+Le tableau reflète l'état en octobre 2026.
+
+| Outil | Schéma | Prompt | Modèle | Tools | Eval-Set | Remarque |
+|---|---|---|---|---|---|---|
+| **[Google Dotprompt](https://google.github.io/dotprompt/)** | oui | oui | oui | oui | non | épingle le checkpoint via `config.version`, pas de champ Eval |
+| **[Microsoft Prompty](https://github.com/microsoft/prompty)** | oui | oui | oui | oui | non | format de prompt, Evals à l'extérieur |
+| **[Langfuse Prompt Config](https://langfuse.com/docs/prompt-management/features/config)** | en partie | oui | oui | oui | non | config versionnée avec le prompt, Evals à part |
+| **[MLflow Prompt Registry](https://mlflow.org/docs/latest/genai/prompt-registry/)** | oui | oui | en partie | non | non | versions de prompt immuables, config du modèle modifiable |
+| **[Braintrust Prompts](https://www.braintrust.dev/docs/evaluate/prompts/versions)** | oui | oui | oui | oui | non | prompt versionné avec modèle et tools, Evals à part |
+| **[Docker Agent](https://docs.docker.com/ai/docker-agent/features/evaluation/)** | oui | oui | en partie | oui | oui | baseline séparée de l'artefact, déclencheurs à câbler soi-même |
+
+</Accordion>
+
+<Accordion title="Ce n'est pas tout simplement du MLOps ?">
+
+Sur le fond, si. [Sculley et al.](https://papers.nips.cc/paper_files/paper/2015/file/86df7dcfd896fcaf2674f757a2463eba-Paper.pdf) l'ont décrit en 2015 sous le nom de principe CACE : « Changing Anything Changes Everything ». Ce qui est nouveau avec les features LLM, c'est que le modèle est loué : le provider modifie l'infrastructure derrière, déplace des alias et coupe d'anciens ID selon son propre calendrier, sans que nous committions quoi que ce soit. Et une partie de l'artefact est du langage naturel, dont personne ne peut juger l'effet à partir d'un diff.
+
+</Accordion>
+
+## Commencer petit
+
+[OpenAI arrête `v1/prompts`](https://developers.openai.com/api/docs/guides/prompting/migrate-from-prompt-object), c'est-à-dire les objets prompt versionnés côté serveur, le 30 novembre 2026, et recommande : « Move versioning to your repo using git commits, PR review, and tests or evals. » OpenAI n'impose aucun format pour ça. À la migration, la question de ce qui doit aller dans son propre repo se pose donc de toute façon : seulement le prompt, ou le paquet entier.
+
+Pour commencer, un fichier à côté du code suffit. Le prompt est la plupart du temps déjà dans le repo, à côté vont l'Output Schema, l'ID de modèle épinglé et les définitions des tools que le refund-agent a le droit d'appeler. S'y ajoutent une douzaine de vrais cas avec le résultat attendu et le taux de réussite obtenu au dernier run. Ça suffit déjà comme Contract, parce que chaque modification peut être mesurée contre lui. Il pourra grandir plus tard.
+
+Trop de process pour un prompt ? Pour un petit projet bricolé en interne, peut-être. Je trouve l'effort justifié dès que de vrais utilisateurs travaillent avec la feature, que plus d'une personne bidouille les prompts ou qu'une mauvaise réponse coûte quelque chose. Avec le refund-agent, elle coûte littéralement de l'argent.
+
+J'ai décrit dans le post sur le logging comment je prouve, en production, que le Contract a été respecté.
+
+<LinkCard url="/fr/blog/revisionssicheres-logging-agent-contract"/>
+
+> La réponse à « Qu'est-ce qui tournait au juste ? » est un numéro de version. Derrière, il y a cinq choses qui ont été vérifiées ensemble.

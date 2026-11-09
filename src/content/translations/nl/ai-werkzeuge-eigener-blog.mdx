@@ -1,0 +1,356 @@
+---
+title: "AI-tools voor mijn eigen blog: podcast-pipeline, eindredactie en de skills erachter"
+description: "Hoe mijn blog dezelfde AI-principes toepast die ik in mijn laatste drie posts heb beschreven - met automatische podcastgeneratie en eindredactie met AI-ondersteuning."
+date: 2026-03-29
+tags: ["ai", "blog", "meta", "software-engineering"]
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+Drie posts lang hebben we het over principes gehad. Contracts in plaats van vrije tekst. Evals in plaats van hoop. Tool-veiligheid in plaats van "het zal wel goed gaan". Allemaal aan de hand van een refund-agent die terugbetalingen verwerkt - ver weg van je eigen bureau.
+
+<LinkCard url="/nl/blog/ai-systems-architecture" />
+
+<LinkCard url="/nl/blog/ai-evals-ci-pipeline" />
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts" />
+
+En nu de plotwending: dezelfde principes zitten in deze blog.
+
+De post die je nu leest, is geredigeerd door een AI - door een gespecialiseerde eindredactie-skill met een eigen stijlprofiel en gestructureerde feedback. En als je liever luistert dan leest: bovenaan staat de playknop. De podcast is volledig automatisch uit de artikeltekst gegenereerd - dialoogscript, stemmen, audio, feed.
+
+Inmiddels hebben meerdere posts een podcast. Elke tekst gaat door een AI-eindredactie. Geen van beide gebeurt met de hand, maar via domeinspecifieke Claude Code Skills - herbruikbare, geversioneerde tools met gedefinieerde input en output, aan te roepen als slash command direct in Claude Code.
+
+Is mijn blog nu een AI-systeem? Nee. Geen gebruiker stuurt verzoeken naar een model. Geen agent neemt tijdens runtime beslissingen over productlogica. Maar dezelfde engineeringprincipes die ik voor AI-features in productieapplicaties heb beschreven, zitten in de workflow erachter. Een stijlprofiel als contract. Beoordelingscategorieën als rubrics. Een pipeline met een externe API, foutafhandeling en een gedefinieerd outputformaat.
+
+Hieronder bekijken we twee features: de **podcast-pipeline**, die van een MDX-blogpost via dialooggeneratie en ElevenLabs een complete podcastfeed maakt. En de **eindredactie-skill**, die teksten toetst aan een gedocumenteerd stijlprofiel voordat ze gepubliceerd worden. Allebei laten ze zien hoe de principes uit de vorige posts concreet aanvoelen als ze niet in een demo-app belanden, maar in je eigen gereedschapskist.
+
+## De podcast-pipeline: van MDX naar RSS-feed
+
+Meerdere posts hebben nu een audioversie. Geen handmatig inspreken, geen studio, geen podcasthosting. In plaats daarvan: een Claude Code Skill, een API, een Python-script en wat Astro-lijmcode. Van Markdown naar afspeelbare podcast in minder dan vijf minuten.
+
+Maar laten we bij het begin beginnen.
+
+### Overzicht van de pipeline
+
+De workflow ziet er zo uit:
+
+**Blogpost** → **Dialoogscript** (Claude) → **Audio** (ElevenLabs Text-to-Dialogue) → **MP3 + transcript** → **Frontmatter** → **RSS-feed** → **Player**
+
+Elke stap heeft een duidelijke input en output. Het script is een tekstbestand met speaker turns. De audio is een MP3. De metadata belanden in de frontmatter. De RSS-feed wordt bij de build gegenereerd. De player leest alles uit de frontmatter - geen magie, geen verborgen afhankelijkheden.
+
+### Dialooggeneratie
+
+De blog-podcast-skill leest een post, haalt de structuur en kernstellingen eruit - en genereert daaruit een Duitstalig gesprek tussen twee personen. De sprekers heten Alex en Lara.
+
+Wat er niet uit moet komen: een interview. Geen "Wat een goed punt, Alex!" - maar een echte discussie. Allebei brengen ze perspectieven in, stellen vragen, bouwen op elkaar voort. Dat klinkt triviaal, maar het maakt het verschil tussen "AI-gegenereerd" en "daar zou ik echt naar luisteren".
+
+Een paar regels die in de skill vastliggen:
+
+- **Geen interviewstructuur** - echte discussie, af en toe tegenspraak
+- **Vaktermen blijven Engels** - Contract, Eval, Tool-Call, precies zoals in de blog
+- **Emotional cues spaarzaam** - `[peinzend]`, `[lacht]`, maar maximaal 1-2 per minuut, anders wordt het al snel toneelspel
+- **Vaste structuur**: intro met hook (~10%) → hoofddeel (~70%) → samenvatting (~10%) → afsluiting (~10%)
+
+Het resultaat is een tekstbestand met een eenvoudig formaat:
+
+```
+Alex: Dialoogregel hier
+Lara: Dialoogregel hier
+Alex: [peinzend] Nog een regel...
+```
+
+Geen ingewikkelde markuptaal, geen JSON. Makkelijk te lezen, makkelijk te bewerken. Als een formulering me niet bevalt, pas ik de regel aan en genereer ik de audio opnieuw.
+
+### Audio via ElevenLabs
+
+Voor de audiogeneratie gebruik ik de ElevenLabs Text-to-Dialogue API met het Eleven v3-model - volgens ElevenLabs het meest expressieve TTS-model, 74+ talen, uitdrukkelijk niet bedoeld voor realtime, maar voor hoogwaardige offline generatie. Precies wat ik nodig heb.
+
+<LinkCard url="https://elevenlabs.io/docs/overview/capabilities/text-to-dialogue" />
+
+De API-call is verrassend simpel: een array van `{text, voice_id}`-objecten erin, MP3 eruit. Het Python-script parset het dialoogbestand, mapt de sprekers op voice-ID's en stuurt alles op.
+
+<Accordion title="ElevenLabs API-call (generate_audio.py)">
+```python
+import urllib.request
+import json
+
+API_URL = "https://api.elevenlabs.io/v1/text-to-dialogue"
+
+VOICES = {
+    "Alex": "<voiceid 1>",
+    "Lara": "<voiceid 1>",
+}
+
+def send_chunk(chunk, api_key):
+    payload = json.dumps({
+        "inputs": chunk,  # [{text, voice_id}, ...]
+        "model_id": "eleven_v3",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+```
+</Accordion>
+
+Enige truc: de API heeft een tekenlimiet per request. Daarom wordt er bij ongeveer 4500 tekens automatisch gechunkt - de resulterende MP3-delen worden daarna aan elkaar geplakt.
+
+Kosten? Reken ik met pay-per-use, dan zit ik voor een typische blogpost-podcast van 10-20 minuten op ongeveer 3-6 dollar per aflevering.
+
+<Accordion title="Technisch struikelblok: het MP3-headerprobleem">
+Als de dialoog te lang is voor één API-call, wordt hij in chunks opgedeeld. De resulterende MP3-delen worden via byte-concatenatie samengevoegd - en precies daar zit het probleem: elke chunk heeft zijn eigen Xing/Info-headers met frame counts, die na het samenvoegen niet meer kloppen. De browser toont een verkeerde duur, en spoelen werkt niet goed.
+
+De fix is een simpele re-encode met ffmpeg:
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libmp3lame -b:a 128k output.mp3
+```
+
+Het script `scripts/fix-podcast-mp3s.sh` doet precies dat voor alle MP3's in de map `public/audio/`. Eén keer draaien, probleem opgelost.
+</Accordion>
+
+### Astro-integratie
+
+Om de blog te laten weten dat een post een podcast heeft, is precies één veld in de frontmatter nodig:
+
+<CodeTabs labels={["Met podcast", "Zonder podcast"]}>
+```yaml
+---
+title: "Mijn blogpost"
+description: "Beschrijving"
+date: 2026-03-27
+tags: ["ai"]
+podcast:
+  audioFile: /audio/my-post.mp3
+  transcript: /audio/my-post.txt
+  duration: "21:08"
+---
+```
+```yaml
+---
+title: "Mijn blogpost"
+description: "Beschrijving"
+date: 2026-03-27
+tags: ["ai"]
+---
+```
+</CodeTabs>
+
+Het schema in `content.config.ts` definieert `podcast` als optioneel object met `audioFile`, `transcript` en `duration`. Geen enkele post hoeft een podcast te hebben - maar als hij er een heeft, krijgt hij automatisch de player.
+
+De PodcastPlayer-component brengt nogal wat mee: een waveform-visualisatie, snelheidsregeling (1x/1.25x/1.5x/2x), skip-knoppen (±15s), een RSS-knop, een uitklapbaar transcript en ondersteuning voor de Media Session API - dus bediening op het vergrendelscherm van je telefoon. Dat lijkt veel, maar het was nodig om luisteren niet als een compromis te laten voelen.
+
+De RSS-feed op `/podcast.xml` wordt bij de Astro-build gegenereerd, compleet met iTunes-tags. Wie wil, kan de feed in elke podcast-app slepen - Apple Podcasts, Overcast, Pocket Casts. Een blogpost is een contract - wie hem geautomatiseerd wil verwerken, heeft een schema nodig. Voor audio net zo goed als voor evals.
+
+### Alternatieven vergeleken
+
+Waarom niet gewoon NotebookLM? Dat is toch gratis, genereert podcasts met één klik en klinkt overtuigend.
+
+Omdat "overtuigend klinken" en "correct zijn" twee verschillende dingen zijn. Een studie van de University of Pittsburgh (gepresenteerd op AGU 2025) heeft door NotebookLM gegenereerde podcasts systematisch onderzocht - en in elke geteste samenvatting onnauwkeurigheden gevonden, met een hallucinatiegraad van ~13%. Het verraderlijke: de fouten waren voor niet-experts nauwelijks te herkennen.
+
+<Callout type="warning">
+Gegenereerde podcasts klinken vaak overtuigend, ook als de inhoud niet klopt. Dat maakt ze gevaarlijker dan output die zichtbaar fout is. Wie gegenereerde audio publiceert, moet de inhoud tegen de bron controleren - ongeacht de tool.
+</Callout>
+
+Daar komt bij: NotebookLM biedt geen API en geen controle over stemmen of dialoogstructuur. Het is een black box - prima voor een snel overzicht, onbruikbaar voor een reproduceerbare workflow.
+
+<LinkCard url="https://github.com/souzatharsis/podcastfy" />
+
+Aan de andere kant staat Podcastfy - een open-source Python-project met ondersteuning voor meerdere TTS-backends (ElevenLabs, Google, Edge, OpenAI). Volledige controle, maar ook volledige setup.
+
+Ik zie drie gradaties:
+
+1. **Zero Control** - NotebookLM, ElevenLabs GenFM: één klik, geen invloed. Goed om mee te experimenteren.
+2. **Low Control** - ElevenLabs Create Podcast API: programmatische toegang, maar de dialooggeneratie neemt ElevenLabs voor zijn rekening.
+3. **Full Control** - Text-to-Dialogue API + eigen script: je schrijft de dialoog zelf (of laat hem genereren) en hebt controle over elke speaker turn, elke stem, elke pauze.
+
+Mijn setup valt in categorie 3. Ik heb het dialoogscript, de stemmen, de structuur en de publicatie zelf in de hand. Dat kost meer moeite dan één klik in NotebookLM - maar ik weet wat eruit komt.
+
+> NotebookLM genereert podcasts. Mijn skill genereert *mijn* podcasts - met mijn stemmen, mijn formaat, mijn pipeline.
+
+De pipeline maakt de podcast. Maar wie zorgt ervoor dat de brontekst - de blogpost zelf - kwalitatief klopt? Daar gaat het volgende deel over.
+
+## De AI-eindredacteur: tekstkwaliteit borgen zonder de stijl te verliezen
+
+Wie ooit een tekst door ChatGPT heeft laten "verbeteren", kent het resultaat: grammaticaal foutloos, stilistisch dood. De scherpe randjes zijn weg, het ritme is weg, wat overblijft is een tekst die nergens naar klinkt. Of naar alles tegelijk.
+
+Dat is geen toeval. Een studie van Cornell en de University of Washington (CHI 2025) heeft dat experimenteel gemeten: zonder AI-hulp kon een ML-classifier teksten van verschillende auteurs met 82,9% nauwkeurigheid uit elkaar houden. Zodra de auteurs AI-schrijfsuggesties gebruikten, zakte de nauwkeurigheid naar 60% - een meetbaar verlies aan stilistische eigenheid.
+
+<LinkCard url="https://arxiv.org/abs/2409.11360" />
+
+Los daarvan: in een enquête van de Society of Authors UK (2024) gaf 86% van de ondervraagde auteurs aan bang te zijn dat hun stijl door AI wordt nagebootst of verwaterd. Die zorg is terecht - maar het probleem is niet het model. Het probleem is het ontbrekende contract voor kwaliteit.
+
+### Het stijlprofiel als contract
+
+Mijn eindredactie-skill kent mijn schrijfstijl. Niet vaag, niet als gevoel - maar als expliciet, gedocumenteerd profiel. Bewuste stijlmiddelen worden als zodanig herkend en niet als fout gemarkeerd.
+
+Het stijlprofiel is het contract - net zoals een JSON-schema de output van een LLM definieert, definieert het stijlprofiel de kwaliteitscriteria van de tekst. Zonder dat contract optimaliseert elk taalmodel naar het gemiddelde. Met contract optimaliseert het naar *mijn* standaard. De oplossing tegen stijlhomogenisering is geen beter model, maar een beter contract.
+
+### De rubrics: vijf categorieën, gestructureerde bevindingen
+
+Wie de evals-post heeft gelezen, herkent het patroon meteen. Daar hebben we rubrics gedefinieerd - beoordelingscategorieën met scores om LLM-output systematisch te beoordelen. De eindredacteur doet precies hetzelfde, alleen dan op natuurlijke taal:
+
+1. **Taal & correctheid** - grammatica, spelling, interpunctie
+2. **Stijl & toon** - past de tekst bij het gedefinieerde stijlprofiel?
+3. **Structuur & opbouw** - logische flow, alinealengtes, hiërarchie van koppen
+4. **Leesbegeleiding** - overgangen, rode draad, de lezer erbij betrekken
+5. **Inhoudelijke consistentie** - kloppen begrippen, verwijzingen, technische uitspraken?
+
+Elke finding krijgt een severity: **kritiek** (moet gefixt worden), **aanbevolen** (zou gefixt moeten worden), **optioneel** (smaakkwestie). Daarbij een regelnummer, een citaat uit de tekst en een concreet verbetervoorstel. De bevinding-ID's - F-001, F-002 enzovoort - maken het rapport machineleesbaar. Ze kunnen direct als werkopdracht worden doorgegeven.
+
+<Accordion title="Voorbeeld: fragment uit een eindredactierapport">
+
+**F-001** | Severity: kritiek | Regel 42
+> "De evals worden in het CI/CD pipeline uitgevoerd."
+
+*Probleem:* Verkeerd lidwoord - "pipeline" is een de-woord.
+*Voorstel:* "De evals worden in de CI/CD-pipeline uitgevoerd."
+
+---
+
+**F-002** | Severity: aanbevolen | Regel 78
+> "Dit is een heel belangrijk aspect waar men rekening mee zou moeten houden."
+
+*Probleem:* Afstandelijk en omslachtig - past niet bij het stijlprofiel (directe ik-vorm, korte zinnen).
+*Voorstel:* "Precies dat maakt het verschil."
+
+---
+
+**F-003** | Severity: optioneel | Regel 115
+> "De Orchestrator coördineert de afzonderlijke agenten."
+
+*Probleem:* Inconsistent meervoud - in de rest van de tekst wordt "agents" gebruikt, zonder Nederlands meervoud.
+*Voorstel:* Consequent bij "agents" of "agenten" blijven. De tekst tot nu toe gebruikt "agents".
+
+</Accordion>
+
+De parallel met evals is geen toeval - het is architectuur. De categorieën *zijn* rubrics. De severity-levels *zijn* scores. Het gestructureerde rapport *is* een eval-resultaat. Wie een eval-framework voor LLM-output heeft gebouwd, heeft de denkwijze voor eindredactie al in huis - alleen het domein verandert.
+
+> De eindredacteur is een eval op natuurlijke taal. De rubrics heten alleen anders.
+
+### Wat de eindredacteur niet doet
+
+De eindredacteur verbetert fouten, hij herschrijft niet. "Je bent eindredacteur, geen co-auteur" - zo staat het in de skill. Als ik een zin bewust kort en staccato formuleer, is dat stijl. Als ik midden in een alinea van perspectief wissel, is dat opzet. Een goede eindredacteur ziet het verschil. Een slechte strijkt alles glad.
+
+Overcorrigeren is het tegendeel van kwaliteitsborging. Het is stijlvernietiging met goede bedoelingen. Daarom heeft de eindredacteur het contract nodig - zodat hij weet waar hij *niet* aan moet komen. Precies het probleem dat de Cornell-studie beschrijft: zonder expliciet stijlprofiel drijft elke AI-ondersteuning af richting het gemiddelde.
+
+## Skills als developer-tools: de architectuur erachter
+
+De podcast-skill genereert audio uit een blogpost. De eindredactie-skill toetst taal en stijl aan een gedocumenteerd stijlprofiel. Allebei draaien ze als slash commands direct in Claude Code - `/blog-podcast`, `/blog-lektorat`. Maar wat zit erachter? En waarom is een skill meer dan een opgeblazen prompt?
+
+### Wat is een skill?
+
+Een skill is een Markdown-bestand met YAML-frontmatter en gestructureerde instructies. Het staat in de projectmap onder `.claude/skills/<name>/SKILL.md` en wordt tijdens runtime herkend - wijzigingen werken meteen, geen restart, geen rebuild.
+
+De frontmatter definieert het contract van de skill:
+
+```yaml
+name: blog-podcast
+description: "Maakt een podcastdialoog van een blogpost..."
+```
+
+De `name` wordt het slash command. De `description` bepaalt wanneer Claude de skill voorstelt - het is tegelijk trigger en scopedefinitie. Alles wat daaronder in de Markdown staat, zijn de eigenlijke instructies: workflowstappen, formaatvoorschriften, foutafhandeling.
+
+Skills kunnen bestanden lezen en schrijven, Bash-scripts uitvoeren, externe API's aanroepen en MCP-tools gebruiken. Het zijn geen passieve tekstblokken - ze orkestreren echte processen.
+
+En het ecosysteem groeit: de [anthropics/skills](https://github.com/anthropics/skills)-repo op GitHub is snel uitgegroeid tot dé centrale plek voor community-skills.
+
+<LinkCard url="https://code.claude.com/docs/en/skills" />
+
+### Waarom niet gewoon een prompt?
+
+Ik zou dezelfde tekst ook als prompt in de chat kunnen plakken. Werkt - één keer. Het verschil zit in alles wat daarna komt:
+
+**Herbruikbaarheid.** Een skill schrijf je één keer en kun je altijd aanroepen. Geen copy-paste uit een notitie-app, geen "wacht, hoe ging die workflow voor de podcast ook alweer?".
+
+**Versiebeheer.** Een SKILL.md is een bestand - het *kan* geversioneerd, gedifft en gereviewd worden. Prompts op het klembord hebben geen wijzigingsgeschiedenis.
+
+**Compositie.** De podcast-skill verwijst naar een Python-script voor de audiogeneratie. De eindredactie-skill laadt referentieposts als stijlvergelijking. Skills kunnen bij andere bestanden in de repo - templates, configuraties, hulpscripts.
+
+**Tool-toegang.** Een prompt kan tekst genereren. Een skill kan `bash` uitvoeren, met `WebFetch` API's aanroepen en via MCP-tools met externe systemen praten.
+
+**Vastgelegde domeinkennis.** De ElevenLabs-voice-ID's, het stijlprofiel van de auteur, de vijf beoordelingscategorieën van de eindredacteur, het frontmatter-schema voor podcastmetadata - alles zit in de skill, niet in mijn hoofd of in een notitie-app.
+
+> Een skill is een prompt met geheugen, versiebeheer en tool-toegang. Dat maakt het verschil.
+
+### Anatomie van de twee skills
+
+Wat de twee skills mooi laten zien: dezelfde architectuur, een totaal ander effect.
+
+<Accordion title="Blog-podcast-skill - SKILL.md (fragment)">
+
+```yaml
+name: blog-podcast
+description: "Maakt een podcastdialoog van een blogpost
+  op rubeen.dev. Twee sprekers bespreken de inhoud van het
+  artikel in een natuurlijk, Duitstalig gesprek."
+```
+
+**Input:** een blogpost (MDX-bestand)
+
+**Proces:** post lezen → dialoogscript genereren (Alex/Lara, speaker turns, emotional cues) → Python-script aanroepen → ElevenLabs API → bestanden schrijven → frontmatter aanvullen
+
+**Output:** MP3-audiobestand + transcript als tekstbestand + frontmatter-update in de post
+
+**Neveneffecten:** externe API (ElevenLabs TTS), bestandssysteem (vijf bestanden worden geschreven of bijgewerkt)
+
+</Accordion>
+
+<Accordion title="Blog-eindredactie-skill - SKILL.md (fragment)">
+
+```yaml
+name: blog-lektorat
+description: "Professionele eindredactie voor Duitstalige
+  tech-blogposts op rubeen.dev. Toetst taal, stijl,
+  structuur, leesbegeleiding en vaktermen aan de
+  vastgestelde stijl van de auteur."
+```
+
+**Input:** een blogpost (MDX-bestand) + 2-3 referentieposts als stijlvergelijking
+
+**Proces:** post lezen → referentieposts lezen → stijlprofiel laden → analyse in vijf categorieën → gestructureerd rapport schrijven
+
+**Output:** Markdown-rapport met genummerde bevindingen (`_lektorat-[slug].md`)
+
+**Neveneffecten:** alleen bestandssysteem (er wordt één bestand geschreven)
+
+</Accordion>
+
+Beide skills volgen hetzelfde patroon: gedefinieerde input, duidelijk beschreven proces, gespecificeerde output. De podcast-skill heeft meer neveneffecten - externe API, meerdere bestanden, frontmatter-mutatie. De eindredactie-skill staat op zichzelf: hij leest, analyseert en schrijft een rapport. Geen externe afhankelijkheden.
+
+### Het contract in de skill
+
+Wie de vorige posts in deze serie heeft gelezen, herkent het patroon: contracts first.
+
+De SKILL.md-frontmatter IS het contract: `name` definieert de aanroep, `description` de scope. De Markdown-body definieert de workflow, de formaatvoorschriften, de foutafhandeling. Optioneel kunnen extra velden zoals `allowed-tools` de rechten beperken - least privilege, ook voor skills.
+
+De podcast-skill heeft een dialoogcontract: Alex en Lara als sprekers, speaker turns als formaat, emotional cues met een frequentiegrens, een structuur in vier fases (intro, hoofddeel, samenvatting, afsluiting). De eindredactie-skill heeft een rapportcontract: vijf beoordelingscategorieën, genummerde bevinding-ID's (F-001, F-002...), drie ernstniveaus, verplichte velden per bevinding (regel, citaat, probleem, voorstel).
+
+Dat zijn geen losse richtlijnen. Dat zijn specificaties waartegen ik het resultaat kan toetsen. JSON-schema voor API-output, stijlprofiel voor tekstkwaliteit, SKILL.md-frontmatter voor skillgedrag - het mechanisme is anders, het principe is hetzelfde: definieer het contract voordat je de output genereert.
+
+## De principes gelden overal
+
+Vier posts lang ging het over principes voor AI-systemen in productie. Contracts definiëren de interface tussen deterministische code en een niet-deterministisch model. Evals maken kwaliteit meetbaar in plaats van die alleen te beweren. Tools hebben scope, idempotentie en bewustzijn van neveneffecten nodig, omdat een verkeerde call meer kapotmaakt dan een slecht antwoord.
+
+En dan deze post: een statische blog, geen productieplatform met duizenden gebruikers. Toch volgt de podcast-pipeline een vast contract - van het dialoogschema via de API-koppeling tot de RSS-feed. De eindredacteur beoordeelt aan de hand van rubrics, niet op gevoel. De skills hebben een gedefinieerde scope, duidelijke inputs en outputs, en hun neveneffecten zijn bekend.
+
+Dat is geen toeval. De principes duiken niet op omdat de blog een AI-systeem is - ze duiken op omdat ze universeel gelden. Contract vóór prompt. Meten vóór mening. Scope vóór vrijheid.
+
+Aan het begin vroeg ik: is mijn blog een AI-systeem? Het antwoord blijft nee. Maar de denkwijze erachter is dezelfde. En precies dat maakt het verschil tussen "ik gebruik AI" en "ik zet AI systematisch in". De skills worden met elke post beter, het stijlprofiel groeit, de pipeline wordt robuuster. Dat is iteratief verbeteren - net als bij elk ander engineeringproject.
+
+> Wie AI-features voor anderen bouwt, zou dezelfde principes op zijn eigen workflow moeten toepassen. Niet omdat het moet, maar omdat het werkt.

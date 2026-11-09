@@ -1,0 +1,535 @@
+---
+title: "En prompt i wikien er ikke bevis: Revisjonssikker logging og Agent Contract i regulerte miljøer"
+description: "Agent Contract er skal-tilstanden, den revisjonssikre loggen er beviset på faktisk tilstand. Uten det andre er det første bare en påstand - og dette krever DORA, GoBD og den kommende MaRisk nå."
+date: 2026-07-06
+tags: ["ai", "software-engineering", "compliance", "observability", "security"]
+image: ../../blog/_images/revisionssicheres-logging-agent-contract/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> Agent Contract er skal-tilstanden. Den revisjonssikre loggen er beviset på faktisk tilstand. Uten det andre er det første bare en påstand.
+
+Bit for bit har denne serien satt sammen et AI-system man faktisk kan stå inne for: contracts i stedet for fritekst, evals i stedet for håp, reviderbare tool calls, observability, disiplin rundt releaser. Det som har manglet til nå, er øyeblikket der noen utenfra krever bevis - bevis på at alt dette ikke bare står i wikien, men faktisk har virket for hver eneste transaksjon.
+
+Ingen steder blir det øyeblikket så skarpt som i finansreguleringen. En bank under tilsyn av BaFin (det tyske finanstilsynet), en kredittscore, en forsikringstariff - og måneder senere spørsmålet om hvilken modell i hvilken versjon som tok den beslutningen, og om du kan bevise det. Digital Operational Resilience Act (DORA) har gjeldt direkte siden starten av 2025, GoBD (de tyske prinsippene for korrekt elektronisk bokføring og oppbevaring) med sine skatterettslige krav om uforanderlighet gjelder uansett, og Mindestanforderungen an das Risikomanagement (MaRisk, tilsynets minstekrav til risikostyring) følger etter på modellsiden. Utsettelsen av EUs AI-forordning (EU AI Act) er nettopp vedtatt, men ennå ikke publisert, og det får mange til å trekke den gale slutningen at det fortsatt er god tid.
+
+Dette innlegget samler serien i ett kjerneartefakt og stiller loggen ved siden av, den som beviser at artefaktet blir fulgt. To artefakter, ett bevis - og et ord i tittelen som ikke står i en eneste lov.
+
+## Revisoren spør «hvorfor?» - og en prompt i wikien er ikke et svar
+
+Se for deg at AI-funksjonen din for åtte måneder siden vurderte kredittverdigheten til en søker og avslo søknaden. Eller at den beregnet premien for en helseforsikring. I dag sitter det noen overfor deg som vil forstå hvordan det skjedde: en revisor fra BaFin på en særskilt gjennomgang - eller den berørte personen selv, som etter art. 22 GDPR protesterer mot en automatisert enkeltbeslutning og vil vite hvordan den ble til.
+
+Spørsmålet er det samme, uansett hvem som stiller det: Hvilken modell tok denne beslutningen, i hvilken versjon, med hvilken prompt, med hvilke tools og på hvilket datagrunnlag - og kan dere bevise det?
+
+Her faller det typiske svaret fra hverandre. «Prompten ligger i wikien.» «Modellen var GPT-et-eller-annet, vi oppdaterte på slutten av fjoråret.» «Tools? Må sjekke i koden.» Hvert av disse utsagnene er en påstand om en tilstand som kanskje ikke engang finnes lenger. Wiki-siden er redigert tjue ganger siden, modell-aliaset peker for lengst på en nyere versjon, og tool-katalogen har flyttet seg med siste deploy. Det som mangler, er beviset på at det faktisk var slik på tidspunktet for beslutningen.
+
+Det hullet åpnet jeg allerede i forrige innlegg: Uten en beviskjede er en agent-handling bare en påstand. Den gangen handlet det om refusjoner og support-agenter - her handler det om en regulert kredittbeslutning, og en revisor tilgir påstander dårligere enn en irritert kunde.
+
+<LinkCard url="/nb/blog/tools-sind-keine-prompts"/>
+
+Dermed er vi ved tesen som bærer hele dette innlegget. Jeg kaller pakken av modell, versjon, prompt, tools og datagrenser for Agent Contract - skal-tilstanden en funksjon får lov til å kjøre mot. Det er en engineering-innramming, ikke et begrep fra en lovtekst. Contracten beskriver hva som skal skje. Den revisjonssikre loggen er beviset på faktisk tilstand: opptegnelsen av at det på dette tidspunktet, i denne saken, virkelig skjedde slik. Uten det andre kan det første ikke bevises.
+
+Hvorfor akkurat kredittverdighet og forsikringstariffer? Fordi det er de sakene lovgiveren ser mest kritisk på.
+
+<Callout type="info">
+Det gjennomgående eksempelet i dette innlegget: en AI-funksjon i en BaFin-regulert bank eller et forsikringsselskap som enten vurderer **kredittverdigheten** til en fysisk person eller priser tariffen for en **livs- eller helseforsikring**. EUs AI-forordning lister begge eksplisitt som høyrisiko-bruk i vedlegg III: nr. 5(b) for vurdering av kredittverdigheten til fysiske personer, nr. 5(c) for risikovurdering og prising i livs- og helseforsikring. Det er nettopp i disse sakene beviskravet er hardest, og derfor går de igjen i hvert kapittel.
+</Callout>
+
+Ett ord i denne tesen bærer likevel mer vekt enn det innrømmer: «revisjonssikker». Jeg bruker det fordi alle i bransjen vår umiddelbart skjønner hva det betyr - men så snart en jurist er i rommet, blir det komplisert. Før vi bygger en slik logg, bør vi altså avklare hva ordet egentlig betyr. Og om det i det hele tatt er et ord som står i loven.
+
+## Hva «revisjonssikker» egentlig betyr - og hva det ikke betyr
+
+La oss begynne med noe ubehagelig. Ordet «revisjonssikker» (på tysk *revisionssicher*), som vi nettopp har slengt rundt oss så selvfølgelig, står ikke i en eneste lov. Jeg har søkt gjennom fulltekstene: GoBD, AO (den tyske skatteforvaltningsloven), HGB (den tyske handelsloven), DORA med tilhørende tekniske RTS, EUs AI-forordning, til og med ZPO (den tyske sivilprosessloven). Null treff. Det er et begrep fra arkiv- og DMS-verdenen, et samleord fra praksis som ingen revisor kan holde opp mot deg som norm.
+
+Det han kan holde opp mot deg, er noe annet, og det heter uforanderlighet: § 146 (4) AO for skatt, § 239 (3) HGB for handelsretten. Det er den bindende plikten. «Revisjonssikker» er den dagligdagse innpakningen rundt den. Den som tar ordet med inn i en DORA- eller BaFin-kontekst uten å markere det, gjør seg faglig sårbar.
+
+<Callout type="warning">
+To sentrale begreper i dette innlegget er ikke juridiske begreper: «revisjonssikker» og «Agent Contract». Ingen av dem dukker opp i de relevante tekstene - verken i GoBD, AO, HGB, DORA, RTS-ene, EUs AI-forordning eller ZPO. Den bindende plikten heter uforanderlighet (§ 146 (4) AO, § 239 (3) HGB). Der jeg skriver «revisjonssikker» eller «Agent Contract», mener jeg vår engineering-innramming av denne plikten, ikke et sitat fra tilsynet.
+</Callout>
+
+Forskjellen er ikke ordkløveri, den avgjør hva loggen din må klare. «Append-only» er en egenskap ved lagringsmediet: skrevet én gang, kan ikke overskrives. Uforanderlighet i GoBD-forstand er en egenskap ved prosessen. Avsnitt 110 sier det rett ut: Den skal sikres «både maskinvaremessig ... og programvaremessig ... og organisatorisk». Og så kommer setningen som tar livet av forestillingen om at en loggfil er nok: «Lagring av data ... i et filsystem oppfyller som regel ikke kravene til uforanderlighet, med mindre det treffes ytterligere tiltak.»
+
+En append-only-fil er altså en byggestein, ikke et bevis. Og nei, du kan ikke kjøpe deg fri heller. Et offentlig «GoBD-sertifisert» produkt finnes ikke; avsnitt 180/181 slår fast at sertifikater og attester fra tredjeparter ikke binder skattemyndighetene. Klistremerket «revisjonssikker» på en leverandørs landingsside er en markedsføringspåstand. Beviset for at prosessen din faktisk sikrer uforanderligheten, må du til syvende og sist føre selv.
+
+Da gjenstår det andre begrepet jeg gjør et stort poeng av i dette innlegget: «Agent Contract». Heller ikke det står i noen rettsakt. [Michael Seel](https://michaelseel.com/blog/2026-04-01-ai-systems-architecture-governance) og jeg innførte det for arbeidet vårt med AI-systemer, og tilsynet kjenner det ikke. DORA kaller sine kontrakter «avtaler om bruk av IKT-tjenester», og det treffer ikke helt en agent-beslutning. Vi trenger et ord for skal-tilstanden, og «Agent Contract» er vårt. Arkitekturen bak innfrir de bindende pliktene: uforanderlighet, logging, etterprøvbarhet, for en funksjon som kredittscoringen vår fra forrige kapittel.
+
+Denne ærligheten setter jeg bevisst først. Det åpenbare motargumentet mot hele dette innlegget er «dere finner opp et krav selv». For de to ordene stemmer det faktisk. Pliktene bak dem har jeg ikke funnet opp - de står i loven, jeg har bare gitt dem et brukbart navn.
+
+<Accordion title="Hvor uforanderligheten står i loven">
+- **§ 146 (4) AO** - kjernen i uforanderligheten i skatteretten: en postering eller opptegnelse får ikke endres slik at det opprinnelige innholdet ikke lenger kan fastslås.
+- **§ 239 (3) HGB** - samme plikt for handelsretten.
+- **GoBD avsnitt 107 ff.** - konkretiserer uforanderlighet som et krav til prosessen. **Avsnitt 108**: ingenting får «overskrives, slettes, endres eller forfalskes uten at det markeres». **Avsnitt 110**: maskinvaremessig, programvaremessig og organisatorisk; et rent filsystem holder «som regel ikke». **Avsnitt 111**: heller ikke selve endringshistorikken får kunne endres i etterkant.
+- **GoBD avsnitt 180/181** - ingen produkter er offentlig sertifisert; attester fra tredjeparter binder ikke skattemyndighetene.
+
+GoBD er en forvaltningsforskrift, ikke en lov - men skatteetaten anvender den, og § 146 AO / § 239 HGB bak den er bindende.
+</Accordion>
+
+Gjenstår spørsmålet om hva en slik contract konkret består av, så den blir noe mer enn et pent ord.
+
+## Agent Contract: skal-tilstanden som ett versjonert artefakt
+
+Forrige kapittel markerte «revisjonssikker» og «Agent Contract» som mitt engineering-språk og kokte den egentlige rettsplikten ned til kjernen: uforanderlighet. Men det svarer ennå ikke på hva som skal holdes fast uforanderlig. Hva er skal-tilstanden som loggen senere må bevise at blir overholdt?
+
+Har du fulgt serien, kjenner du de fem byggesteinene allerede, bare spredt over flere innlegg. Output-skjemaet er kontrakten mellom modell og applikasjon. I tillegg kommer prompten, settet med tools agenten får kalle, og modellen med provider. Den femte byggesteinen er eval-settet, som avgjør om en versjon er god nok. Sammen bestemmer de hvordan en AI-funksjon oppfører seg.
+
+<LinkCard url="/nb/blog/ai-systems-architecture"/>
+
+<LinkCard url="/nb/blog/ai-evals-ci-pipeline"/>
+
+I ai-rollout-canary-shadow samlet jeg denne pakken én gang før, som release-manifest: alle artefakter med hasher og pins på en Git-tag, slik at en rollback blir atomisk. Her gir jeg pakken et navn og en rolle. Jeg kaller den Agent Contract - vårt begrep fra engineering-praksis for hele skal-tilstanden til en AI-funksjon i ett versjonert artefakt.
+
+<LinkCard url="/nb/blog/ai-rollout-canary-shadow"/>
+
+Hvorfor i det hele tatt pakke det sammen? Fordi hver av de fem delene endrer atferd. En ny prompt, et ekstra tool i det tillatte settet, en modelloppdatering hos provideren, og funksjonen beslutter annerledes etterpå. En ny contract-versjon betyr altså en atferdsendring. Og en atferdsendring i en funksjon som vurderer kredittverdigheten til et menneske, vil jeg ikke rulle ut i det stille. Den blir versjonert, den går gjennom review, og den kjører mot eval-settet før den ser produksjon.
+
+Formen kommer fra engineering: skjema, pins, hasher, godkjenningsløpet. Målestokkene kommer fra fagsiden. Eval-settet er den faglige kontrakten om hvilke kredittsaker som må avgjøres riktig, hvilken kombinasjon av score og begrunnelse som teller som feil, og fra hvilken pass rate en versjon kan godkjennes. De tersklene setter teamet som til slutt står ansvarlig for kredittbeslutningen, ikke teamet som bygger agenten. I ai-evals-ci-pipeline kalte jeg dette fagsidens kontrakt, og i contracten er det byggesteinen engineering ikke får bestemme alene.
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="si-title si-desc" class="w-full max-w-full h-auto">
+<title id="si-title">Agent Contract og revisjonssikker logg</title>
+<desc id="si-desc">Øverst Agent Contract som skal-tilstanden, bestående av fem byggesteiner: output-skjema, prompt, tillatte tools, modell og provider, eval-sett. En pil oppover forbinder det nederste elementet med contracten og er merket «beviser overholdelse av». Nederst den revisjonssikre loggen som beviset på faktisk tilstand: én uforanderlig oppføring per transaksjon med oppløst modell, prompt-versjon, tools og eval-baseline.</desc>
+<text x="360" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">AGENT CONTRACT · skal-tilstanden</text>
+<rect x="12" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="76.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Output-skjema</text>
+<text x="76.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">JSON-contract</text>
+<rect x="154" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="218.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Prompt</text>
+<text x="218.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">versjonert</text>
+<rect x="296" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="360.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Tillatte tools</text>
+<text x="360.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">allowlist</text>
+<rect x="438" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="502.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Modell/provider</text>
+<text x="502.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">datert pin</text>
+<rect x="580" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="644.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Eval-sett</text>
+<text x="644.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">faglig kontrakt</text>
+<line x1="360" y1="204" x2="360" y2="144" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 360 132 L 352 146 L 368 146 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<text x="374" y="172" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text-secondary)">beviser overholdelse av</text>
+<rect x="12" y="210" width="696" height="74" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="360" y="244" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">DEN REVISJONSSIKRE LOGGEN · beviset på faktisk tilstand</text>
+<text x="360" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">én uforanderlig oppføring per transaksjon: oppløst modell, prompt-versjon, tools, eval-baseline</text>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Agent Contract samler fem byggesteiner til skal-tilstanden for en AI-funksjon. Den revisjonssikre loggen holder faktisk tilstand opp mot den for hver eneste transaksjon - og er dermed det eneste beviset på at contracten faktisk ble overholdt.</figcaption>
+</figure>
+
+Det høres ut som en ryddeidé for wikien. Men den er for lengst koblet inn i verktøy: De vanlige systemene for prompt management pakker modell, parametere, skjema og tools som én enhet og versjonerer dem sammen. Langfuse samler modellparametere, structured output-skjemaet og tool-definisjonene i et config-objekt som ifølge dokumentasjonen er «versioned together with the prompt». Hver generering bærer et håndtak til prompt-versjonen den stammer fra.
+
+Humanloop trekker grensen skarpere: Hver endring i template, modell, parametere eller tools lager automatisk en ny versjon. Det er sperren mot stille contract-drift, der en prompt endres uten at noen får det med seg. MLflow skiller på sin side den uforanderlige versjonen fra det flyttbare aliaset. Versjonen får et løpenummer og blir aldri overskrevet, et alias som champion peker på den produktive utgaven, og lineage peker tilbake på kjøringen som bygde den.
+
+Versjonering alene beviser ikke at utgaven i produksjon også er den som gikk gjennom eval-gaten. Det steget kommer fra signeringen av pakken. OpenSSF Model Signing pakker artefaktene i en signert Sigstore-bundle med DSSE-envelope og in-toto-statement, der hvert artefakt står som et par av sti og digest, sikret keyless via Rekor-transparensloggen med inklusjonsbevis. Sammen med en SLSA-provenance-attestasjon blir det et maskinlesbart bevis: Denne bundlen ble bygget i CI-kjøring X fra disse inputene og gatet mot eval-sett-versjon Y. Ikke «vi har testet, ærlig», men en signatur som en maskin kan etterprøve.
+
+Slik ser det ut som skal-artefakt, samme mønster som release-manifestet, utvidet med feltene som gjør en konfigurasjon til et bevis: en signatur, eval-baselinen det ble gatet mot, og godkjenningsløpet.
+
+<CodeTabs labels={["YAML"]}>
+```yaml
+contract: credit-scoring@4.2.0
+output_schema:
+  ref: schemas/credit-score-v4.json
+  sha256: 7c4a9e...
+prompt:
+  version: score-explainer@17
+  sha256: 3a1f7d...
+allowed_tools:
+  manifest: tools.pinned.json          # fetch_schufa_report, compute_dti_ratio, fetch_income_history
+  sha256: 9e8b21...
+model:
+  provider: anthropic
+  id: claude-sonnet-4-6-20260215        # datert snapshot, ikke -latest
+  pinned_at: 2026-06-15
+eval_baseline:
+  set: evals/credit-eval-2026-02.jsonl
+  version: v7
+  gate: thresholds/credit-score-v3.yaml
+signature: sigstore/credit-scoring-4.2.0.bundle   # DSSE + in-toto, Rekor
+approved_by:
+  gremium: model-risk-committee/2026-06-28
+  owner: head-of-credit-risk
+```
+</CodeTabs>
+
+At denne ene YAML-filen er verdt bryet, skyldes et prinsipp som er eldre enn noen LLM. Skatteretten kjenner det som programidentitet: Gjennom hele oppbevaringstiden må det kunne vises at «prosessen som er beskrevet i dokumentasjonen, fullt ut tilsvarer prosessen som brukes i praksis», som avsnitt 154 i GoBD formulerer det. Og GoBD sier også hvordan man får det til: «når endringene er versjonert og det holdes en etterprøvbar endringshistorikk.» Det er en forvaltningsforskrift til skatteretten, ikke DORA. Ideen lar seg likevel overføre rent til Agent Contract: Den dokumenterte versjonen må tilsvare den som kjører, og versjonering er beviset for det.
+
+Men contracten trenger mer enn et versjonsnummer. Den trenger noen som godkjenner den. DORA er her direkte bindende siden 17. januar 2025 og helt utvetydig i art. 5 nr. 2 bokstav a: «Ledelsesorganet har det endelige ansvaret for styringen av finansforetakets IKT-risiko.» Dette ansvaret må havne i artefaktet, og derfor står det i contract.yaml en approved_by med et navngitt utvalg og en owner. «Owner» er mitt ord, ikke forordningens; DORA snakker om ledelsesorganet. Konsekvensen er den samme: En contract-versjon som ikke har gått gjennom noe godkjenningsløp, duger ikke som skal-tilstand. Den er et utkast som har havnet i produksjon ved et uhell.
+
+Dermed kan nesten alt som utgjør agentens atferd, låses fast. Skjemaet, prompten, de tillatte toolene, eval-settet: Alt blir hashet, signert og knyttet til en godkjenning. Til og med modellvektene, så sant du drifter dem selv, for Model Signing hasher også vektfilen og legger den inn i det samme beviset. Nesten alt. Én byggestein i contract.yaml har ingen sha256, bare en versjonsstreng - modellen bak API-et.
+
+## Hvorfor contracten ikke kan signere modellen - og hva det fører til
+
+«Nesten alt» - det var forbeholdet forrige kapittel sluttet med, og nå er det dette «nesten» det kommer an på. Contracten som versjonert pakke samler prompt-template, output-skjema, tool-definisjoner, parametere som temperature og max_tokens og eval-settet under én felles hash. Hvert av disse artefaktene er en fil eller et serialiserbart objekt, og alt som er en fil, kan hashes og signeres.
+
+Hvor langt det rekker, viser OpenSSF Model Signing: en signert Sigstore-bundle med DSSE-envelope og in-toto-statement, der subjects er par av filsti og digest, sikret keyless via en Sigstore/Rekor-transparenslogg. For selvhostede vekter gjelder samme fremgangsmåte: Vekt-artefaktet ligger på disken din, du beregner digesten, du signerer den. Ferdig.
+
+Bruddet kommer med den hostede modellen. Kjører du kredittvurderingen via en provider-API, eier du ikke vektene. De ligger på andres infrastruktur, og det som faktisk er lastet der i øyeblikket requesten kommer inn, får du aldri i hånden som en fil. Model Signing hasher lokale artefakter; et artefakt uten lokal tilgang har ingen digest du kunne signert.
+
+Dette er min konklusjon, ikke et sitat fra en leverandør: For den hostede modelldelen av contracten finnes det ingen hash. Den eneste pinnen er versjonsstrengen, og råderetten over vektene blir hos provideren. Provideren bestemmer hvilke vekter som står bak strengen, og kan varsle utfasing av snapshoten med en gitt frist.
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 720 296" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="hs-title hs-desc" class="w-full max-w-full h-auto">
+<title id="hs-title">Hva som kan signeres i contracten - og hva som ikke kan</title>
+<desc id="hs-desc">Til venstre en boks med seks artefakter som kan hashes og signeres: output-skjema, prompt-template, tillatte tools, sampling-parametere, eval-sett og selvhostede vekter. Til høyre en egen boks med den hostede modellen, som ikke kan hashes - bare versjonsstrengen gjenstår, råderetten over vektene ligger hos provideren, og derfor er loggen det eneste beviset på faktisk tilstand.</desc>
+<text x="360" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="14" fill="var(--color-accent)">Hva contracten kan låse fast - og det ene hullet</text>
+<rect x="12" y="46" width="440" height="234" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="32" y="74" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Kan hashes og signeres</text>
+<text x="34" y="110" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="110" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Output-skjema</text>
+<text x="34" y="137" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="137" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Prompt-template</text>
+<text x="34" y="164" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="164" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Tillatte tools (allowlist)</text>
+<text x="34" y="191" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="191" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Sampling-parametere</text>
+<text x="34" y="218" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="218" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Eval-sett</text>
+<text x="34" y="245" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="245" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Selvhostede vekter</text>
+<rect x="470" y="46" width="238" height="234" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="490" y="74" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Kan ikke hashes</text>
+<text x="492" y="116" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="14" fill="var(--color-accent)">✗</text>
+<text x="514" y="116" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Hostet modell</text>
+<text x="490" y="150" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">Bare versjonsstrengen.</text>
+<text x="490" y="170" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">Råderetten over vektene</text>
+<text x="490" y="186" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">blir hos provideren.</text>
+<text x="490" y="222" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">Loggen er det eneste</text>
+<text x="490" y="238" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">beviset på faktisk tilstand.</text>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Prompt, skjema, tools, parametere, eval-sett og selvhostede vekter kan hashes og signeres. Den hostede modellen kan ikke: Her gjenstår bare versjonsstrengen, og vektene ligger hos provideren. Det hullet fyller loggen.</figcaption>
+</figure>
+
+Hvis strengen er det eneste du kan holde fast, må du i det minste sette den riktig. Aldri det flytende aliaset, alltid den daterte snapshoten. At modeller i det hele tatt må pinnes, fordi en stille provider-oppdatering ellers forskyver atferden over natten, har jeg allerede vært innom et annet sted.
+
+<LinkCard url="/nb/blog/die-beste-antwort-ist-keine-zielgroesse"/>
+
+Anthropic sier det helt tydelig: «Every Claude model ID is a pinned snapshot», hver modell-ID er en fastlåst snapshot og ikke en evergreen-peker. Den viktigere halvsetningen står rett ved siden av: «weights are fixed for a given ID, but the serving infrastructure ... can change.» Vektene er faste for en ID, serving-infrastrukturen er det ikke. En pin garanterer deg faste vekter, men ikke bit-identisk atferd.
+
+Hos OpenAI går det samme skillet under andre navn: daterte snapshots mot det flytende `-latest`. Den som skriver `-latest` inn i contracten, har pinnet et alias og låst ingenting. Du får i det minste tid til å reagere, for for GA-modeller varsler OpenAI en deprecation minst 6 måneder i forveien.
+
+Azure OpenAI er den egentlige fellen, fordi standardinnstillingen her jobber mot deg. En deployment med policyen «Upgrade once new default version becomes available» vil, med dokumentasjonens ord, «automatically update to use the new default version». Det dokumenterte eksempelet: gpt-4o flytter fra 2024-08-06 til 2024-11-20, varslet minst to uker i forveien. To uker. Den som lar denne policyen stå, driver ikke med pinning, men med en modell som bytter seg selv ut under den gjeldende contracten. I verste fall er det på mandag en annen modellversjon som priser livsforsikringstariffen enn den eval-settet ditt var grønt mot på fredag.
+
+Derfor holder det ikke å deklarere snapshoten i contracten. Du må for hvert kall skrive modellstrengen som provideren faktisk returnerer i responsen, inn i loggen. Contracten slår fast hvilken modell som skulle betjene requesten. Om det så var den modellen, vet du bare fra loggen.
+
+<Callout type="tip">
+Modell-pinning i én setning: Pin aldri aliaset (`-latest`, `champion`, Azure-standarden), men alltid den daterte snapshoten. Og fordi selv snapshoten bare er en deklarasjon i contracten, skriv modellstrengen som provideren faktisk returnerer per kall, inn i loggen også.
+</Callout>
+
+Her skilles skal fra faktisk. Contracten kan låse prompt, skjema, tools og eval-sett, bare ikke modellen som til slutt faktisk regner ut vurderingen. Ingen signatur-bundle dekker dette hullet, fordi artefaktet som kunne vært signert, mangler. Det som gjenstår, er beviset i loggen - hvilken modell som betjente hvilken request, og hva annet som må med for at beviset skal holde.
+
+## Den revisjonssikre loggen: beviset på faktisk tilstand
+
+Forrige kapittel la den ubehagelige delen åpen: Modelldelen av contracten kan ikke signeres. Hostede vekter kan ingen hashe, den som snakker med et API, eier dem ikke, og det eneste ankeret som gjenstår, er versjonsstrengen. Ett spørsmål står igjen: Hvis jeg ikke kan binde skal-tilstanden kryptografisk til modellen som faktisk leveres - hvordan beviser jeg da hva som faktisk kjørte?
+
+Contracten, slik jeg kaller den her (en engineering-innramming, ikke et juridisk begrep), beskriver skal-tilstanden: hvilken modell, hvilken prompt, hvilke tools, hvilken godkjenning mot hvilken eval-baseline. Loggen er beviset på faktisk tilstand. Står det modell X i contracten og modell Y i loggen, er det loggen som teller overfor revisoren. Og en logg som skal bære det beviset, er mer enn en trace for debugging.
+
+### Conformance er et loggspørsmål
+
+Om en kjøring var i tråd med contracten, brytes ned i en rekke ja/nei-spørsmål til loggen. Oppfylte runtime-en det avtalte output-skjemaet? Kalte den bare de to godkjente toolene og ikke et tredje? Gikk forespørselen mot den daterte modell-snapshoten som står i contracten - eller mot en annen? Ble denne contract-versjonen i det hele tatt godkjent mot gjeldende eval-baseline?
+
+En trace kan ikke svare på det. En trace viser hvorfor et tool call tok 800 ms; den er optimalisert for debugging, ikke for ansvarlighet. Det skillet trakk jeg grundigere i «Tools er ikke prompts» - tracing er ikke auditing.
+
+<LinkCard url="/nb/blog/tools-sind-keine-prompts"/>
+
+Der sto allerede byggesteinene i en audit-oppføring: intern RequestID, IdempotencyKey, `actor`, ToolName, ApprovalId, `outcome`. For conformance-beviset holder ikke det. Det mangler feltene som i det hele tatt navngir skal-tilstanden: `contract_version` og, viktigere, den oppløste modellen og den oppløste prompt-versjonen. Ikke etiketten «production», men verdien «production» pekte på i akkurat dette kallet.
+
+### En loggoppføring, linje for linje
+
+La oss ta det gjennomgående eksempelet: en agent som vurderer kredittverdigheten til en søker - etter EUs AI-forordning vedlegg III nr. 5(b) et høyrisikosystem. En enkelt conformance-oppføring kunne sett slik ut:
+
+```json
+{
+  "request_id": "req_9f3a7c21b0e84d55",
+  "idempotency_key": "score-APP-000883-2026-07-14",
+  "timestamp": "2026-07-14T09:41:07.204Z",
+  "actor": "agent:bonitaets-scorer",
+  "subject": "application:APP-000883",
+  "contract_version": "credit-scoring@4.2.0",
+  "resolved_model": "claude-sonnet-4-6-20260520",
+  "resolved_prompt_version": "score-explainer@17#sha256:7b9c…e1",
+  "tools_called": ["fetch_schufa_report", "compute_dti_ratio"],
+  "tools_allowed": ["fetch_schufa_report", "compute_dti_ratio", "fetch_income_history"],
+  "schema_valid": true,
+  "eval_baseline": "credit-eval@2026-02 / claude-sonnet-4-6-20260215 (214/214 passed)",
+  "approval_id": null,
+  "outcome": "completed"
+}
+```
+
+De fleste feltene er bokføring: hvem (`actor`), i hvilken sak (`subject`), med hvilket resultat (`outcome`). At `tools_called` er en delmengde av `tools_allowed`, besvarer allerede ett av conformance-spørsmålene. Det blir interessant på en annen linje. `resolved_model` lyder `claude-sonnet-4-6-20260520`, en datert snapshot fra mai. `eval_baseline` nevner snapshoten 4.2.0 ble godkjent mot: `claude-sonnet-4-6-20260215`, februar. Modellen som besto baselinen, er en annen enn den som svarte.
+
+Det er modellstrengen som ble byttet i det stille. Modell-ID-en er en pinned snapshot, men aliaset over den (en «production»-peker, en Azure-standard) er bevegelig og kan flytte seg under føttene på deg. Hadde loggen bare lagret «production», ville driften vært usynlig. Fordi den holder fast den oppløste, daterte verdien per kall, blir bruddet mellom skal og faktisk synlig. Det er det jeg kaller caching-staleness-fellen: En etikett er bekvem og lyver ikke, den sier bare ingenting om hva den pekte på i går.
+
+For prompt-siden finnes samme mønster som ferdig verktøy. Langfuse henger et `langfuse_prompt`-håndtak på hver generering, som med dokumentasjonens ord «links this generation to the prompt version». Det som menes, er den konkrete, uforanderlige versjonen, ikke et flyttbart navn. `resolved_prompt_version` i loggen er den samme tilbakepekeren, skrevet ut som versjonsnummer pluss hash.
+
+### Hvorfor stikkprøver ikke holder
+
+Her skilles debugging-logging og conformance-logg. En revisjonssikker logg kan ikke være et samplet utvalg. «Vi logger 1 % for debugging» er en helt legitim setning for traces, men for beviset på faktisk tilstand er den dødelig. En stikkprøve beviser ingenting om den ene kredittsøknaden som senere havner på revisorens bord.
+
+Prinsippet er ikke nytt, det har stått i skatteretten i årevis. GoBD krever i avsnitt 36 enkeltregistrering: Forretningstransaksjoner skal registreres «fullstendig og uten hull». Jeg tar bevisst dette prinsippet med som en engineering-holdning inn i conformance-konteksten - om en kredittvurdering skattemessig er en forretningstransaksjon, er ikke poenget. Poenget er: Et bevis som bare kjenner hver hundrede kjøring, er ikke noe bevis.
+
+Dette er ikke i strid med break-glass- og sampling-logikken fra «Observability for AI-funksjoner». Der handlet det om innholdsvolum; fulle prompts og completions har ingenting å gjøre i hver trace og hører hjemme bak en kontrollert lane. Her er det ikke volumet av innholdet som teller, men at conformance-metadataene er komplette. Hver kjøring produserer sin oppføring. Hva som står i oppføringen, er et annet spørsmål.
+
+### Den bindende rammen
+
+Så langt er dette engineering. Den bindende delen kommer fra DORA, nærmere bestemt fra de tekniske reguleringsstandardene. Art. 12 i RTS-en om IKT-risikostyring (delegert forordning (EU) 2024/1774, «dataregistrering») krever to ting som sikter rett på denne loggen. For det første tiltak som beskytter dataregistreringen «mot manipulering, sletting og uautorisert tilgang» - og det for lagrede, overførte og data som er i bruk. For det andre «synkronisering av klokkene i hvert IKT-system … på grunnlag av en dokumentert, pålitelig referansetidskilde». `timestamp` ovenfor er altså ikke et pyntefelt; tidskilden bak må være dokumentert og pålitelig. DORA gjelder direkte, uten nasjonal gjennomføring.
+
+Det art. 12 ikke sier: noe som helst om modeller, modellversjoner eller inferens. RTS-teksten er teknologinøytral. At det blir til «logg modellversjonen», er tolkning - BaFin gjør den tolkningen i sin veiledning når den anbefaler en «fullstendig logging av KI-beslutninger, modellversjoner og treningsdata». Og den anbefaler bare, den krever ingenting: Veiledningen beskriver seg selv som «ikke-bindende hjelp» og «ingen bindende DORA-tolkning». Feltene ovenfor operasjonaliserer altså et bindende krav om beskyttelse og tid; et lovsitat er de ikke.
+
+En fast oppbevaringstid nevner art. 12 bevisst ikke. Finansforetaket fastsetter lagringstiden selv og begrunner den ut fra risiko og formål. Hva det betyr for holdbarheten i retten, kommer straks.
+
+### Hva som ikke hører hjemme i loggen
+
+At conformance-metadataene er komplette, betyr likevel ikke at alt hører hjemme der. SCHUFA-opplysningene (fra det tyske kredittopplysningsbyrået), inntekten, navnet på søkeren - det er dataene som ikke har noe i tracen å gjøre. I «Observability for AI-funksjoner» beskrev jeg hva som ikke hører hjemme i tracen; den samme grensen gjelder her. Conformance-beviset trenger `contract_version` og den oppløste modellen, ikke kredittmappen i klartekst. Spenningen mellom bevisplikt og personvern (GDPR) løser vi senere, når regulatorikk-kartet er på plass.
+
+<LinkCard url="/nb/blog/observability-ai-features"/>
+
+En komplett, korrekt koblet logg med riktige tidsstempler er beviset på faktisk tilstand - forutsatt at den fortsatt stemmer. Men en logg som kan redigeres i etterkant, beviser ingenting.
+
+## Fra append-only til en logg som holder i retten
+
+På slutten av forrige kapittel sto en ubehagelig setning: En logg som kan redigeres, beviser ingenting. Den registrerer forløpet, men den holder ikke - ikke overfor en revisor som tre år senere vil vite hvorfor denne kredittsøknaden ble maskinelt avslått, og i hvert fall ikke i en rettssal der personen som fikk avslag, saksøker og påstår at oppføringen er pyntet på i etterkant.
+
+«Append-only» i applikasjonskoden er i første omgang en påstand. Et flagg i databasen, en trigger som forbyr `UPDATE` og `DELETE`, en ORM uten endringsmetode. Alt godt ment, alt i det samme tillitsrommet der også personen med DB-adminrettigheter sitter. For at påstanden skal bli et bevis, må flere lag komme sammen, og ingen erstatter de andre: et lagringsmedium som ikke sletter; en oppbygning som gjør enhver stille endring av rekkefølgen synlig; og et bevitnet tidspunkt.
+
+### WORM: mediet som ikke sletter
+
+Det nederste laget er lagring som bare tillater skriving i én retning: inn, aldri ut igjen. WORM står for write once, read many. I S3 heter implementasjonen Object Lock, og modusen det kommer an på, er Compliance Mode. AWS beskriver den utvetydig: Et objekt «can't be overwritten or deleted by any user, including the root user», og den eneste måten å bli kvitt det før fristen går ut, er «to delete the associated AWS account». Det er den harde varianten. Selv kontoeieren med alle rettigheter kommer ikke til oppføringen.
+
+Ved siden av står Governance Mode: teknisk nesten det samme, men med en bakdør. Den som har tillatelsen `s3:BypassGovernanceRetention`, kan sette sperren ut av spill. For en logg som skal bevise et kredittavslag over flere år, er det feil valg. En særtillatelse som finnes, blir brukt før eller siden.
+
+Legal Hold har derimot ingen frist. Den holder et objekt fast på ubestemt tid til noen aktivt opphever den - nyttig når en konkret rettstvist pågår og den ordinære oppbevaringstiden for lengst ville vært ute. De andre hyperscalerne har samme mekanikk under andre navn. Azures Immutable Blob Storage skiller mellom locked og unlocked; en låst container kan bare forlenges, «not even by users with account administrative privileges». Google Clouds Bucket Lock er enda mer kompromissløs: «Locking a bucket's retention policy is an irreversible action.» Når den først er låst, finnes det ingen vei tilbake, heller ikke for deg.
+
+Mange leverandørsider er ikke ærlige her: S3 Object Lock og Azure Immutable Blob har attester som høres ut som noe de ikke er. Vurderingene kommer fra Cohasset Associates, en privat assessor som leverandøren selv har engasjert, og de sjekker samsvar med amerikansk verdipapirrett: SEC Rule 17a-4, FINRA, CFTC. Det er en reell standard. Men det er ikke GoBD-samsvar, ikke DORA-samsvar og i hvert fall ikke tysk «revisjonssikker» - et begrep som uansett stammer fra handels- og skatteretten og ikke dukker opp som norm i noen av lovtekstene. En SEC 17a-4-attest beviser at et medium duger for opptegnelser hos amerikanske meglere. Om kravene fra § 146 AO eller RTS RMF sier den ingenting. Den som selger det ene som det andre, selger en fasade.
+
+### Tamper-evident: beviset på at ingen har vært inne og tuklet
+
+WORM hindrer at noen sletter en oppføring. Men den gir ikke et bevis jeg kan ta med ut av systemet og gi til en tredjepart, og den forutsetter at jeg stoler på selve lagringsleverandøren. Det andre laget snur problemet på hodet: I stedet for å hindre manipulasjon gjør det manipulasjon påviselig. Det er forskjellen på tamper-proof og tamper-evident. Min vurdering: For en bevislogg er den andre egenskapen den viktigste, fordi forebygging bare holder så lenge kontrollene holder - deteksjon gjør også omgåelse av kontrollene synlig.
+
+Den etablerte byggeformen for dette er en Merkle-logg, og det mest kjente eksempelet i produksjon er Certificate Transparency. RFC 6962 beskriver en slik logg som «a single, ever-growing, append-only Merkle Tree». Hver ny oppføring blir hashet, hashene blir lenket parvis sammen til en trestruktur, til det står igjen én eneste verdi på toppen: Merkle-roten. Endres én bit et sted nede, endres roten. To kryptografiske bevis gjør dette til et revisjonsverktøy. Inclusion proof viser at en bestemt oppføring finnes i et tre med en gitt rot. Consistency proof viser at et senere tre fullt ut inneholder det tidligere, og beviser dermed selve append-only-egenskapen. Den som i etterkant skriver om eller skyter inn en oppføring, ødelegger dette beviset.
+
+Du trenger ikke bygge det selv. Trillian er referanseimplementasjonen bak Certificate Transparency, og immudb pakker samme idé som en database med «cryptographic commit log with parallel Merkle Tree». En detalj for ærlighetens skyld, siden immudb gjerne dukker opp som open source-alternativ: Lisensen er Business Source License 1.1, altså source-available, ikke klassisk open source i OSI-forstand. Praktisk relevant er også hvor tidsstempelet settes: på Merkle-roten for en hel batch, ett stempel per batch i stedet for per logglinje. Det holder kostnadene hos tidsstempeltjenesten nede og er likevel nok, fordi roten binder hele batchen kryptografisk.
+
+<Callout type="danger">
+Et varsko mot å henge bevissemantikken på en lukket managed service: Amazon QLDB. Databasen hadde denne kryptografiske verifiserbarheten innebygd, og AWS avsluttet supporten 31. juli 2025. Den anbefalte migreringsveien går til Aurora PostgreSQL, som mister egenskapen. AWS' egen merknad (Dan Blaner) er tydelig: Aurora PostgreSQL «does not keep a permanent, immutable record», og revisjonsbeviset «must be generated as audit data and stored outside of the database». Den som hadde bygget integritetsbeviset sitt inn i et proprietært produkt, sto uten det etter utfasingen. Verifiserbarheten hører hjemme i et åpent lag som kan gjenskapes, ikke i et produkt der du ikke eier roadmapen.
+</Callout>
+
+Den bindende rammen over begge lagene heter verken WORM eller Merkle-tre. Den heter RTS RMF (delegert forordning 2024/1774) art. 12 «dataregistrering» - direkte anvendelig nivå 2-regelverk under DORA. Art. 12 nr. 2 bokstav d krever «tiltak for å beskytte systemer og informasjon for dataregistrering mot manipulering, sletting og uautorisert tilgang». Hvordan tiltakene skal se ut, foreskriver ikke teksten; den er teknologinøytral og nevner verken WORM, Merkle-tre eller modell. WORM og tamper-evidence er mitt svar på kravet, ikke en passasje fra forordningen.
+
+### Den juridiske sluttsteinen: det bevitnede tidspunktet
+
+Merkle-rot og WORM sikrer hva og om. Når står fortsatt åpent. En logg der jeg genererer roten i etterkant i dag, kan være kryptografisk feilfri og likevel tilbakedatert. Her kommer et annet krav fra samme artikkel inn: RTS RMF art. 12 nr. 2 bokstav f krever «synkronisering av klokkene i hvert IKT-system ... på grunnlag av en dokumentert, pålitelig referansetidskilde». En kvalifisert tidsstempeltjeneste er en slik referansetidskilde. At det må være akkurat en slik tjeneste, står ikke i forordningen; det er min operasjonalisering, ikke et sitat.
+
+Mekanismen bak er RFC 3161. Til tidsstempeltjenesten går bare hashen, message imprint. Selve dokumentet forlater aldri huset. Tjenesten signerer hashen sammen med gjeldende tid og sender et token tilbake. For kredittloggen vår betyr det konkret: Merkle-roten for en batch går til Timestamping Authority, innholdet i oppføringene blir værende inne. Juridisk interessant blir det gjennom eIDAS. Artikkel 41 nr. 2 i forordning (EU) nr. 910/2014 knytter en lovbestemt presumsjon til kvalifiserte tidsstempler: «presumsjon for at dato og klokkeslett er korrekte» og for «integriteten til ... de tilknyttede dataene».
+
+Ordet i tittelen på dette kapittelet lover mer enn teknikken kan innfri. Presumsjonen fra eIDAS kan motbevises. Den flytter bevisbyrden: Det er ikke jeg som må bevise at loggen er ekte, det er motparten som må rokke ved det. I retten er det en enorm fordel, men et ugjendrivelig fullt bevis er det ikke.
+
+Samme mønster finnes i den tyske sivilprosessloven. § 371a (1) ZPO gir elektroniske dokumenter med kvalifisert signatur et prima facie-bevis for ekthet. Også det er en bevislettelse, uttrykkelig ikke et fullt bevis. Det vi bygger her, er den sterkeste bevisposisjonen som lar seg etablere teknisk. Den kan angripes, og i enkelttilfeller kan den også falle. Utgangspunktet er likevel et helt annet enn med en redigerbar loggfil, der jeg selv måtte dokumentere ektheten fra bunnen av i retten.
+
+To fotnoter som avgjør over årene. For det første er et tidsstempel ikke gyldig for evig. Signaturalgoritmer eldes, sertifikater går ut. RFC 4998 (Evidence Record Syntax) beskriver hvordan bevisverdien bevares over lange oppbevaringstider: ved å fornye tidsstemplene i tide, før den gamle metoden blir kryptografisk svak. Med 10 års oppbevaring blir det en kontinuerlig prosess som noen må drive aktivt. For det andre finnes det i Tyskland en dokumentert state of the art for dette: BSI TR-03125 (TR-ESOR) fra det tyske forbundskontoret for informasjonssikkerhet beskriver arkitekturen for langtidslagring som bevarer bevisverdien. Den som følger den, trenger ikke selv begrunne at oppbevaringen tilsvarer dagens nivå.
+
+<Accordion title="Oppbevaringstider og BaFin-unntaket">
+Oppbevaringstiden graderes i § 257 (4) HGB: handelsbøker, inventarlister og balanser 10 år, regnskapsbilag 8 år, mottatt forretningskorrespondanse 6 år. Annet punktum inneholder unntaket som er avgjørende for oss: For institusjoner i henhold til § 1 (1b) KWG, § 1 (1) VAG og § 2 (1) WpIG (de tyske lovene for banker, forsikring og verdipapirforetak) forblir regnskapsbilag på 10 år. Bygger du for en BaFin-regulert bank eller et forsikringsselskap, regner du altså med 10 i stedet for 8 år.
+
+Og fristen er åpen oppover. § 147 (3) 5. punktum AO kjenner en utløpssperre: Så lenge dokumentene har betydning for en fastsettelsesfrist som ennå ikke er utløpt, for eksempel i en pågående skatterevisjon, løper ikke oppbevaringstiden ut. En logg jeg fører for en kredittscore fra 2026, kan følge meg betydelig lenger enn 10 år. Dermed er RFC 4998 ingen akademisk detalj.
+</Accordion>
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 560 466" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="st-title st-desc" class="w-full max-w-full h-auto">
+<title id="st-title">Stacken for loggintegritet</title>
+<desc id="st-desc">En vertikal stabel med seks trinn, ovenfra og ned: komplett loggoppføring per transaksjon, append-only Merkle-logg, Merkle-rot per batch, RFC 3161-tidsstempel med eIDAS-presumsjon, WORM-lagring i Compliance Mode og til slutt prima facie-beviset for ekthet etter § 371a ZPO. Hvert trinn bygger på trinnet over.</desc>
+<rect x="90" y="18" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Loggoppføring - én transaksjon, komplett</text>
+<rect x="90" y="94" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">append-only Merkle-logg</text>
+<line x1="280" y1="68" x2="280" y2="82" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 92 L 273 80 L 287 80 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="170" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Merkle-rot - én batch</text>
+<line x1="280" y1="144" x2="280" y2="158" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 168 L 273 156 L 287 156 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="246" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="276" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">RFC 3161-tidsstempel · eIDAS-presumsjon</text>
+<line x1="280" y1="220" x2="280" y2="234" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 244 L 273 232 L 287 232 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="322" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="352" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">WORM-lagring · Compliance Mode</text>
+<line x1="280" y1="296" x2="280" y2="310" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 320 L 273 308 L 287 308 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="398" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="280" y="428" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">§ 371a ZPO · prima facie-bevis for ekthet</text>
+<line x1="280" y1="372" x2="280" y2="386" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 396 L 273 384 L 287 384 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Fra loggoppføring til et bevis som holder i retten: Tidsstempelet sitter på Merkle-roten for en hel batch, ikke på hver enkelt linje. eIDAS og § 371a ZPO gjør teknisk uforanderlighet til en presumsjon for ekthet som kan motbevises - ikke et fullt bevis, men den sterkeste bevisposisjonen.</figcaption>
+</figure>
+
+Dermed står stacken: append-only, Merkle-rot, kvalifisert tidsstempel, WORM i bunnen. Teknisk er dette den mest robuste måten å holde en kredittlogg bevisbar gjennom et tiår. Gjenstår spørsmålet dette kapittelet bevisst lot stå åpent: Hvem pålegger egentlig en bank å føre noe slikt - og hvorfor akkurat nå? Hva av dette er bindende i dag, hva er bare anbefaling, og hva er i ferd med å flytte seg i kalenderen?
+
+## Regulatorikk-kartet for BaFin-kunder - og hvorfor nå
+
+Den uforanderlige loggen står. Den står imot endringer i etterkant, den bærer tidsstempelet sitt, og den kan knyttes til en snapshot av contracten. Gjenstår spørsmålet forrige kapittel lot stå åpent: Hvem krever egentlig dette, og hvor bindende er det?
+
+For det gjennomgående eksempelet vårt, en KI-funksjon i en BaFin-regulert bank eller et forsikringsselskap som vurderer kredittverdigheten til en person eller priser en livs- eller helseforsikringstariff, er svaret ubehagelig: flere regimer på en gang, med ulik bindende kraft og ulike frister. La oss sortere dem.
+
+| Regime | Hva det krever | Gjelder fra | Artefakt som oppfyller det |
+|---|---|---|---|
+| DORA + RTS RMF (delegert forordning 2024/1774) | Registrering beskyttet mot manipulering/sletting (RTS art. 12), provider i informasjonsregisteret (art. 28), revisjonsrett/datalokasjoner/exit i kontrakten (art. 30), kjede for hendelsesrapportering (art. 19) | bindende siden 17.01.2025, direkte | Uforanderlig logg pluss versjonert contract med provider-metadata |
+| EUs AI-forordning, høyrisiko (vedlegg III 5(b)/5(c)) | Automatisk hendelseslogging (art. 12), logger ≥ 6 måneder (art. 19), teknisk dokumentasjon 10 år (art. 18) | Klassifiseringen er bindende; pliktene formelt fra 02.08.2026 (utsettelse vedtatt, se under) | Logg som hendelsesregistrering, contract som del av den tekniske dokumentasjonen |
+| GoBD / § 257 HGB / § 147 AO | Uforanderlighet (§ 146 (4) AO), oppbevaring (regnskapsbilag hos institusjoner 10 år), maskinell analyserbarhet | bindende, i den grad det er regnskapsrelevant | Append-only logg med logikk for oppbevaring og hold |
+| MaRisk AT 4.3.4 «Bruk av modeller» | Etterprøvbare forutsetninger (pkt. 2), validering (pkt. 5), forklarbarhet (pkt. 6), regler for overstyringer (pkt. 4) | Høringsutkast, ikke i kraft (gjeldende er rundskriv 06/2024) | Contracten dokumenterer forutsetninger og overrides, loggen dokumenterer valideringen |
+| BaFins veiledning (18.12.2025) | «fullstendig logging av KI-beslutninger, modellversjoner og treningsdata» (anbefaling) | ikke bindende | konkretiserer logg og contract, men binder ikke |
+
+
+### DORA er ankeret, ikke VAIT
+
+DORA har gjeldt siden 17. januar 2025, direkte i hver medlemsstat, uten nasjonal gjennomføring (art. 64). Det er grunnen alt annet står på for finansforetak. Registrering krever forordningen likevel ikke der vi leter først: Ankeret sitter ett nivå lenger ned, i den tekniske reguleringsstandarden delegert forordning 2024/1774 (RTS RMF). Art. 12 «dataregistrering» krever beskyttelse mot manipulering, sletting og uautorisert tilgang, for lagrede, overførte og data i bruk - beskyttelsesprofilen loggen vår allerede oppfyller teknisk.
+
+To detaljer er sentrale for vårt tilfelle. Den første er klokken: Art. 12 krever at alle systemklokker synkroniseres mot en dokumentert, pålitelig referansetidskilde - tidsstempelet i loggen er altså ikke frivillig ekstra. Den andre er oppbevaringen: DORA foreskriver ingen fast frist; finansforetaket fastsetter selv «lagringstiden» ut fra risiko og formål og begrunner den. Velger du 6 måneder, må du kunne begrunne det, og det samme gjelder om du velger 10 år.
+
+LLM-provideren er i denne arkitekturen en tredjeparts IKT-tjenesteleverandør i DORAs forstand, med alt det innebærer. Ansvaret blir hos oss: Finansforetaket «forblir til enhver tid fullt ut ansvarlig for overholdelsen …» (art. 28 nr. 1). Funksjonen kan settes ut, ansvarligheten blir igjen. Kontrakten med provideren hører hjemme i informasjonsregisteret (art. 28 nr. 3), som tilsynet kan se inn i på forespørsel. Og art. 30 dikterer det obligatoriske innholdet: revisjonsrett (nr. 3 bokstav e), fastsatte datalokasjoner med forhåndsvarsel ved endring (nr. 2 bokstav b), en exit-strategi med overgangsperiode (nr. 3 bokstav f) og regler for underutkontraktering (nr. 2 bokstav a), som dekker kjeden fra LLM-provideren helt til hyperscaleren.
+
+Og hvis noe går galt, begynner en klokke å gå. DORA art. 19 regulerer rapporteringskjeden for alvorlige IKT-hendelser, de konkrete fristene står i delegert forordning 2025/301. Den klokken tikker allerede i dag, ikke først fra 2027.
+
+<Callout type="warning">
+Den som i 2026 fortsatt siterer VAIT, BAIT, KAIT eller ZAIT, jobber med et utdatert kart. VAIT, BAIT, KAIT og ZAIT (BaFins tidligere IT-rundskriv) falt bort da DORA trådte i kraft. Ankeret for IKT- og utkontrakteringskravene heter nå DORA med tilhørende RTS. For modellnivået kommer MaRisk i tillegg, men KI-modulen der er fortsatt på høring.
+</Callout>
+
+<Accordion title="De relevante DORA-artiklene i detalj">
+
+- **Art. 5 nr. 2 bokstav a DORA** - endelig ansvar: «Ledelsesorganet har det endelige ansvaret for styringen av IKT-risikoen.» Ansvaret ligger hos ledelsesorganet, ikke hos en «owner».
+- **Art. 12 RTS RMF (delegert forordning 2024/1774), dataregistrering:** beskyttelse mot manipulering, sletting og uautorisert tilgang (nr. 2 bokstav d); klokkesynkronisering mot en dokumentert referansetidskilde (nr. 2 bokstav f); lagringstid fastsettes ut fra risiko og formål.
+- **Art. 17 RTS RMF, IKT-endringsstyring.** Ikke et ord om modeller i teksten. At «arkivere modellversjoner» leses inn her, er tolkningen i BaFins veiledning, ikke ordlyden i RTS-en.
+- **Art. 28-30 DORA, tredjepartsrisiko:** ansvarlighet kan ikke settes ut (art. 28 nr. 1), informasjonsregister (art. 28 nr. 3), obligatorisk kontraktsinnhold om revisjonsrett, datalokasjoner, exit og underutkontraktering (art. 30).
+- **Frister (delegert forordning 2025/301 art. 5):** første melding 4 t etter klassifisering som alvorlig (backstop 24 t fra kjennskap), mellomrapport 72 t etter første melding, sluttrapport 1 måned etter mellomrapporten.
+
+</Accordion>
+
+Den mest konkrete tolkningen av disse DORA-pliktene kommer fra BaFins veiledning «IKT-Risiken beim Einsatz von KI» (IKT-risiko ved bruk av KI) fra 18.12.2025. Den anbefaler å legge opp til en risikobasert «fullstendig logging av KI-beslutninger, modellversjoner og treningsdata», og leser «systematisk arkivering av alle modellversjoner og -parametere» inn i art. 17 RTS RMF. Problemet er bare: Veiledningen beskriver seg selv som «ikke-bindende hjelp» som «ikke er noen bindende DORA-tolkning». Den er kartet over hvordan BaFin leser kravene, ikke selve rettsnormen. Normen er DORA; veiledningen konkretiserer hvordan en logg og en contract kan oppfylle den.
+
+### Når funksjonen blir et høyrisikosystem
+
+Den andre store blokken er EUs AI-forordning, og her blir eksempelet vårt et skoleeksempel. Vedlegg III nr. 5(b) nevner KI-systemer for vurdering av «kredittverdigheten til fysiske personer», nr. 5(c) systemer for «risikovurdering og prising … når det gjelder livs- og helseforsikring». Kredittscoring og forsikringsprising, våre to tilfeller, er dermed høyrisikosystemer. Det gir konkrete registreringsplikter: automatisk hendelseslogging gjennom systemets levetid (art. 12), oppbevaring av loggene i minst 6 måneder (art. 19), teknisk dokumentasjon i 10 år (art. 18).
+
+For finansinstitusjoner kommer her det mest verdifulle funnet i dette kapittelet. AI-forordningen tvinger ikke frem et nytt governance-apparat ved siden av finanstilsynet. Art. 17 nr. 4 lar kvalitetsstyringssystemet anses som oppfylt i den grad en institusjon allerede dekker de tilsvarende pliktene gjennom sin finansregulatoriske governance, med tre uttrykkelige unntak (bokstav g, h, i) som står på egne ben. Samme myndighet fører tilsyn med begge: Art. 74 nr. 6 gjør det nasjonale finanstilsynet til markedstilsynsmyndighet for høyrisiko-KI hos finansinstitusjoner, i Tyskland altså BaFin. Den versjonerte contracten og loggen teller dermed for begge regimene samtidig. Dobbelt bokholderi trenger bare det som faller inn under de tre unntakene.
+
+<Accordion title="EUs AI-forordning: felles vs. ekstra dokumentasjon">
+
+Art. 17 nr. 4 erklærer kvalitetsstyringssystemet for finansinstitusjoner som oppfylt «med unntak av nr. 1 bokstav g, h og i» når den finansregulatoriske governance-ordningen gjelder. Det som fortsatt må oppfylles separat:
+
+- **Bokstav g → art. 9** - risikostyringssystemet for høyrisiko-KI-systemet.
+- **Bokstav h → art. 72** - overvåking etter markedsføring.
+- **Bokstav i → art. 73** - rapportering av alvorlige hendelser.
+
+På samme måte behandler art. 18 nr. 3 og art. 19 nr. 2 den tekniske dokumentasjonen og loggene som en del av den finansregulatoriske dokumentasjonen. Ett artefakt, to mottakere. Bøtetrusselen bak: opptil 15 mill. € eller 3 % av årsomsetningen for brudd på pliktene til idriftsettere (art. 99).
+
+</Accordion>
+
+<Callout type="warning">
+**Status juli 2026: regelverket er i bevegelse.** Digital Omnibus utsetter høyrisikopliktene for frittstående vedlegg III-systemer (inkludert 5(b) og 5(c)) fra 02.08.2026 til 02.12.2027. Rådet vedtok dette endelig 29.06.2026, men kunngjøringen i EU-tidende gjenstår, så formelt gjelder fortsatt 02.08.2026. Klassifiseringen som høyrisiko endres ikke av utsettelsen. Og MaRisk-revisjonen med AT 4.3.4 er et høringsutkast (høringsfrist 08.05.2026), ikke gjeldende rett: I kraft er MaRisk i versjonen fra rundskriv 06/2024, som ennå ikke inneholder AT 4.3.4.
+</Callout>
+
+### MaRisk følger etter på modellsiden
+
+Det DORA er for IKT-nivået, blir MaRisk for modellnivået. Den 9. revisjonen innfører for første gang KI eksplisitt med modulen AT 4.3.4 «Bruk av modeller»: Pkt. 1 slår fast at kravene gjelder «også for automatiserte modeller, teknologidrevet innovasjon og kunstig intelligens». Det utkastet krever, leser seg som en beskrivelse av contracten: etterprøvbart begrunnede forutsetninger (pkt. 2), regelmessig validering (pkt. 5), forklarbarhet, definert som påviselige «sammenhenger mellom input- og outputstørrelser» (pkt. 6), og regler for overstyringer, altså «verdier som avviker fra modellen gjennom direkte inngrep» (pkt. 4). Foreløpig er det et utkast, men retningen er utvetydig.
+
+Det siste punktet er der contract og logg møter mennesket. Hvem som overstyrer et modellresultat, når og med hvilken begrunnelse, hører hjemme i loggen, ellers er overriden usynlig. Det designspørsmålet har jeg behandlet grundigere tidligere.
+
+<LinkCard url="/nb/blog/human-in-the-loop"/>
+
+### Hvorfor nå, og ikke først i 2027
+
+Fra Omnibus-utsettelsen er det lett å trekke feil slutning: AI-forordningen først i 2027, altså fortsatt tid. For et BaFin-regulert foretak er den slutningen dyr. Den skarpeste hevarmen er nettopp ikke AI-forordningen, men DORA og oppbevaringskravene i handels- og skatteretten. Begge gjelder i dag, direkte, uten overgangsperiode. Rapporteringskjeden fra DORA art. 19 er allerede i gang, med sitt firetimersvindu fra klassifiseringen. MaRisk følger etter på modellsiden. Den som venter til AI-forordningen får tenner i 2027, har oversett regimene som allerede biter.
+
+### Oppbevare mot slette
+
+Én konflikt gjenstår. Oppbevaringspliktene i § 257 HGB og § 147 AO sier: behold. GDPR sier om personopplysninger, og en kredittscore er i aller høyeste grad personopplysninger: slett så snart formålet faller bort. Fra en uforanderlig append-only-logg kan man likevel ikke slette noe selektivt uten å ødelegge selve uforanderligheten.
+
+<Callout type="info">
+Løsningen heter sperring i stedet for sletting. Art. 18 GDPR kjenner «begrensning av behandling» som alternativ til sletting: Posten blir stående, men sperres for vanlig bruk. I loggen oversettes det til et hold-flagg i stedet for en kalenderstyrt sletteautomatikk. Skattemessig støttes dette av utløpssperren i § 147 (3) 5. punktum AO: Oppbevaringstiden løper ikke ut så lenge transaksjonen er skattemessig relevant.
+</Callout>
+
+En ærlig avgrensning hører med. § 257 HGB og § 147 AO gjelder bare i den grad en transaksjon er regnskapsrelevant. Ikke hver agent-logg er dermed underlagt oppbevaringsplikt etter handels- eller skatteretten; mesteparten av opptegnelsene våre går via DORA, MaRisk og AI-forordningen, ikke via HGB. Å holde disse regimene fra hverandre er i seg selv en del av aktsomheten.
+
+Det er mye regulatorikk for én enkelt funksjon: mange artefakter, flere frister, flere tilsynsmyndigheter som ser på de samme loggene. Er innsatsen i det hele tatt verdt det? Det er det mest nærliggende motspørsmålet, og det fortjener et ærlig svar.
+
+## Typiske motargumenter
+
+Kostnadsspørsmålet fra forrige kapittel kommer sjelden alene. Så snart jeg legger contract og revisjonssikker logg på bordet som obligatorisk program, kommer innvendingene som bestilt. Noen av dem dukker opp i nesten hver diskusjon. De er gode nok til å tas på alvor.
+
+### «Revisjonssikkerhet er bare en compliance-fasade.»
+
+Mistanken er berettiget: Mye av det som går under «compliance», er en perm ingen noen gang åpner. Men her stemmer det ikke. Loggen er den eneste flaten contracten i det hele tatt kan diffes mot - den eneste mekanismen som gjør at du i det hele tatt oppdager et stille modellbytte, prompts som drifter, et tool call utenfor scope eller et brutt skjemaløfte. Den samme innvendingen har jeg tilbakevist før i forbindelse med eval-loopen, og svaret er det samme: Substansen oppstår i driften, beviset kommer som et biprodukt.
+
+<LinkCard url="/nb/blog/incident-zu-regressionstest"/>
+
+### «LLM-er er ikke-deterministiske, altså kan de ikke revideres.»
+
+Det er en kategorifeil. En revisjon registrerer hva som skjedde; den reproduserer ikke hva som ville skjedd en gang til. Ikke-determinismen er selve grunnen til at vi logger i utgangspunktet. Selv den harde versjonen av innvendingen vakler: Thinking Machines Lab viste i 2025 at ikke-determinismen kan fjernes. Med batch-invariante kernels leverte Qwen3-235B samme completion i 1000 av 1000 kjøringer. De ofte siterte 1,6 til 2,1 ganger høyere kostnadene stammer fra en separat tidsmåling med en mindre modell (Qwen-3-8B) og hører ikke hjemme i samme setning. For en revisjon trenger du uansett ikke denne determinismen - det er min konklusjon; forfatterne viser bare at determinisme er oppnåelig.
+
+### «For dyrt, for mye overhead for én funksjon.»
+
+Asymmetrien går motsatt vei. Meldefristene i DORAs hendelsesrapportering er rett og slett ikke mulige å overholde uten contract og logg: første melding fire timer etter klassifisering som alvorlig, mellomrapport 72 timer etter det, sluttrapport en måned etter den (art. 19 DORA, konkretisert i delegert forordning 2025/301). Selve artefaktet er billig: en git-versjonert YAML pluss en append-only event-stream. Tokenene påløper uansett, du skriver dem bare ned i tillegg. Det koster dager, ikke en plattform, og lønner seg på tvers av funksjoner.
+
+### «Prompt pluss modell holder som dokumentasjon.»
+
+Det beskriver skal-tilstanden, ikke faktisk tilstand. Ta kredittverdighetsfunksjonen fra de forrige kapitlene: Prompt og modellnavn forteller deg ikke hvilke tools som faktisk ble kalt, mot hvilken eksakt modellversjon, med hvilke sampling-parametere, med hvilken RAG-kontekst, om skjemavalideringen av score-objektet gikk gjennom, og mot hvilken versjon av eval-settet svaret ble godkjent. En prompt i wikien er ikke versjonert, ikke reviewet, ikke eval-gatet, og den drifter stille av gårde til ingen lenger vet hvilken utgave som avslo en søknad i september.
+
+### «Det gjør jo SIEM-en vår allerede.»
+
+Annet lag. En SIEM samler infrastruktur- og sikkerhetshendelser, som regel mutable, roterende, med kort retention. Contract-conformance-loggen sitter på applikasjons- og semantikknivået, er tamper-evident og ligger på WORM. I et tidligere innlegg kalte jeg dette «tracing er ikke auditing»; her blir det til «en SIEM er ikke en conformance-logg». At det nå finnes egne OpenTelemetry-konvensjoner for GenAI-telemetri, leser jeg som det samme signalet: to behov, to lag.
+
+<LinkCard url="/nb/blog/tools-sind-keine-prompts"/>
+
+### «Provideren endrer modellen i det stille, jeg kan ikke pinne noe.»
+
+Delvis feil. Hos Anthropic er hver modell-ID en pinnet snapshot; hos OpenAI regnes de daterte snapshotene som stabile referanser, og risikoen ligger i det flytende aliaset eller i Azure-standarden, som automatisk oppgraderes ved neste release. Den som peker på `-latest`, har bygget problemet selv. Pinning går fint - og den ID-en som faktisk betjente kallet, hører hjemme i loggen, fordi en pin ikke holder evig. At en snapshot før eller siden trekkes tilbake, er et argument for loggen, ikke mot pinning.
+
+## Avslutning: skal uten faktisk er en påstand
+
+De tyngste innvendingene ligger bak oss, og ingen av dem har veltet kjernen. To artefakter bærer hele dette innlegget, og de bærer det bare sammen.
+
+Agent Contract er skal-tilstanden: hvilken modell i hvilken versjon, med hvilken prompt, hvilke tools, hvilke parametere og hvilket tillatt utfallsrom. Den revisjonssikre loggen er beviset på faktisk tilstand: hva av dette som faktisk kjørte på beslutningstidspunktet, uforanderlig registrert. Mangler loggen, er contracten en påstand. Et dokument i wikien som beskriver hvordan systemet burde oppføre seg, uten ett eneste bevis på at det oppførte seg slik. Mangler contracten, er loggen støy uten målestokk: millioner av linjer ingen kan sjekke mot, fordi skal-tilstanden aldri ble definert. Først sammen blir de et bevis.
+
+Begge begrepene er vår innramming, ikke lovtekst. «Revisjonssikker» står ikke i noen av rettsaktene, og «Agent Contract» i hvert fall ikke. Det regelverket krever, har mer nøkterne navn: uforanderlighet, etterprøvbarhet, logging. Saken bak er den samme.
+
+Ta scoren som avgjør kredittverdigheten til en person, eller modellen som priser en helse- eller livsforsikring - etter EUs AI-forordning høyrisikotilfellene fra vedlegg III. Protesterer denne personen et halvt år senere og spør hvorfor, er ikke «contracten vår foreskrev modell X i versjon Y» et svar. Svaret er loggoppføringen som viser at modell X i versjon Y tok beslutningen, og at ingen har rørt den siden. At du kjøpte modellen fra en provider, fritar deg ikke: Etter art. 28 DORA forblir du fullt ut ansvarlig.
+
+DORA har gjeldt direkte siden 17. januar 2025, og art. 12 i RTS RMF, den tekniske standarden for IKT-risikostyring, krever at dataregistreringer beskyttes mot manipulering, sletting og uautorisert tilgang; lagringstiden fastsetter du selv ut fra risiko, et fast tall står ikke der. GoBD krever uforanderlighet for det skatterelevante sporet, og et filsystem alene er uttrykkelig ikke nok. Den 9. MaRisk-revisjonen, fortsatt et høringsutkast og ikke i kraft, ville med AT 4.3.4 trekke bruken av modeller inn i denne rammen: begrunne forutsetninger etterprøvbart, validere regelmessig, holde modellene forklarbare. Om du liker ordet «revisjonssikker» eller ikke, endrer ingenting ved pliktene.
+
+Lite av dette er nyoppfunnet. Dette innlegget gir navn til et artefakt serien lenge har sirklet rundt, og gir det den regulatoriske rammen. Hver forgjenger har bygget en bit av det:
+
+- **Contracts** trekker grensene mellom modell, tools og kode - det er herfra begrepet kommer.
+- **Evals** gjør eval-settet til den faglige kontrakten som før deploy sjekker om skal-tilstanden holder.
+- **Tool-audit** avklarer hva et enkelt kall får lov til, og skiller tracing rent fra auditing.
+- **Observability** avgjør hva som hører hjemme i loggen og hva som ikke gjør det: PII, break-glass, de røde linjene.
+- **Rollout-manifest** leverer malen som contracten i det hele tatt blir til fra.
+
+<LinkCard url="/nb/blog/ai-systems-architecture"/>
+<LinkCard url="/nb/blog/ai-evals-ci-pipeline"/>
+<LinkCard url="/nb/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/nb/blog/observability-ai-features"/>
+<LinkCard url="/nb/blog/ai-rollout-canary-shadow"/>
+
+Dette innlegget bretter de fem sammen til ett navngitt kjerneartefakt. Og dermed til poenget jeg aldri blir lei av å gjenta i denne serien: Dette er ikke ekstraarbeid som regelverket lesser på deg. Contracten er engineering-hygiene, du vil vite hvilken modell som kjører i produksjon, regulert eller ikke. Og den uforanderlige loggen bygger du selv senest ved første incident, fordi du da rett og slett må vite hva som faktisk skjedde og ikke bare hva som burde ha skjedd. Den som uansett bygger begge deler fordi det er god engineering, sitter til slutt allerede med beviset som kreves. Governance kommer som et biprodukt av disiplinen, den sitter ikke oppå som en fasade.
+
+To tråder fra tidligere innlegg står fortsatt åpne, og begge henger på denne loggen. [Rekkevidde-evalen](/nb/blog/nicht-das-modell-ist-das-risiko) trenger loggdataene for å måle hvor langt en modellendring faktisk rekker. [FinOps for AI](/nb/blog/die-beste-antwort-ist-keine-zielgroesse) leser kostnader og latens ut av de samme linjene. Loggen er datakilden for begge. Men det er et annet innlegg.
+
+> Contracten er skal-tilstanden, loggen beviset på faktisk tilstand. Hver for seg beviser ingen av dem noe - først sammen er de beviset.
+
+<InfoBox>
+  **Primærkilder (utvalg, status juli 2026 - regelverket er i bevegelse):**<br />
+  DORA - forordning (EU) 2022/2554: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)<br />
+  RTS for IKT-risikostyring - delegert forordning (EU) 2024/1774: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)<br />
+  RTS for frister for hendelsesrapportering - delegert forordning (EU) 2025/301: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2025/301/oj)<br />
+  EUs AI-forordning - forordning (EU) 2024/1689: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)<br />
+  eIDAS - forordning (EU) 910/2014 (art. 41 f.): [eur-lex.europa.eu](https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:02014R0910-20241018) (på tysk)<br />
+  §§ 146, 147 AO / § 257 HGB / § 371a ZPO: [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__146.html) (på tysk)<br />
+  BaFin - veiledningen «IKT-Risiken beim Einsatz von KI» (18.12.2025, ikke bindende): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2025/meldung_2025_12_18_orientierungshilfe_ikt_risiken.html) (på tysk)<br />
+  BaFin - 9. MaRisk-revisjon, høring 02/2026 (utkast): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2026/meldung_2026_04_01_konsultation_02_2026_marisk-novelle.html) (på tysk)
+</InfoBox>

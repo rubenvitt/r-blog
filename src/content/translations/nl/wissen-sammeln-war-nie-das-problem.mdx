@@ -1,0 +1,225 @@
+---
+title: "Kennis verzamelen was nooit het probleem: Mycel, denktools en de nieuwe taakverdeling bij het denken"
+description: "Klassieke PKM loopt stuk op het onderhoud. Een wiki die door een LLM wordt bijgehouden lost dat op - en maakt van denktools geen boek in de kast meer, maar een skill op afroep."
+date: 2026-04-15
+tags: ["ai", "knowledge-management", "thinking-tools"]
+image: ../../blog/_images/wissen-sammeln-war-nie-das-problem/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+
+> Kennis verzamelen was nooit het probleem. Het op het juiste moment activeren - daar zit het.
+
+Ik heb jaren besteed aan het verzamelen van kennis. Eerst Notion met een Second Brain, netjes gestructureerd volgens PARA en CODE. Daarna de overstap naar Obsidian - honderden Markdown-notities, koppelingen, Daily Notes, backlinks. Quick Capture vanaf mijn telefoon werkt inmiddels, mobiel terugzoeken is nog een open punt.
+
+De tools werden beter. Het onderhoud bleef mijn bottleneck. Het lag niet aan de tool - het lag eraan dat ik constant achterliep: capturen lukt me wel, verdichten, koppelen, opruimen niet.
+
+Dat is geen persoonlijk falen. Dat is structureel. En precies hier verschuift er nu iets in mijn setup - niet omdat ik gedisciplineerder ben geworden, maar omdat de taakverdeling is veranderd.
+
+## Waarom klassieke PKM structureel faalt
+
+De methodes zijn niet verkeerd. Ze zijn alleen gebouwd voor een wereld waarin kennis schaars was en aandacht overvloedig. Vandaag is het precies andersom.
+
+### Zettelkasten werkt - als je Luhmann bent
+
+Niklas Luhmann liet zo'n 90.000 kaartjes na, waar praktisch zijn hele sociologie op rust. Sönke Ahrens schreef het systeem in 2017 in "How to Take Smart Notes" op voor de rest van de wereld: atomicity, links, eigen woorden, fleeting/literature/permanent notes. Die begrippen zijn trouwens Ahrens' uitbreiding - Luhmann zelf gebruikte ze nooit.
+
+De principes kloppen. Het probleem zit in de uitvoering. Het "Evernote-effect", zoals zettelkasten.de het beschrijft, treft elk groeiend systeem: hoe meer je verzamelt, hoe meer energie het onderhoud opslokt - tot de opbrengst het onderhoud niet meer rechtvaardigt. Wie van ons heeft elke dag 30 minuten om zijn gedachten te verdichten? Precies.
+
+### Second Brain heeft zijn eigen probleem gediagnosticeerd
+
+Tiago Forte heeft met "Building a Second Brain" (CODE: Capture-Organize-Distill-Express, PARA: Projects-Areas-Resources-Archive) een hele generatie gevormd. En hij heeft het probleem van het verzamelgraf zelf benoemd - vrij vertaald: een Second Brain moet geen opslagloods zijn, maar een fabriek die ideeën omzet in concrete resultaten. Forte zelf formuleert het zo: *"information only becomes knowledge when we put it to use"*.
+
+De diagnose is precies. Alleen - de oplossing vraagt weer om menselijke discipline. Distill en Express zijn werk. Veel werk. En juist op die twee stappen loopt het systeem in de praktijk stuk, niet op het capturen.
+
+<LinkCard url="https://fortelabs.com/blog/basboverview/"/>
+
+### Moderne tools, oude taakverdeling
+
+Obsidian, Notion, Tana - ze hebben de afgelopen twee jaar allemaal AI-features gekregen. Smart Connections vindt semantische buren. Copilot for Obsidian beantwoordt vragen over de vault. Notion AI biedt een query-laag die relaties tussen databases vaak niet begrijpt en externe embeds niet eens ziet. Tana gaat met Agent Nodes, triggers en Supertags het verst. Maar ook Tana is gebaseerd op regels, het denkt niet autonoom.
+
+Het zijn allemaal assistenten. Geen van hen is maintainer. Geen van hen schrijft ongevraagd nieuwe notities, verdicht onderwerpen, herkent tegenstrijdigheden tussen oude en nieuwe gedachten of archiveert materiaal dat stil is gevallen. Het werk blijft bij jou - de tools maken het alleen comfortabeler.
+
+### De gedeelde blinde vlek
+
+Of het nu Zettelkasten is, Second Brain of moderne PKM-tooling: elk van deze methodes gaat uit van een gedisciplineerde menselijke maintainer. Iemand die regelmatig opruimt, koppelt, verdicht, schift. Die bestaat in theorie. In de praktijk zit daar een kenniswerker met een volle agenda, die al blij is als hij nog iets kan capturen.
+
+> De methodes hebben niet gefaald. De aanname dat de mens tegelijk auteur, curator en archivaris kan zijn, heeft gefaald.
+
+Niet de schappen zijn het probleem. Niet de tags, niet de links, niet de mappen. Het probleem is de rolverdeling. En precies daar moet je opnieuw beginnen.
+
+## Mycel - de nieuwe taakverdeling
+
+Als maintainers zeldzaam zijn, moet de rol verdwijnen - niet het werk. Dat is precies de denkomslag die Andrej Karpathy op 2 april 2026 in een post goot: LLM's als curatoren van persoonlijke kennisbanken. Bijna 20 miljoen views, kort daarna een gist met de architectuurschets. Karpathy beschrijft zijn eigen wiki: zo'n 100 artikelen, ongeveer 400.000 woorden, volledig door het LLM gecompileerd en onderhouden - zelf bewerkt hij hem nauwelijks nog.
+
+<LinkCard url="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f"/>
+
+De architectuur die ik parallel voor mezelf heb ontwikkeld en aan de hand van Karpathys schets heb aangescherpt, bestaat uit drie lagen:
+
+- **`raw/`** - onveranderlijke bronnen. Artikelen, transcripten, screenshots, papers. Het LLM leest hier alleen. Er wordt nooit geschreven.
+- **`wiki/`** - gecompileerde kennis. Source-pages per bron, entity-pages per persoon/organisatie/product, concept-pages per idee, synthesis-pages die meerdere bronnen verweven, en question-pages die open vragen bijhouden. Volledig door het LLM geschreven.
+- **Schema/skills** - de regels volgens welke er gewerkt wordt. Welke paginatypes er zijn, hoe er gelinkt wordt, wat een goed formaat voor een concept-page is. Het schema leeft en wordt met elke ingest scherper.
+
+Het verschil met klassieke PKM is niet "meer automatisering". Het is een andere rolverdeling. Ik beslis wat erin komt en welke vragen ik aan het materiaal heb. Het LLM destilleert, koppelt, onderhoudt.
+
+### Waarom Mycel?
+
+Omdat de metafoor klopt. Een mycelium is het ondergrondse draadnetwerk van een paddenstoel. Het neemt voedingsstoffen op, vertakt zich naar alles binnen bereik en vormt uiteindelijk vruchtlichamen - de zichtbare paddenstoelen die wij voor "de paddenstoel" aanzien.
+
+| Biologie | Kennissysteem |
+|---|---|
+| Voedingsstoffen opnemen | Bronnen inlezen (`raw/`) |
+| Schimmeldraden vertakken zich | Wikilinks tussen pagina's |
+| Organische groei | Elke ingest verdicht het netwerk |
+| Vruchtlichamen | Syntheses en concepten als zichtbare resultaten |
+| Symbiose | Mens cureert, machine compileert |
+
+Twee van die eigenschappen dragen de hele architectuur:
+
+**Compound-groei.** Mycelia groeien niet lineair, ze groeien exponentieel. In mijn praktijk raakt een nieuwe bron doorgaans 5 tot 20 bestaande pagina's: hij werkt entities bij, scherpt concepts aan, opent of sluit questions. De waarde zit niet in het aantal items, maar in de dichtheid van de verbindingen. Compound boven completeness.
+
+**Onzichtbare infrastructuur.** Het grootste deel van een mycelium ligt onder de grond. Het waardevolste aan de wiki is niet de losse samenvatting die ik bovenaan zie. Het is het netwerk van kruisverwijzingen, tegenstrijdigheden tussen bronnen en open vragen daartussen. De vruchtlichamen - syntheses, concept-pages - zijn alleen het zichtbare topje.
+
+> De mens cureert niet minder. Hij cureert alleen anders: op het niveau van de vragen, niet op het niveau van de kaartjes.
+
+Dat is de breuk. Ik onderhoud geen notities meer - ik onderhoud de richting. Wat interesseert me nu? Welke vragen staan open? Waar zitten tegenstrijdigheden? Het LLM neemt het deel over dat mensen structureel niet geschaald krijgen: consequent alle verbindingen bijwerken, elke keer dat er ergens nieuw materiaal bijkomt.
+
+Blijft er een vraag over die zich opdringt zodra je het systeem één keer gezien hebt - vooral voor iedereen die al met LLM's heeft gebouwd: als het LLM uit de map `raw/` een wiki compileert, is dat dan niet gewoon RAG met meer stappen?
+
+## Compiled Knowledge is geen RAG
+
+Voordat we bij het eigenlijke punt komen - het terugvinden - loont een korte technische omweg. Anders blijft de RAG-vraag in de lucht hangen, en die verdient een helder antwoord. Nee, dit is geen RAG. Het verschil zit niet in het aantal stappen, maar in het moment van de synthese. RAG denkt bij het antwoord. Compiled Knowledge heeft al nagedacht voordat de vraag gesteld werd.
+
+Voordat we dieper gaan: "Compiled Knowledge" is geen gevestigde vakterm. Je vindt hem in geen enkel leerboek, en ook in de LLM-community is het geen vaste term. De framing gaat in wezen terug op Karpathys compiler-analogie van april 2026 - ruwe bronnen worden behandeld als source code: eerst compileren, dan uitvoeren. Het resultaat is compacter, gestructureerder, sneller op te vragen. Ik neem de term over omdat hij het principe goed samenvat.
+
+### Wat RAG eigenlijk doet
+
+RAG hakt documenten in chunks, haalt elke chunk door een embedding-model en zet de vectoren in een vector store. Bij een query wordt de vraag ook ge-embed, de store geeft de meest gelijkende chunks terug, en het LLM krijgt die snippers als context. Alles gebeurt just-in-time. Het eigenlijke denkwerk - wat betekent dit, hoe hangt het samen, waar spreekt het zichzelf tegen - wordt bij elke afzonderlijke query opnieuw aan het model gedelegeerd.
+
+Ik bedoel hier klassieke, niet-agentische RAG. Moderne hybrid-search-, re-ranking- of agentic-RAG-benaderingen vervagen de grens - het verschil wordt dan gradueel, niet principieel.
+
+### Wat Compiled Knowledge anders doet
+
+De synthese gebeurt bij de ingest, niet bij het antwoord. Een nieuwe bron wordt niet bot in stukken gehakt en gevectoriseerd, maar gelezen, gedestilleerd en expliciet in het bestaande netwerk geknoopt. Er ontstaan gestructureerde Markdown-pagina's met kruisverwijzingen, open vragen en gedocumenteerde tegenstrijdigheden. Het dure werk is bij het opnemen al gedaan. De query haalt kant-en-klare gedachten op, geen losse ingrediënten.
+
+### De verschillen in de praktijk
+
+RAG vindt een gelijkende chunk. Compiled Knowledge levert een kant-en-klare pagina die bron A en bron B al op elkaar heeft betrokken - inclusief de plekken waar ze elkaar tegenspreken. En terwijl RAG bij elke query bij nul begint, verrijkt elke nieuwe bron het compound-netwerk verder: elke kruisverwijzing verhoogt de waarde van de pagina's die er al zijn.
+
+### Waar het model tegen grenzen aanloopt
+
+Om eerlijk te blijven: Mycel draait in mijn setup op dit moment zonder embedding-infrastructuur. Dat werkt zolang het kennisnetwerk overzichtelijk blijft en de koppelingen netjes onderhouden worden. Schaalt dat naar tienduizenden pagina's? Waarschijnlijk niet zonder hybride aanpak - Compiled Knowledge als gecureerde basis, embeddings als fulltext-fallback voor wat nog niet gedestilleerd is. Ik heb het nog niet tot het uiterste gedreven. Wie beweert dat het ene model alle gevallen oplost, probeert je iets te verkopen.
+
+Maar zelfs een perfect onderhouden, gecompileerde wiki lost het eigenlijke probleem niet op. Een pagina hebben die precies het antwoord bevat, heeft geen zin als die op het juiste moment niet wordt opgeroepen. Opslaan is het halve werk. De andere helft is terugvinden.
+
+> 30 goed gekoppelde pagina's zijn waardevoller dan 200 geïsoleerde samenvattingen. Maar beide zijn waardeloos als ze op het beslissende moment niet paraat zijn.
+
+## Het eigenlijke probleem was nooit het verzamelen
+
+We hadden alles opgelost. Een wiki die zichzelf onderhoudt. Compound-groei in plaats van een houdbaarheidsdatum. Geen tegenstrijdigheden meer onder het tapijt, geen drie halfbakken notities over hetzelfde onderwerp, geen kerkhof van Markdown-bestanden. Op papier was het probleem opgelost.
+
+En toch.
+
+Ik had mijn kennis onderhouden, gekoppeld, gesynthetiseerd - en op de momenten dat het ertoe deed, schoot het me niet te binnen. In de meeting, bij de architectuurbeslissing, in de snelle code review. Daar was het niet. Het stond in de wiki, netjes gesorteerd, perfect gelinkt, en ik had er precies niks aan.
+
+Kennis terugvinden is een andere discipline dan kennis opslaan. Dat is het ongemakkelijke inzicht. Opslaan is asynchroon, gecontroleerd, in alle rust. Terugvinden gebeurt onder druk, midden in een gesprek, in de seconde waarin de beslissing valt.
+
+Het klassieke PKM-debat heeft een blinde vlek: het draait bijna uitsluitend om input. Hoe organiseer ik? Welk systeem? Atomic notes of Folgezettel? Tags of folders? De andere helft - wat haal ik in welke situatie tevoorschijn? - blijft onbeantwoord. Alsof terugvinden een opgelost bijproduct is van netjes opslaan. Dat is het niet.
+
+Bij denktools wordt dat pijnlijk concreet. Ik ken Inversion. Ik ken second-order thinking. Ik ken Ishikawa, pre-mortem, opportunity cost. Ik heb er boeken over gelezen, notities gemaakt, ze gekoppeld. En toch pas ik ze niet toe als ik ze nodig zou hebben.
+
+Mentale modellen activeren System 2-denken - het langzame, bewuste, analytische. Alleen: onder druk neemt System 1 het over. Snel, reflexmatig, in patronen. Zo luidt in elk geval de populaire lezing naar Kahneman. Het boek in de kast helpt niet in de meeting. De notitie in de wiki helpt niet in de discussie over een pull request. En dat is precies de gap die klassieke PKM nooit heeft aangepakt: tussen "ik ken het concept" en "ik gebruik het op het juiste moment".
+
+De consequentie is ongemakkelijk, maar helder. Meer kennis verzamelen lost dit probleem niet op. Beter organiseren ook niet. Zelfs een Mycel-wiki die perfect door een LLM wordt onderhouden, blijft passief - hij wacht tot ik iets vraag. En dat is precies wat ik op het beslissende moment niet doe.
+
+Wat er nodig is, is iets anders: denktools die op het juiste moment beschikbaar zijn. Niet als boek, niet als notitie, niet als hoofdstuk in de wiki. Als skill op afroep.
+
+> Kennis verzamelen is het halve werk. Het op het juiste moment activeren is de rest - en het moeilijkere deel.
+
+## Denktools op afroep
+
+"Skill op afroep" klinkt abstract, dus ik maak het concreet: een denktool is pas een tool als hij binnen handbereik is in de situatie waarin ik hem nodig heb. Niet tien minuten later. Niet na de afspraak. Niet als me 's avonds te binnen schiet dat ik vanochtend eigenlijk had moeten inverteren.
+
+Precies dat was jarenlang mijn probleem met frameworks: ik kende ze. Ik had ze zelfs genoteerd en gedestilleerd, braaf volgens CODE. En toch waren ze er niet op het moment van de beslissing.
+
+### untools.co als ruw materiaal
+
+<LinkCard url="https://untools.co"/>
+
+Adam Amran, productdesigner uit Tsjechië, cureert op untools.co meer dan 25 denktools in vier categorieën: Decision Making, Problem Solving, Systems Thinking en Communication. De missie staat er droog beschreven: *"Collection of thinking tools and frameworks to help you solve problems, make decisions and understand systems."*
+
+Als bookmark is de site nutteloos. Als ingest-materiaal in mijn Mycel - concept-pagina's per tool, plus per tool een Claude-skill, plus een synthesis-pagina als navigator - is het iets heel anders.
+
+<Accordion title="Inversion">
+Vraag niet "hoe bereik ik X?", maar "hoe zou ik X gegarandeerd kunnen verhinderen?". De lijst van dingen om te vermijden is vaak concreter dan de lijst van wegen ernaartoe. Typische inzet: een pre-mortem voor een beslissing.
+</Accordion>
+
+<Accordion title="Second-order thinking">
+"And then what?" Niet stoppen bij de eerste consequentie, maar de gevolgen in cascade meenemen. Werkt wanneer een beslissing overduidelijk goed lijkt - dat is meestal het signaal om minstens twee niveaus verder te denken.
+</Accordion>
+
+<Accordion title="Issue trees">
+MECE-gestructureerde opsplitsing van een probleem in deelproblemen, daarna 80/20-focus op de takken met de grootste hefboom. Werkt wanneer een probleem te groot lijkt om aan te pakken.
+</Accordion>
+
+<Accordion title="Eisenhower Matrix">
+Vier kwadranten van belangrijkheid en urgentie. Populair gemaakt door Stephen Covey in "7 Habits" (Habit 3: Put First Things First). Klinkt banaal, maar is het preciezeste filter dat ik ken voor weekplanning - vooral om "dringend, maar onbelangrijk" eerlijk te benoemen.
+</Accordion>
+
+### De beslissende verschuiving
+
+De navigator werkt als een routing-laag. Ik beschrijf de situatie: *"Het probleem is te complex, ik weet niet waar ik moet beginnen."* Voorstel: Issue Trees. *"Ik zie alleen ideale oplossingen."* Voorstel: Inversion. *"De beslissing voelt te snel juist."* Voorstel: Second-order thinking.
+
+Ik hoef niet meer te weten welke tool ik nodig heb. Ik hoef alleen mijn situatie te beschrijven. De rest is navigatie - en die neemt de assistent over.
+
+> Een framework dat ik op het juiste moment niet kan activeren, is geen tool. Het is een souvenir.
+
+### Integratie in routines - de Feniks-progressie
+
+Mijn eigen productiviteitsroutine - ik noem haar Feniks-progressie - combineert het 12-Week-Year-principe van Moran en Lennington (*"In 12 weeks, there just isn't enough time to get complacent, and urgency increases and intensifies."*) met een cyclisch ritme van vijf tijdslagen: tijdperk (5 jaar), cyclus (6 maanden), vuurstorm (12 weken), weekvuur (1 week), vlam (2 uur).
+
+Elke laag heeft zijn eigen rituelen. En precies op die rituelen haken de denktools in.
+
+Voor een **vlam** - een deep-workblok van 2 uur - krijg ik bij de start methodes voorgesteld die bij de situatie passen. Voor **weekvuur-reviews** andere. Voor de **vuurstorm-retrospectieve** wordt Inversion aangeraden als pre-mortem voor de volgende cyclus. In de dagplanning komt de Eisenhower-matrix in beeld als de lijst te lang wordt. In de cyclusplanning First Principles, als ik merk dat ik doelen alleen maar doortrek in plaats van ze opnieuw te doordenken.
+
+Ik roep dat niet op. De skill meldt zich als de situatie erom vraagt - de methode groeit uit het Mycel als vruchtlichaam op het juiste moment.
+
+Het verschil is subtiel, maar beslissend: de cognitieve moeite om zelf aan het juiste framework te denken, valt weg. Het framework staat niet meer in de kast. Het zit in de situatie - als skill die geladen wordt als de context klopt.
+
+Geen "had ik maar aan Inversion gedacht". Geen naslag in oude notities. Het onthouden neemt de skill over.
+
+Dat klinkt af. Is het niet.
+
+## Wat er nu verandert - en wat (nog) niet werkt
+
+Wat ik hierboven beschrijf, is een lopend onderhandelingsproces - geen afgeronde productiviteitsoplossing die je kunt kopiëren.
+
+### Wat er nu verandert
+
+**Notities schrijven voelt anders.** Ik verzamel minder. Niet omdat ik minder lees, maar omdat ik weet dat de LLM-maintainer bij de ingest verdicht. Ik hoef niet meer elke passage woordelijk vast te leggen om haar later terug te vinden. Dat verandert wat ik de moeite van het noteren waard vind.
+
+**Denken in frameworks is makkelijker geworden.** Niet omdat ik meer frameworks ken - maar omdat ze op het juiste moment opduiken. Een Dialectic-skill die zich meldt als ik een beslissing moet nemen, is iets anders dan een boek in de kast dat ik actief zou moeten raadplegen.
+
+**Er duiken verbanden op die ik zelf nooit had gezien.** Bij de ingest ontstaan wikilinks waar ik in mijn eentje niet op was gekomen. Sommige zijn triviaal, sommige veranderen hoe ik een onderwerp plaats. Dat is het deel dat het meest als compileren en het minst als zoeken voelt.
+
+<Callout type="warning">
+**Wat nog niet werkt:**
+
+- **Ik ingest te weinig.** Het aanleveren van bronnen blijft de bottleneck. Een systeem dat compileert, is maar zo goed als het materiaal dat erin gaat.
+- **Stale content is een echt probleem.** Lint-runs helpen, maar ze vangen niet alles af. Wikipagina's verouderen, tegenstrijdigheden blijven staan, bronnen verschuiven.
+- **Het glijdt niet vanzelf de dagelijkse praktijk in.** Het systeem werkt alleen waar ik het bewust aanroep. Vergeet ik het, dan bestaat het praktisch niet.
+- **Vertrouwen gaat niet vanzelf.** Gehallucineerde feiten, verkeerde wikilinks, over het hoofd geziene tegenstrijdigheden komen voor. Ik moet de maintainer blijven controleren.
+- **Cognitive outsourcing is een reëel gevaar.** Ethan Mollick wijst er steeds weer op dat de weg van de minste weerstand bij LLM-gebruik het passief uitbesteden van je eigen denken is - met het risico dat de mentale spieren voor diep denkwerk verschrompelen. Wie het LLM de wiki laat onderhouden, geeft autoriteit aan het systeem. Ik moet daar actief tegenin werken - anders onderhoudt de maintainer op een dag een wiki die ik niet meer kritisch lees.
+</Callout>
+
+En er blijven open vragen. Hoe schaalt dit voorbij 500 pagina's, als de verbindingen exponentieel groeien? Wat gebeurt er als ik het schema fundamenteel wil veranderen - migreert de maintainer de wiki, of begint hij bij nul? Ik weet het niet.
+
+Dit is geen kant-en-klaar productiviteitssysteem dat je kopieert. Het is een lopend onderhandelingsproces tussen mij en een machine die steeds beter wordt in het verdichten van kennis. En steeds beter in het overnemen van werk dat ik misschien helemaal niet uit handen zou moeten geven. De hefboom zit in de taakverdeling. Ik beslis wat belangrijk is, wat blijft, welke richting het geheel opgaat. De machine destilleert, koppelt, levert op het juiste moment aan. Die grens bewaken is werk - en het is de eigenlijke opdracht.
+
+Het punt is niet om meer te weten. Het punt is om op het juiste moment het juiste paraat te hebben.
+
+> De mens cureert, de machine compileert.

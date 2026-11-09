@@ -1,0 +1,192 @@
+---
+title: "Building Was the Easy Part: What Half a Year of Running Volunteer Software Taught Me"
+description: "Three evenings, three tools - and then what? How nine small apps for our volunteer unit became one, why a green health check noticed nothing, and what I do when I'm on vacation."
+date: 2026-10-24
+tags: ["software-engineering", "katastrophenschutz", "release-engineering", "ai"]
+image: ../../blog/_images/ehrenamt-software-betreiben/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> With AI, building an app takes one evening. Running it takes a little bit of every evening - times the number of apps you have.
+
+Picture a missing-person search. Someone has gone missing, it's getting dark, and a drone is hovering over the patch of woods. In the incident command vehicle, the truck the operation is run from, the incident commanders are looking at a screen and want to see what the drone sees. The search itself runs off the pilot's remote controller, which shows the image anyway. To get it into the command vehicle as well, I'm building a piece of software in my spare time. It runs on a server that nobody looks after except me.
+
+In April I wrote about how easy AI has made it to build software for volunteer work. Three tools in three evenings, all used in real operations, and I never read the code. My conclusion back then: more important than knowing code is knowing what a piece of software needs in order to keep running.
+
+<LinkCard url="/en/blog/drei-abende-drei-tools"/>
+
+The reactions almost all pointed in the same direction, and they came from people who have been doing this for years. Building isn't the expensive part, one of them wrote, it's maintenance and operations: updates, backups, security holes, data migrations. Not rocket science, but you have to know about it and set it up in the first place. Another one, who has been looking after software for volunteer associations for decades, asked the question that has stuck with me ever since: What happens when the software isn't running and I'm on vacation? And a third summed it up in one line: if you build it, you own it, and you have to maintain it.
+
+They were right. This is the story of the six months that followed.
+
+## Half a year later
+
+A quick reminder of what this was about: Flugmappe, a digital checklist for our drone flights; da-feedback, for anonymous feedback after a training evening; and easy-fileshare, for sharing files without any fuss. The AI wrote the code, I described what should come out at the end. And in case something got stuck, the post back then had a pretty relaxed plan: "Then I'll fix it. Or the AI fixes it."
+
+Half a year later, here's where things stand:
+
+| App | What for | What became of it |
+|-----|-------|------------------|
+| **Flugmappe** | Checklist for drone flights | still running, on its own |
+| **da-feedback** | anonymous feedback after training evenings | lives on as a building block of a shared app |
+| **easy-fileshare** | sharing files | replaced over the summer, now also part of the shared app |
+
+There's a backstory to why two out of three no longer stand alone. The three tools were never alone in the first place. A few small apps for our unit were already running before, and others joined over the summer: a second drop box for uploads, a start page where you can find the others, a QR code generator, a companion for drone training, a inventory log for our equipment, and two whole apps for lending out and managing our radios. Together with da-feedback and easy-fileshare, that made nine small apps, each standing alone. Flugmappe still runs independently to this day.
+
+Technically, each of these apps lived in its own container. Think of it as a self-contained apartment, with its own electricity, its own lock and its own mailbox. All the apartments sit on the same plot of land: a small server, meaning a computer that runs around the clock and can be reached from the internet. And each apartment had its own furnishings: its own tech under the hood, its own database (the app's memory), its own pipeline (the assembly line that automatically builds a new version on every change and puts it on the server) and its own backup, i.e. a safety copy of the data. Or no backup at all.
+
+da-feedback is a good example of what that means day to day. I had set up Dependabot there, a bot from GitHub (the platform where my code lives) that flags when the components I've built in need updates, and serves up the matching change proposal right away. In July it reported three pending updates. I didn't merge a single one of the proposals; they just sat there.
+
+And there's a second catch. For da-feedback, Dependabot only checked the furniture, i.e. the ready-made parts the app is assembled from. It never looked at the foundation, the base system the app runs on (what developers call the base image). Even if I had merged every proposal immediately, that part would have stayed unchecked.
+
+The math is pretty simple. I still didn't do it back in April. Every app needs regular care: going through updates, checking that everything is still alive. With one app, you do that on the side. With nine, it turns into a second volunteer job that starts each evening once the first one is done. Well, and someone has to do it, and in our case that someone is me.
+
+Updates piling up are the quiet part of the problem, though. The more unpleasant part had already shown up in June, with easy-fileshare: something broke there, and the automatic check that's supposed to tell whether the app is still alive found nothing wrong the whole time.
+
+## The health check was green
+
+In June 2026, downloads started failing in easy-fileshare, the little tool we use in our unit to pass files around. Not every time, only sometimes. Instead of the file, you got an error page from Cloudflare. In my setup, Cloudflare stands in front of the server like a gatekeeper: every request goes through it first, and if the app behind it stays silent for too long, it sends people away with a "timeout" notice.
+
+In theory, that's what the health check is for. It's a quick look the server takes at the app at regular intervals, a bit like a smoke detector: "Are you still alive?" If the app answers, everything shows green. And the check showed green, the entire time.
+
+The first suspicion fell on the database. Oddly enough, it was the green check that argued against it: the way the database works in this app, a hang there stops the whole app, including the answer to the health check. If the database had been stuck, the check would have frozen too. So the green tick was useless and a clue at the same time - useless because it didn't notice the outage, and a clue because it ruled out a false lead.
+
+The cause was somewhere else. The files themselves sit in a separate file store next to the app, a kind of storeroom. For every download, the app fetches the file from this storeroom over a line, and it had 50 of those lines. If someone aborted a download halfway, say because the phone lost its connection, the line should have become free again. It didn't. It stayed open, and the app kept dutifully waiting for someone who had long since left.
+
+After roughly 50 such aborts, there were no lines left. From then on every download hung, and the app itself reported no error. Only Cloudflare eventually gave up. Everything that didn't need a line to the storeroom, on the other hand, kept happily answering, the health check first and foremost. The smoke detector was hanging in a room that wasn't on fire.
+
+Claude, the AI I build these tools with, wrote the fix. Every line now has a time limit, and an aborted download gives its line back immediately. The health check also no longer just asks "Are you still alive?"; it additionally checks whether the storeroom can be reached. The proof: 150 simultaneously aborted downloads, three times as many as it used to take to bring everything to a halt.
+
+Then came something that surprises a lot of people who are new to Docker. Docker is the program on the server that manages the apartments: it starts and stops them. When the smoke detector beeps and reports the app as "unhealthy", i.e. sick, what happens is... nothing, at first. At most, it gets restarted if the app inside crashes completely, and even that only if you've explicitly told Docker to. An app that's still breathing but no longer delivers anything just lies there until someone steps in by hand. So a little helper called autoheal joined the setup. It listens to the smoke detectors and restarts an apartment as soon as it's reported sick.
+
+In hindsight, the health check did what it was told. It checked whether the app answers. Whether it can do what people open it for, namely download a file - nobody had asked it that. A health check only looks where I send it.
+
+In the post about how to watch AI features in production (observability), one of the typical mistakes listed was measuring only the happy path, i.e. only the path where everything goes well. Turns out that happens with a small volunteer file-sharing tool, too.
+
+<LinkCard url="/en/blog/observability-ai-features"/>
+
+<Accordion title="For the curious: what happened technically">
+easy-fileshare is a Next.js app that stores files in S3-compatible storage (MinIO) and retrieves them via the AWS SDK. By default, the SDK uses a pool of 50 sockets, with no inactivity timeout. When a client aborted mid-download, the S3 stream stayed open on the server side, and the socket never went back into the pool. After about 50 of these leaks, every new download hung: 0% CPU, no new connection to MinIO, and Cloudflare returned a 524 error once its wait time ran out.
+
+The database (SQLite) could be ruled out because it works synchronously in this app. A blocking write would have stopped the entire process, health endpoint included.
+
+The fix has several parts: a bounded socket pool with timeouts, an abort signal passed through from the aborted request all the way to the S3 call, and a health check that additionally asks via S3 HEAD whether the storage responds. On top of that come a restart policy and autoheal as a sidecar, i.e. a small companion container that restarts "unhealthy" containers. This was verified with 150 simultaneous aborts mid-stream.
+</Accordion>
+
+## Nine apartments, one house
+
+In July I faced a choice. I could have treated every app to a better health check, plus its own restart helper and a proper backup. Nine times. And at the next outage I'd have had to look in nine corners again to see which one was stuck this time. Nine apartments also mean nine smoke detectors I have to check, and nine assembly lines that run with every new version. So I turned the question around: How do I get rid of apps without the volunteers missing anything?
+
+On July 19 I started the IuK-Suite (IuK is German shorthand for information and communications). The suite is the shared house where all the apps live together. Each app is called a module there and keeps its doorbell, i.e. its existing web address. You sign in at the front door, via Pocket ID, a small sign-in service that now handles one login for all modules. Inside, each module has its own room with its own cupboard: a database file of its own. What's in the inventory log isn't stored in the same file as the list of radios. A single central list decides who gets to see which room in the first place.
+
+<ProjectCard title="IuK-Suite" description="Web suite for the information and communications work of a volunteer civil protection unit, with one login for all modules" githubUrl="https://github.com/rubenvitt/iuk-suite"/>
+
+For the volunteers, almost nothing changed. The addresses are the same, and so are the logins. The only new thing is that everything looks the same now.
+
+For me, on the other hand, quite a lot changed. There's one way for new versions to get into the house, and one backup for everything. Dependabot only has one project to watch for all these apps. And when I want to know whether everything is alive, I only have to look in one place. Whether the health check there also looks into every room is a question I've asked myself at every check since June.
+
+Unsurprisingly, I'm not the first to come up with the idea. The software company Segment once merged 140 small services into a single one, because with every additional service, the operational work grew by the same amount.
+
+<LinkCard url="https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices"/>
+
+The real risk was in the move itself. Each move has written instructions, so-called runbooks: checklists for what happens in which order when moving out and moving in.
+
+The runbook for the file drop, which easy-fileshare and the second upload drop box were merged into, contains a rule I consider the most important one: whether there's still data in the old app gets counted, not assumed. When it's torn down, the old apartment disappears along with its contents. If you tear down an overlooked file with it, you've destroyed it, and "but there was nothing left in there" won't help anyone at that point.
+
+For the same file drop, a different test was decisive: a locked door. That authorized people can see their files is the obvious part. More important was the opposite: anyone who doesn't have access to the module has to be told "doesn't exist", which on the web means the 404 error page. If they get a perfectly normal page instead, the file drop's admin area is open to anyone with any account at all.
+
+With drone training, the hurdle was somewhere else. Access codes and sign-in links had long been handed out, and even someone who had the app open offline on their phone at that moment should be able to just carry on after the move. All of it had to keep working unchanged. So the runbook said to leave the old app standing as a fallback for two weeks, and going back would have been a quick fix: point the address at the old apartment again.
+
+## What a shared house costs
+
+The move took a lot of work off my plate. A house, however, has one property that nine separate apartments didn't have: a shared fuse box. If the main fuse blows, all the rooms go dark, no matter which room the short circuit happened in. In tech, that's called the blast radius, i.e. how far the shockwave of a failure reaches. With nine separate apps, a bug in one app usually only hit that one. In the suite, it can hit all of them.
+
+I don't have to look far for examples; they're right there in my own notes on the suite. The file drop comes with a virus scanner that checks uploaded files. It runs in its own small container on the same plot, right next to the suite, and on startup the suite waits until it reports that it's ready.
+
+<Callout type="warning">
+The virus scanner needs a small config file on the server. If it's missing, Docker simply creates an empty folder in its place. The virus scanner then starts without any configuration, and its health check fails. Because the suite waits for it, the suite doesn't start at all. Feedback, inventory log, start page: all unreachable, because of one missing file that none of these apps has anything to do with.
+</Callout>
+
+The second example is quieter. When the file drop moved into the suite, it brought along three settings the whole house now refuses to boot without. If you forget them during setup or add them later, you've taken down the start page in the meantime, too, even though it has nothing to do with files whatsoever. One room moves in, and suddenly the front door depends on its light switch.
+
+And then there's an outage no house prevents. The bus factor describes how many people have to drop out before nothing works anymore (the somewhat morbid idea behind it is a bus that hits someone). For us it's 1, before the move and after it. Merging saves work, but it doesn't spread knowledge. Who besides me knows that the virus scanner needs a config file? Exactly.
+
+That makes us pretty normal. As early as late 2019, 22% of nonprofit organizations in Germany had no one responsible for IT, according to the [Digital-Report 2020 by Haus des Stiftens](https://www.hausdesstiftens.org/?p=16381) (in German). Hardly anyone gets paid for it anyway: according to the [ZiviZ-Survey 2023](https://www.ziviz.de/sites/ziv/files/ziviz-survey_2023_trendbericht.pdf) (in German), only 27% of civil society organizations have any paid staff at all. At least we have someone who takes care of it. Just the one.
+
+A small consolation, or irony, depending on your mood: tools have a bus factor, too. Watchtower was a popular tool that automatically updates containers to new versions. In December 2025 the project was archived, i.e. discontinued. The volunteers behind it hardly use Docker themselves anymore and had neither the time nor the desire to keep it going.
+
+<LinkCard url="https://github.com/containrrr/watchtower"/>
+
+## Who keeps watch at night
+
+If even the well-known tool for automatic updates no longer has a maintainer, the question remains who installs the updates on my end. Until late summer, the answer was: me, one evening, with a runbook open next to me. Every update was a little session. Fetch the new version, compare it with the old one, start it, check whether the app still answers. None of it was hard, I just never did it the same way twice.
+
+Today, automatic tests run after every change to the code. When a change lands in the main version of the code (in developer speak: gets merged) and all tests are green, the new version goes out automatically. A script works through the rollout, i.e. the delivery, in the same order every time. The post about release discipline still listed the objection "We're too small for a process like this". An automatic rollout after every merge is the smallest version of it.
+
+<LinkCard url="/en/blog/ai-rollout-canary-shadow"/>
+
+On top of that comes a safety net. A few config files live on the server, and every now and then someone changed something there by hand - in practice: me. The rollout remembers what these files are supposed to look like. If one of them deviates, it aborts before it touches anything. What prompted this was a setting that existed only on the server and not in the template these files come from. If the update had simply replaced the file with the template, that setting would have been lost silently.
+
+<Accordion title="For the curious: updating the building blocks, and a deliberate risk">
+Dependabot still takes care of the third-party building blocks. It now also checks the base image, the foundation of the suite. Since July 2026, it waits three days by default before proposing a new version. During that time, tampered versions are usually spotted by others already, which lowers the risk of catching a freshly compromised one. It still proposes security updates immediately, but even those only ship once its proposal has been merged.
+
+There's one catch to all this. For the rollout to reach the server, a helper from GitHub runs there, a so-called runner, which executes the steps. At the same time, the suite's code is public. GitHub itself advises against this combination. I took the risk deliberately and secured it. How, I'm deliberately not saying here.
+</Accordion>
+
+For a long time, the backup was a task the server started on its own at regular intervals. Strictly speaking, it wasn't a backup at all. The task wasn't written down anywhere except on the server, and anyone looking at the rest of the setup wouldn't have known it existed. The copy sat on the same machine as the data: if the server burns down, both are gone. And if the task failed, nobody noticed.
+
+These days, a dedicated little helper in the house takes care of it, a kind of caretaker with a single job. It sends the copy to another location and flags it when something goes wrong. And it deliberately depends on nothing, just as nothing depends on it: the suite starts even if the backup is stuck at the moment, and the backup doesn't wait for the suite to be healthy. After the virus scanner story, the last thing I wanted was for the backup, of all things, to drag operations down with it. It has had a mishap already, too: two backups in the same second got the same file name, the second overwrote the first and cheerfully reported success. Now, in a case like that, the caretaker aborts instead and asks, more or less, whether the clock has stopped.
+
+That leaves the question of who reads the runbooks. Not just for the moves; every bigger update has a runbook with checkpoints, too. They're written for two readers: for me and for Claude Code, i.e. the same AI as with the download fix, just directly on the server, where it works through the runbooks step by step. So the AI that helped build the apps also helps run them.
+
+Which means the real decision happens at the merge: whatever gets merged goes out. Merging is quick, all the more so when the tests are green anyway. In the post about human in the loop, i.e. about sign-offs by humans, I described the sign-off as part of the security architecture, along with the danger that it turns into a stamp that lands on everything unread. For me, that stamp is the merge.
+
+<LinkCard url="/en/blog/human-in-the-loop"/>
+
+Will the merge at some point turn into nodding things through without anyone looking anymore? To be honest: I already nod things through. For a feedback form or a inventory log, I think that's defensible; the tests catch the worst of it, and the stakes are low.
+
+## Why Suchlage isn't moving in
+
+The story could actually end here: one house, one automatic rollout, one caretaker for the backup. But one app deliberately doesn't live in it. And that's not because it's more important.
+
+Suchlage is my newest project and is still in alpha, i.e. an early testing phase. The first trials with the real drone are running right now; acceptance in the field is still pending. The idea is the scene from the beginning: during a missing-person search, a drone flies over the search area, and incident command sits in the command vehicle. Suchlage brings the camera's live feed, the current position and the drone's flight track so far to the vehicle and to the phones of the people out in the field. The actual searching still happens on the remote controller: that's where the pilot sees everything the drone sees, and it remains the source everyone relies on. Suchlage is an additional view for those who aren't standing next to the pilot. If you know Flugmappe from an earlier post, our digital drone checklist: this is the next step in the same line of work.
+
+<LinkCard url="/en/blog/papier-fliegt-nicht"/>
+
+<ProjectCard title="Suchlage" description="Situational picture hub for drone operations in missing-person searches: live feed, position and flight track in the incident command vehicle and on your phone" githubUrl="https://github.com/rubenvitt/suchlage"/>
+
+Technically, Suchlage has little in common with the suite. The drone's position and other readings come in via MQTT, a messaging channel built for lots of small readings. The video runs as a live stream, i.e. a continuous flow of data instead of a finished file. Some parts are only reachable within a private network that simply isn't visible from the outside. And the program behind it is written in Rust, a different programming language from the suite's.
+
+The rhythm is different, too. In the suite, the backup runs automatically in the background. Suchlage's operations manual has one short sentence on backups: "Not during a flight."
+
+Then there's the shared fuse box Suchlage would have in the suite's house. If there's a bug in the inventory log, that's annoying; someone spends an extra day looking for a charging cable. If the same bug takes down the live feed during an active search, incident command is staring at a black screen. The search goes on via the remote controller, sure, but the command vehicle is missing exactly the thing Suchlage was built for. And the other way around, a problem in the video stream shouldn't take the inventory log away from anyone.
+
+Werner Vogels, Amazon's CTO, wrote in a [piece about whether it's okay to build software as one big piece](https://www.allthingsdistributed.com/2023/05/monoliths-are-not-dinosaurs.html): "Building evolvable software systems is a strategy, not a religion." Put plainly: building software so it can keep evolving is a strategy, not a creed. For me, that means: whether I merge or separate is something I decide case by case, using a simple rule of thumb. Merge what fails the same way. Separate what fails differently.
+
+Living outside the house doesn't mean there are no rules, though. With Suchlage, every change that lands in the main version of the code becomes a numbered version, and a system page in the app shows which version is currently running, so nobody has to guess during an operation. If a new version causes trouble, there's a written-down path back to the previous one. On top of that comes a full end-to-end test that plays through the entire app once on my own computer and refuses to run on the real server, so it never accidentally overwrites real data or credentials there.
+
+Still, Suchlage isn't quite as far along as the suite. The backup there is still manual work: briefly stop the server, copy the data away, start it again. Whether it stays that way is open. Well, at least I know that it's open.
+
+In "Three Evenings, Three Tools", my argument for building fast was that not much is at stake. If something breaks, I fix it, and the risk is a lost evening. That holds for Suchlage, too, and on purpose: the remote controller remains the source of truth; that's where the searching happens. If Suchlage goes down, incident command loses its extra view of the feed, but the search continues anyway. So the fact that Suchlage stays separate has nothing to do with the stakes. It simply fails differently from the rest.
+
+## What I do when I'm on vacation
+
+Back to the question from the comments. What happens when the software isn't running and I'm on vacation?
+
+The honest answer is smaller than I'd like it to be. I can't make myself replaceable; the bus factor is 1, and not even the nicest house changes that. What I could change is the amount of stuff that needs doing in an emergency. Instead of nine apartments with nine quirks, there's one house, one way for updates, one backup that shows when it fails, and a written runbook for every bigger task. As long as nothing gets merged during that time, no new version goes out either. The house keeps running in the state I left it in.
+
+And if it hangs anyway? Then it will probably stay stuck until someone checks. So far, the suite doesn't have the restart helper from the June story; Docker only restarts it when it actually crashes. That's a gap, and a slightly embarrassing one, because I've already learned that lesson once.
+
+For Suchlage, my answer is even thinner, but the stakes are also lower than they sound: if it goes down, the search continues via the remote controller, just without a second screen in the command vehicle.
+
+At least the runbooks are written so that not only I can read them. Claude Code already works through them on the server today. In principle, a person from our unit could do it too, with a bit of courage and a login. Whether someone will step up for that is a different question, and not one you can settle in an evening.
+
+Back in April, I already knew that software needs more than code. What I underestimated was how often it needs it. If you build three tools in three evenings, you then have three tools to run, every evening after that. So the most important decision of the past six months was which apps move in together and which ones deliberately stay on their own.
+
+> The app that's the least work is the one that no longer exists.

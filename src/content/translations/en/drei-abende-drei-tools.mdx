@@ -1,0 +1,136 @@
+---
+title: "Three Evenings, Three Tools: When Software for Volunteers Suddenly Becomes Doable"
+description: "Volunteer organizations need their own software, but they could never afford it. How AI is changing that right now, and why deployment knowledge matters more than knowing how to code."
+date: 2026-04-12
+tags: ["ai", "software-engineering", "katastrophenschutz"]
+image: ../../blog/_images/drei-abende-drei-tools/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Volunteer organizations need their own software. Until now, nobody could afford it. That has changed.
+
+Three projects, three evenings, not a single line of code written by me. All of them in production. One of them, an offline PWA for drone operations in civil protection, was the subject of my last post. There, deep domain knowledge was the foundation: every SORA calculation specified, every procedure validated.
+
+<LinkCard url="/en/blog/papier-fliegt-nicht"/>
+
+The two new tools are a different story. No deep domain knowledge. No line-by-line specification. Just a problem, a prompt, and an AI that does the rest. As a software engineer, my job wasn't to write code. It was to know what the end result had to be.
+
+## What's missing, and for whom
+
+Almost 27 million people in Germany volunteer. They organize themselves in more than 650,000 clubs, relief organizations and grassroots initiatives. What all of these organizations have in common: they work with the tools they can afford. And those are rarely the right ones.
+
+Two problems I know from my own volunteer work:
+
+**Feedback after training nights.** The unit leaders want to know how it went. So far: ask around, collect slips of paper, or, most often, not at all. What it would take: scan a QR code, give a rating, leave a comment. Anonymously. The leaders see trends over time. No more complicated than a survey, but there's no tool for it that runs self-hosted and is GDPR-clean.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anonymous feedback system for training nights"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+**Sharing files securely.** Documents, photos, minutes, shared internally without Dropbox, without WeTransfer, without a cloud subscription. Password protection, download limits, expiry dates. Self-hosted, on our own server, no data with third parties.
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted file sharing with password protection and download limits"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Both are mundane. Feedback forms and file sharing aren't unsolved technical challenges. The solutions exist. Just not for volunteer clubs.
+
+The reason is math. A custom solution from an agency easily costs five figures. Half of all nonprofit organizations in Germany have an annual budget of less than 10,000 euros. In total.
+
+> The budget covers the problem, but not the solution. Until now.
+
+## Evening one, evening two
+
+Alright. So what did that actually look like?
+
+With da-feedback, the starting point was simple: we need an anonymous feedback tool for training nights. Scan a QR code, give it a school grade, done. I described the problem, not the solution. The AI picked the stack: Go, SQLite, HTMX. I nodded it through. Do I understand Go templates in detail? No. Didn't need to. By the end of the evening there was a Docker container with a CI/CD pipeline. From zero to deployed.
+
+Same pattern with easy-fileshare. Problem described: file storage with access control and expiry dates. The AI chose Next.js and MinIO. Chunked uploads, OIDC authentication, download limits, all AI-generated. I tested whether the uploads work. Did I read the upload code? No.
+
+I'm not saying this as a confession. I'm saying it as a fact. I didn't read the code. The architecture decisions (Go instead of Node, SQLite instead of Postgres, HTMX instead of React) I mostly just nodded through.
+
+And now the part that matters: this isn't a loss of control. It's a decision.
+
+I'm a software engineer. I could read the code. I could question every architecture decision, check every dependency, think through every edge case. But for an internal tool for a volunteer club with a handful of users? The question isn't whether I read the code. The question is whether I know what happens when it doesn't work. And the answer is: then I fix it. Or the AI fixes it. The risk is one evening of lost work, not a production outage.
+
+Andrej Karpathy coined a term for this: vibe coding, "you fully give in to the vibes, embrace exponentials, and forget that the code even exists." Simon Willison drew the line: if you review and test the code, it's software development. If you don't, it's vibe coding. By that criterion, this was vibe coding. And it worked. Not because vibe coding is a good idea in general, but because the stakes were low and I, as an engineer, could judge that they were low.
+
+> The question isn't whether you read the code. The question is whether you know what happens when it doesn't work.
+
+## What I didn't have to prompt, and what I did
+
+In both projects, the AI picked the stack, designed the database schema, built the UI, implemented auth, defined the API routes and added rate limiting. Impressive. But it's only half the truth.
+
+What I had to know, even if I didn't implement it myself:
+
+- That I need **Docker**, and how a multi-stage build works
+- That **OIDC** exists, and how to configure PocketID as a provider
+- That **CI/CD** is part of a finished product, even if it's just a Docker image build
+- How **Cloudflare Tunnel** makes the service reachable
+- That **SQLite** is enough for these use cases
+- That there are **storage options**, and which questions to ask the AI to pick the right one
+
+Not one of these points is coding knowledge. It's systems knowledge. Infrastructure knowledge. Deployment knowledge.
+
+### The invisible threshold
+
+This is the blind spot of the vibe coding debate. Karpathy talks about code: "forget that the code even exists." But code isn't the bottleneck. Deployment is the bottleneck.
+
+If you know nothing about Docker, you get an app that runs locally. If you don't know what OIDC is, you get an app without auth. If you've never heard of CI/CD, you build a new image by hand after every change. If you don't know how a service becomes publicly reachable, you get an app on port 3000, reachable by nobody but yourself.
+
+| What the AI decided | What I had to know |
+|---|---|
+| Go as the language, HTMX for interactivity | That Docker is needed for deployment |
+| SQLite as the database, Goose for migrations | That SQLite is enough for the use case |
+| OIDC flow with PocketID | How to configure the OIDC provider |
+| Next.js with App Router | That an automated image build is part of the product |
+| MinIO for S3-compatible storage | Which storage options exist and which questions to ask |
+| Tailwind for styling | How Cloudflare Tunnel makes the service reachable |
+| Rate limiting per IP | How to get the Docker image onto my server |
+
+The left column is interchangeable. Go or Rust, Next.js or Remix: the AI would have taken any stack and it would have worked. The right column is not interchangeable. Without that knowledge, the app stays a localhost project.
+
+> Vibe coding doesn't need coding knowledge. It needs engineering knowledge. Those aren't the same thing, and that's exactly what separates a demo from a product.
+
+## Where the line is
+
+Engineering knowledge turns a demo into a product. But there's a second question: when is the product good enough, and when does it need more?
+
+For the UAV app, "build me a drone app" would have been a disaster. The AI would have invented SORA calculations, hallucinated procedures, guessed weather limits. Useless at best. Dangerous at worst, because someone relies on the wrong values.
+
+For da-feedback and easy-fileshare, the spec was manageable: a few paragraphs describing the problem and the features I wanted. Nothing like the pages and pages of procedures for the UAV app. And if the AI implemented something wrong? Then that was a UX problem, not a safety risk.
+
+If you're wondering why tool calls in agent systems aren't trivial, the same principle applies here:
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+
+The line isn't "vibe coding: yes or no." The line is the cost of failure:
+
+- **Low stakes**: internal tools, few users, no regulatory context. Here the approach works, as long as the builder has engineering fundamentals.
+- **High stakes**: safety-critical systems, regulated domains, complex domain knowledge. Here you need specification, review and validation. Here "didn't read the code" isn't an option.
+
+All three projects are open source, because that's exactly the point. More than 650,000 organizations in Germany face similar problems. Most of them will never be able to hire a developer. But maybe they have someone who sees a problem, who knows how software gets shipped, and who's willing to invest an evening.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anonymous feedback system for training nights"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted file sharing with password protection and download limits"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Volunteer organizations don't need a development department. They need people who understand problems and know what software needs in order to run.
+
+> The software was never the problem. The problem was that nobody who needed it could build it. That's changing right now.

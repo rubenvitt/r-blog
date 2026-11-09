@@ -1,0 +1,355 @@
+---
+title: "Des outils d'IA pour mon propre blog : pipeline de podcast, relecture et les skills derrière"
+description: "Comment mon blog applique les mêmes principes d'IA que ceux décrits dans mes trois derniers articles - avec une génération automatisée de podcasts et une relecture assistée par IA."
+date: 2026-03-29
+tags: ["ai", "blog", "meta", "software-engineering"]
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+Pendant trois articles, nous avons parlé de principes. Des Contracts plutôt que du texte libre. Des Evals plutôt que de l'espoir. La sécurité des tools plutôt que « ça devrait passer ». Le tout à travers un refund-agent qui traite des remboursements - bien loin de mon propre bureau.
+
+<LinkCard url="/fr/blog/ai-systems-architecture" />
+
+<LinkCard url="/fr/blog/ai-evals-ci-pipeline" />
+
+<LinkCard url="/fr/blog/tools-sind-keine-prompts" />
+
+Et maintenant, le coup de théâtre : ces mêmes principes se cachent dans ce blog.
+
+L'article que vous êtes en train de lire a été relu par une IA - par un skill de relecture spécialisé, avec son propre profil de style et un feedback structuré. Et si vous préférez écouter plutôt que lire : le bouton play est en haut. Le podcast a été généré de façon entièrement automatique à partir du texte de l'article - script de dialogue, voix, audio, flux.
+
+Plusieurs articles ont désormais leur podcast. Chaque texte passe par une relecture IA. Rien de tout ça n'est fait à la main : ça passe par des skills Claude Code spécifiques au domaine - des outils réutilisables et versionnés, avec un input et un output définis, appelables comme slash command directement dans Claude Code.
+
+Est-ce que mon blog est devenu un système d'IA ? Non. Aucun utilisateur n'envoie de requêtes à un modèle. Aucun Agent ne prend de décisions à l'exécution sur la logique produit. Mais les mêmes principes d'ingénierie que j'ai décrits pour les features d'IA dans des applications en production se retrouvent dans le workflow derrière. Un profil de style comme Contract. Des catégories d'évaluation comme rubrics. Un pipeline avec une API externe, une gestion des erreurs et un format de sortie défini.
+
+Dans la suite, nous allons regarder deux features : le **pipeline de podcast**, qui transforme un article MDX en flux de podcast complet, en passant par la génération de dialogue et ElevenLabs. Et le **skill de relecture**, qui vérifie les textes par rapport à un profil de style documenté avant leur publication. Les deux montrent à quoi ressemblent concrètement les principes des articles précédents quand ils n'atterrissent pas dans une appli de démo, mais dans ma propre boîte à outils.
+
+## Le pipeline de podcast : du MDX au flux RSS
+
+Plusieurs articles ont maintenant une version audio. Pas d'enregistrement à la main, pas de studio, pas d'hébergement de podcast. À la place : un skill Claude Code, une API, un script Python et un peu de code de liaison Astro. Du Markdown au podcast prêt à écouter en moins de cinq minutes.
+
+Mais procédons dans l'ordre.
+
+### Vue d'ensemble du pipeline
+
+Le workflow ressemble à ceci :
+
+**Article** → **Script de dialogue** (Claude) → **Audio** (ElevenLabs Text-to-Dialogue) → **MP3 + transcription** → **Frontmatter** → **Flux RSS** → **Lecteur**
+
+Chaque étape a un input et un output clairs. Le script est un fichier texte avec des tours de parole. L'audio est un MP3. Les métadonnées atterrissent dans le frontmatter. Le flux RSS est généré au build. Le lecteur lit tout depuis le frontmatter - pas de magie, pas de dépendances cachées.
+
+### Génération du dialogue
+
+Le skill blog-podcast lit un article, en extrait la structure et les thèses principales - et génère à partir de là une conversation à deux en allemand. Les intervenants s'appellent Alex et Lara.
+
+Ce qui ne doit surtout pas en sortir : une interview. Pas de « Excellente remarque, Alex ! » - mais une vraie discussion. Les deux apportent leur point de vue, questionnent, rebondissent l'un sur l'autre. Ça paraît trivial, mais c'est toute la différence entre « généré par IA » et « je l'écouterais vraiment ».
+
+Quelques règles inscrites dans le skill :
+
+- **Pas de structure d'interview** - une vraie discussion, avec parfois des désaccords
+- **Les termes techniques restent en anglais** - Contract, Eval, Tool-Call, exactement comme sur le blog
+- **Emotional cues avec parcimonie** - `[pensif]`, `[rit]`, mais 1 ou 2 par minute au maximum, sinon ça devient théâtral
+- **Structure fixe** : intro avec accroche (~10 %) → partie principale (~70 %) → résumé (~10 %) → au revoir (~10 %)
+
+Le résultat est un fichier texte au format simple :
+
+```
+Alex: Réplique ici
+Lara: Réplique ici
+Alex: [pensif] Encore une réplique...
+```
+
+Pas de langage de balisage compliqué, pas de JSON. Facile à lire, facile à modifier. Si une formulation ne me plaît pas, je change la ligne et je régénère l'audio.
+
+### L'audio via ElevenLabs
+
+Pour générer l'audio, j'utilise l'API Text-to-Dialogue d'ElevenLabs avec le modèle Eleven v3 - selon ElevenLabs, le modèle TTS le plus expressif, plus de 74 langues, explicitement pas conçu pour le temps réel, mais pour une génération hors ligne de haute qualité. Exactement ce qu'il me faut.
+
+<LinkCard url="https://elevenlabs.io/docs/overview/capabilities/text-to-dialogue" />
+
+L'appel d'API est étonnamment simple : un tableau d'objets `{text, voice_id}` en entrée, un MP3 en sortie. Le script Python parse le fichier de dialogue, associe les intervenants à des voice IDs et envoie le tout.
+
+<Accordion title="Appel à l'API ElevenLabs (generate_audio.py)">
+```python
+import urllib.request
+import json
+
+API_URL = "https://api.elevenlabs.io/v1/text-to-dialogue"
+
+VOICES = {
+    "Alex": "<voiceid 1>",
+    "Lara": "<voiceid 1>",
+}
+
+def send_chunk(chunk, api_key):
+    payload = json.dumps({
+        "inputs": chunk,  # [{text, voice_id}, ...]
+        "model_id": "eleven_v3",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+```
+</Accordion>
+
+Seule subtilité : l'API a une limite de caractères par requête. Le texte est donc découpé automatiquement en morceaux d'environ 4500 caractères - les fichiers MP3 obtenus sont ensuite assemblés.
+
+Le coût ? En comptant au paiement à l'usage, j'arriverais à environ 3 à 6 dollars par épisode pour un podcast typique de 10 à 20 minutes tiré d'un article.
+
+<Accordion title="Piège technique : le problème des en-têtes MP3">
+Quand le dialogue est trop long pour un seul appel d'API, il est découpé en chunks. Les morceaux MP3 obtenus sont assemblés par concaténation d'octets - et c'est justement là que ça coince : chaque chunk a ses propres en-têtes Xing/Info avec des nombres de frames qui ne sont plus justes après l'assemblage. Le navigateur affiche une mauvaise durée, et la navigation dans le fichier ne fonctionne pas correctement.
+
+La correction est un simple réencodage avec ffmpeg :
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libmp3lame -b:a 128k output.mp3
+```
+
+Le script `scripts/fix-podcast-mp3s.sh` fait exactement ça pour tous les MP3 du répertoire `public/audio/`. On le lance une fois, problème réglé.
+</Accordion>
+
+### Intégration dans Astro
+
+Pour que le blog sache qu'un article a un podcast, il faut exactement un champ dans le frontmatter :
+
+<CodeTabs labels={["Avec podcast", "Sans podcast"]}>
+```yaml
+---
+title: "Mon article"
+description: "Description"
+date: 2026-03-27
+tags: ["ai"]
+podcast:
+  audioFile: /audio/my-post.mp3
+  transcript: /audio/my-post.txt
+  duration: "21:08"
+---
+```
+```yaml
+---
+title: "Mon article"
+description: "Description"
+date: 2026-03-27
+tags: ["ai"]
+---
+```
+</CodeTabs>
+
+Le schéma dans `content.config.ts` définit `podcast` comme un objet optionnel avec `audioFile`, `transcript` et `duration`. Aucun article n'est obligé d'avoir un podcast - mais s'il en a un, il reçoit automatiquement le lecteur.
+
+Le composant PodcastPlayer embarque pas mal de choses : une visualisation de la forme d'onde, un réglage de vitesse (1x/1.25x/1.5x/2x), des boutons de saut (±15 s), un bouton RSS, une transcription dépliable et la prise en charge de la Media Session API - donc des contrôles sur l'écran de verrouillage du téléphone. Ça peut sembler beaucoup, mais c'était nécessaire pour que l'écoute ne ressemble pas à un compromis.
+
+Le flux RSS à l'adresse `/podcast.xml` est généré au build Astro, balises iTunes comprises. Si vous voulez, vous pouvez l'ajouter dans n'importe quelle appli de podcast - Apple Podcasts, Overcast, Pocket Casts. Un article de blog est un Contract - pour le traiter automatiquement, il faut un schéma. Pour l'audio comme pour les Evals.
+
+### Les alternatives comparées
+
+Pourquoi ne pas simplement utiliser NotebookLM ? C'est gratuit, ça génère des podcasts en un clic et ça sonne convaincant.
+
+Parce que « sonner convaincant » et « être correct » sont deux choses différentes. Une étude de l'université de Pittsburgh (présentée à l'AGU 2025) a examiné systématiquement des podcasts générés par NotebookLM - et a trouvé des inexactitudes dans chacun des résumés testés, avec un taux d'hallucination d'environ 13 %. Le plus traître : les erreurs étaient à peine repérables pour des non-experts.
+
+<Callout type="warning">
+Les podcasts générés sonnent souvent convaincants, même quand le contenu est faux. Ça les rend plus dangereux que des outputs visiblement erronés. Si vous publiez du contenu audio généré, vous devez le vérifier par rapport à la source - quel que soit l'outil.
+</Callout>
+
+À cela s'ajoute que NotebookLM n'offre ni API ni contrôle sur les voix ou la structure du dialogue. C'est une boîte noire - bien pour un aperçu rapide, inutilisable pour un workflow reproductible.
+
+<LinkCard url="https://github.com/souzatharsis/podcastfy" />
+
+De l'autre côté, il y a Podcastfy - un projet Python open source qui prend en charge plusieurs backends TTS (ElevenLabs, Google, Edge, OpenAI). Contrôle total, mais aussi mise en place totale.
+
+Je vois trois niveaux :
+
+1. **Zero Control** - NotebookLM, ElevenLabs GenFM : un clic, aucune influence. Bien pour essayer.
+2. **Low Control** - ElevenLabs Create Podcast API : accès programmatique, mais c'est ElevenLabs qui génère le dialogue.
+3. **Full Control** - Text-to-Dialogue API + script maison : on écrit le dialogue soi-même (ou on le fait générer) et on contrôle chaque tour de parole, chaque voix, chaque pause.
+
+Mon setup entre dans la catégorie 3. Je contrôle le script de dialogue, les voix, la structure, la publication. Ça demande plus d'efforts qu'un clic dans NotebookLM - mais je sais ce qui va en sortir.
+
+> NotebookLM génère des podcasts. Mon skill génère *mes* podcasts - avec mes voix, mon format, mon pipeline.
+
+Le pipeline produit le podcast. Mais qui s'assure que le texte source - l'article lui-même - tient la route ? C'est justement le sujet de la section suivante.
+
+## Le relecteur IA : garantir la qualité du texte sans perdre le style
+
+Si vous avez déjà demandé à ChatGPT d'« améliorer » un texte, vous connaissez le résultat : grammaticalement impeccable, stylistiquement mort. Les aspérités ont disparu, le rythme aussi, et il reste un texte qui ne ressemble à rien. Ou à tout à la fois.
+
+Ce n'est pas un hasard. Une étude de Cornell et de l'université de Washington (CHI 2025) l'a mesuré expérimentalement : sans aide de l'IA, un classifieur de ML distinguait les textes de différents auteurs avec 82,9 % de précision. Dès que les auteurs utilisaient des suggestions d'écriture de l'IA, la précision tombait à 60 % - une perte mesurable d'individualité stylistique.
+
+<LinkCard url="https://arxiv.org/abs/2409.11360" />
+
+Indépendamment de ça : dans une enquête de la Society of Authors UK (2024), 86 % des auteurs interrogés se disaient inquiets que leur style soit imité ou dilué par l'IA. L'inquiétude est légitime - mais le problème, ce n'est pas le modèle. Le problème, c'est l'absence de Contract pour la qualité.
+
+### Le profil de style comme Contract
+
+Mon skill de relecture connaît mon style d'écriture. Pas vaguement, pas au feeling - mais sous forme de profil explicite et documenté. Les procédés de style délibérés sont reconnus comme tels, pas signalés comme des erreurs.
+
+Le profil de style est le Contract - tout comme un JSON Schema définit l'output d'un LLM, le profil de style définit les critères de qualité du texte. Sans ce Contract, n'importe quel modèle de langage optimise vers la moyenne. Avec Contract, il optimise vers *mon* standard. La solution contre l'homogénéisation du style n'est pas un meilleur modèle, mais un meilleur Contract.
+
+### Les rubrics : cinq catégories, des constats structurés
+
+Si vous avez lu l'article sur les Evals, vous reconnaissez tout de suite le schéma. Là-bas, nous avions défini des rubrics - des catégories d'évaluation avec des scores, pour évaluer systématiquement l'output d'un LLM. Le relecteur fait exactement la même chose, simplement sur du contenu en langage naturel :
+
+1. **Langue & correction** - grammaire, orthographe, ponctuation
+2. **Style & ton** - le texte correspond-il au profil de style défini ?
+3. **Structure & construction** - fluidité logique, longueur des paragraphes, hiérarchie des titres
+4. **Guidage du lecteur** - transitions, fil rouge, implication du lecteur
+5. **Cohérence technique** - les termes, les références, les affirmations techniques sont-ils justes ?
+
+Chaque constat reçoit une severity : **critique** (à corriger impérativement), **recommandé** (à corriger de préférence), **optionnel** (question de goût). S'y ajoutent un numéro de ligne, une citation du texte et une proposition d'amélioration concrète. Les identifiants des constats - F-001, F-002 et ainsi de suite - rendent le rapport lisible par une machine. On peut les transmettre directement comme consignes de travail.
+
+<Accordion title="Exemple : extrait d'un rapport de relecture">
+
+**F-001** | Severity : critique | Ligne 42
+> « Les Evals sont exécuté dans la pipeline CI/CD. »
+
+*Problème :* accord manquant - le participe « exécuté » doit s'accorder avec « Evals ».
+*Proposition :* « Les Evals sont exécutés dans la pipeline CI/CD. »
+
+---
+
+**F-002** | Severity : recommandé | Ligne 78
+> « C'est un aspect très important qu'il convient de prendre en compte. »
+
+*Problème :* tournure impersonnelle, distante - ne correspond pas au profil de style (première personne directe, phrases courtes).
+*Proposition :* « C'est exactement ce qui fait la différence. »
+
+---
+
+**F-003** | Severity : optionnel | Ligne 115
+> « L'orchestrateur coordonne les différents Agents. »
+
+*Problème :* terminologie incohérente - dans le reste du texte, « Orchestrator » est employé en anglais.
+*Proposition :* s'en tenir de façon cohérente à « Orchestrator » ou à « orchestrateur ». Le texte jusqu'ici utilise « Orchestrator ».
+
+</Accordion>
+
+Le parallèle avec les Evals n'est pas un hasard - c'est de l'architecture. Les catégories *sont* des rubrics. Les niveaux de severity *sont* des scores. Le rapport structuré *est* un résultat d'Eval. Si vous avez construit un framework d'Eval pour de l'output de LLM, vous avez déjà la façon de penser d'une relecture - seul le domaine change.
+
+> Le relecteur est une Eval sur du langage naturel. Les rubrics portent juste un autre nom.
+
+### Ce que le relecteur ne fait pas
+
+Le relecteur corrige les erreurs, il ne réécrit pas. « Tu es relecteur, pas co-auteur » - c'est écrit tel quel dans le skill. Quand je formule volontairement une phrase courte et hachée, c'est du style. Quand je change de perspective au milieu d'un paragraphe, c'est voulu. Un bon relecteur fait la différence. Un mauvais lisse tout.
+
+Surcorriger, c'est le contraire de l'assurance qualité. C'est saccager le style avec les meilleures intentions du monde. C'est pour ça que le relecteur a besoin du Contract - pour savoir ce à quoi il ne doit *pas* toucher. Exactement le problème que décrit l'étude de Cornell : sans profil de style explicite, toute assistance par IA dérive vers la moyenne.
+
+## Les skills comme outils de développeur : l'architecture sous le capot
+
+Le skill de podcast génère de l'audio à partir d'un article. Le skill de relecture vérifie la langue et le style par rapport à un profil de style documenté. Les deux tournent comme slash commands directement dans Claude Code - `/blog-podcast`, `/blog-lektorat`. Mais qu'y a-t-il derrière ? Et pourquoi un skill est-il plus qu'un prompt gonflé ?
+
+### Qu'est-ce qu'un skill ?
+
+Un skill est un fichier Markdown avec un frontmatter YAML et des instructions structurées. Il se trouve dans le répertoire du projet sous `.claude/skills/<name>/SKILL.md` et est détecté à l'exécution - les modifications prennent effet immédiatement, sans redémarrage ni rebuild.
+
+Le frontmatter définit le Contract du skill :
+
+```yaml
+name: blog-podcast
+description: "Crée un dialogue de podcast à partir d'un article..."
+```
+
+Le `name` devient la slash command. La `description` détermine quand Claude propose le skill - elle sert à la fois de déclencheur et de définition du scope. Tout ce qui suit dans le Markdown, ce sont les instructions proprement dites : étapes du workflow, consignes de format, gestion des erreurs.
+
+Les skills peuvent lire et écrire des fichiers, exécuter des scripts Bash, appeler des API externes et accéder à des tools MCP. Ce ne sont pas des blocs de texte passifs - ils orchestrent de vrais processus.
+
+Et l'écosystème grandit : le repo [anthropics/skills](https://github.com/anthropics/skills) sur GitHub est rapidement devenu l'endroit central pour les skills de la communauté.
+
+<LinkCard url="https://code.claude.com/docs/en/skills" />
+
+### Pourquoi pas simplement un prompt ?
+
+Je pourrais aussi coller le même texte comme prompt dans le chat. Ça marche - une fois. La différence se trouve dans tout ce qui vient après :
+
+**Réutilisabilité.** Un skill s'écrit une fois et s'appelle toujours. Pas de copier-coller depuis une appli de notes, pas de « attends, c'était quoi déjà le workflow pour le podcast ? ».
+
+**Versionnement.** Un SKILL.md est un fichier - il *peut* être versionné, diffé et reviewé. Les prompts dans le presse-papiers n'ont pas d'historique de modifications.
+
+**Composition.** Le skill de podcast fait référence à un script Python pour la génération audio. Le skill de relecture charge des articles de référence pour comparer le style. Les skills peuvent accéder à d'autres fichiers du repo - templates, configurations, scripts utilitaires.
+
+**Accès aux tools.** Un prompt peut générer du texte. Un skill peut exécuter `bash`, appeler des API avec `WebFetch`, interagir avec des systèmes externes via des tools MCP.
+
+**Connaissance du domaine codifiée.** Les voice IDs ElevenLabs, le profil de style de l'auteur, les cinq catégories d'évaluation du relecteur, le schéma de frontmatter pour les métadonnées de podcast - tout est dans le skill, pas dans ma tête ni dans une appli de notes.
+
+> Un skill, c'est un prompt avec une mémoire, du versionnement et un accès aux tools. C'est ça qui fait la différence.
+
+### Anatomie des deux skills
+
+Ce que les deux skills montrent particulièrement bien : même architecture, effets complètement différents.
+
+<Accordion title="Skill blog-podcast - SKILL.md (extrait)">
+
+```yaml
+name: blog-podcast
+description: "Crée un dialogue de podcast à partir d'un article
+  de rubeen.dev. Deux intervenants discutent du contenu de
+  l'article dans une conversation naturelle en allemand."
+```
+
+**Input :** un article (fichier MDX)
+
+**Processus :** lire l'article → générer le script de dialogue (Alex/Lara, tours de parole, emotional cues) → appeler le script Python → API ElevenLabs → écrire les fichiers → compléter le frontmatter
+
+**Output :** fichier audio MP3 + fichier texte de transcription + mise à jour du frontmatter dans l'article
+
+**Effets de bord :** API externe (ElevenLabs TTS), système de fichiers (cinq fichiers écrits ou mis à jour)
+
+</Accordion>
+
+<Accordion title="Skill blog-lektorat - SKILL.md (extrait)">
+
+```yaml
+name: blog-lektorat
+description: "Relecture professionnelle d'articles tech en
+  allemand sur rubeen.dev. Vérifie la langue, le style,
+  la structure, le guidage du lecteur et les termes techniques
+  par rapport au style établi de l'auteur."
+```
+
+**Input :** un article (fichier MDX) + 2-3 articles de référence pour comparer le style
+
+**Processus :** lire l'article → lire les articles de référence → charger le profil de style → analyser selon cinq catégories → rédiger un rapport structuré
+
+**Output :** rapport Markdown avec des constats numérotés (`_lektorat-[slug].md`)
+
+**Effets de bord :** uniquement le système de fichiers (un fichier est écrit)
+
+</Accordion>
+
+Les deux skills suivent le même schéma : input défini, processus clairement décrit, output spécifié. Le skill de podcast a plus d'effets de bord - API externe, plusieurs fichiers, mutation du frontmatter. Le skill de relecture est autonome : il lit, analyse et écrit un rapport. Aucune dépendance externe.
+
+### Le Contract dans le skill
+
+Si vous avez lu les articles précédents de cette série, vous reconnaissez le schéma : Contracts first.
+
+Le frontmatter du SKILL.md EST le Contract : `name` définit l'appel, `description` le scope. Le corps Markdown définit le workflow, les consignes de format, la gestion des erreurs. En option, d'autres champs comme `allowed-tools` peuvent restreindre les permissions - Least Privilege, pour les skills aussi.
+
+Le skill de podcast a un Contract de dialogue : Alex et Lara comme intervenants, des tours de parole comme format, des emotional cues avec une limite de fréquence, une structure en quatre phases (intro, partie principale, résumé, au revoir). Le skill de relecture a un Contract de rapport : cinq catégories d'évaluation, des identifiants de constats numérotés (F-001, F-002...), trois niveaux de gravité, des champs obligatoires par constat (ligne, citation, problème, proposition).
+
+Ce ne sont pas de vagues lignes directrices. Ce sont des spécifications par rapport auxquelles je peux vérifier le résultat. JSON Schema pour l'output d'une API, profil de style pour la qualité du texte, frontmatter du SKILL.md pour le comportement du skill - le mécanisme change, le principe reste le même : définir le Contract avant de générer l'output.
+
+## Les principes valent partout
+
+Pendant quatre articles, il a été question de principes pour des systèmes d'IA en production. Les Contracts définissent l'interface entre le code déterministe et le modèle non déterministe. Les Evals rendent la qualité mesurable au lieu de simplement l'affirmer. Les tools ont besoin de scope, d'idempotence et de conscience des effets de bord, parce qu'un mauvais call casse plus qu'une mauvaise réponse.
+
+Et puis cet article : un blog statique, pas une plateforme de production avec des milliers d'utilisateurs. Pourtant, le pipeline de podcast suit un Contract fixe - du schéma de dialogue au flux RSS, en passant par l'intégration de l'API. Le relecteur évalue selon des rubrics, pas au feeling. Les skills ont un scope défini, des inputs et outputs clairs, et leurs effets de bord sont connus.
+
+Ce n'est pas un hasard. Les principes n'apparaissent pas parce que le blog est un système d'IA - ils apparaissent parce qu'ils sont universels. Le Contract avant le prompt. La mesure avant l'opinion. Le scope avant la liberté.
+
+Au début, je posais la question : mon blog est-il un système d'IA ? La réponse reste non. Mais la façon de penser derrière est la même. Et c'est exactement ce qui fait la différence entre « j'utilise l'IA » et « j'emploie l'IA de façon systématique ». Les skills s'améliorent à chaque article, le profil de style s'enrichit, le pipeline devient plus robuste. C'est de l'amélioration itérative - comme dans n'importe quel autre projet d'ingénierie.
+
+> Quand on construit des features d'IA pour les autres, on devrait appliquer les mêmes principes à son propre workflow. Pas parce que c'est nécessaire, mais parce que ça marche.

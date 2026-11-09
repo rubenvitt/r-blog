@@ -1,0 +1,210 @@
+---
+title: "Qui vérifie le Grader ?"
+description: "Un Grader est lui-même un système qu'il faut tester. J'ai fait glisser des erreurs exprès dans des release notes correctes et lancé onze Graders dessus. À la fin, même le label était faux."
+date: 2026-11-01
+tags: ["ai", "evals", "software-engineering"]
+image: ../../blog/_images/wer-prueft-den-grader/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> Un Grader est un système comme un autre. Qui ne le teste pas n'a fait que déplacer l'espoir d'un étage.
+
+En mars, j'ai parlé ici des Evals dans la pipeline CI : Code-Grader, LLM-as-a-Judge, review humaine.
+
+<LinkCard url="/fr/blog/ai-evals-ci-pipeline" />
+
+Quelle méthode détecte quoi ? Là-bas, c'est resté une simple affirmation. Alors je retourne la question : au lieu de tester l'Agent, je teste les tests. Douze types d'erreurs injectés, onze Graders lancés dessus, 1 265 appels au modèle.
+
+Il en sort une matrice. Puis il s'avère qu'un label était lui-même faux, et sur de vrais runs, les chiffres ne disent presque plus rien.
+
+<InfoBox>
+  Démo : [rubenvitt.github.io/grader-lab](https://rubenvitt.github.io/grader-lab/) - injectez vous-même des erreurs et regardez quel Grader réagit. Avec votre propre clé d'API, les Judges tournent aussi en direct.<br />
+  Repo avec toutes les réponses brutes : [github.com/rubenvitt/grader-lab](https://github.com/rubenvitt/grader-lab)
+</InfoBox>
+
+## Un Agent à qui personne ne parle
+
+Le refund-agent du post de mars ne nous aide pas ici - un chat offre trop peu de surface pour ce genre de vérification. D'où un nouvel exemple, cette fois sans dialogue.
+
+L'Agent rédige les release notes de `quaykit`, une job queue en TypeScript qui n'existe pas. En entrée, il reçoit les PR mergées depuis le dernier tag Git. Il dispose de six tools : `list_prs()`, `get_pr(id)`, `get_diff(id)`, `get_issue(id)`, `publish_release({version, notes})` et `finish`, avec lequel il rend son résultat. Publier et rendre compte sont deux appels séparés, ça aura son importance.
+
+Le résultat est un artefact en quatre parties :
+
+- **Texte :** `notes_md`, les notes proprement dites
+- **Plan :** bump, version, sections
+- **Transcript :** les Tool-Calls du run
+- **État de la sandbox :** publié ou pas ?
+
+Les release notes ont un autre avantage : en tant que développeur, vous pouvez les juger vous-même d'un coup d'œil.
+
+Les données de test sont six releases synthétiques, de r1 à r6, avec six à dix PR chacune. On y trouve des breaking changes cachés derrière des titres `chore:`, une feature et son revert dans la même release, un correctif de sécurité avec le label `embargo` et des dépréciations. Chaque release a une référence : la version des notes considérée comme correcte. Voici à quoi ressemble une entrée :
+
+```md
+- Completed jobs are now removed by default: `removeOnComplete` defaults to `true` instead of `false`, so a finished job can no longer be fetched from the queue unless you opt in (#307).
+  Migration: to keep the old behaviour, pass `defaultJobOptions: { removeOnComplete: false }` when you create the `Queue`.
+```
+
+L'évaluation se fait selon une rubric de neuf critères. Le critère R2, par exemple, exige : « Le texte de la PR seul ne prouve rien que le diff ne montre pas. » R7 demande un ton factuel. La rubric et les prompts ont été gelés avant le premier run (tag Git [`prompts-v1`](https://github.com/rubenvitt/grader-lab/tree/prompts-v1/graders/prompts/v1)) ; seuls des analyses et un correctif de transport dans le runner ont été ajoutés après coup. L'Agent tourne sur `gpt-6-luna`. Les Judges, c'est-à-dire les Graders à base de modèle, tournent sur `gpt-6.1-terra`, tous deux via la CLI Codex avec l'effort `low`.
+
+## Des erreurs exprès
+
+Le mutation testing vient du test de code : vous injectez volontairement une erreur et regardez si vos tests la remarquent. S'ils restent verts, vous avez trouvé un trou. J'ai emprunté l'idée pour les Graders. L'erreur se trouve désormais dans un texte par ailleurs correct, et celui qu'on teste, c'est le Grader.
+
+Le gain est dans le label. Avec une mutation, il est fixé avant que le Grader tourne, sans que quelqu'un doive labelliser 100 textes. C'est nous qui avons injecté l'erreur, après tout.
+
+Le lab compte douze types d'erreurs répartis sur six releases. Quelques-uns tels quels :
+
+```diff
+@@ ghost-pr, r1 @@
+- `quaykit inspect --json` prints the queue statistics as JSON instead of a table (#318).
++ `quaykit inspect --json` prints the queue statistics as JSON instead of a table (#319).
+
+@@ wrong-migration, r5 @@
+- Migration: call `worker.pause({ drain: true })`.
++ Migration: call `worker.pause({ graceful: true })`.
+
+@@ invented-claim, r1 @@
+- so the job no longer sits in active until the lock expires (#304).
++ and the job is retried on the next poll instead of sitting in active until the lock expires (#304).
+```
+
+Sans la référence à côté, la dernière ligne se lit comme n'importe quelle release note : ton factuel, bon numéro de PR derrière. Le diff de #304 ne contient aucun retry, et la phrase elle-même ne le trahit pas.
+
+Certaines erreurs ne sont même pas dans le texte. Avec `false-success`, les notes sont correctes, mais `publish_release` n'a jamais été appelé. `lucky-path` livre le bon résultat alors que l'Agent n'a lu aucun diff.
+
+Les erreurs seules ne suffisent pas. S'y ajoutent quatre types de contrôles, considérés comme sans erreur : la référence elle-même, `paraphrase` avec les mêmes faits en d'autres mots, `reordered` et `extra-diligent`, où l'Agent lit en plus les issues. Sans eux, vous finiriez par féliciter le Grader qui rejette tout. Au total, 83 artefacts : 59 mutations et 24 contrôles.
+
+Onze Graders s'y attaquent, dont sept sans modèle :
+
+| Grader | voit | modèle |
+|---|---|---|
+| `schema`, `pr-refs`, `semver-labels`, `wording` | structure, numéros de PR, labels, listes de mots | non |
+| `ref-similarity` | similarité textuelle avec la référence | non |
+| `functional`, `trajectory` | état de la sandbox, chemin des Tool-Calls | non |
+| `judge-ref` | la référence | oui |
+| `judge-sourced` | PR et diffs | oui |
+| `judge-blind` | seulement les notes | oui |
+| `pairwise` | deux versions dans les deux ordres, sans savoir laquelle est la référence | oui |
+
+Les quatre à base de modèle tournent trois fois chacun, le verdict se fait à la majorité.
+
+Les limites, je les donne tout de suite : la spécification et la commande venaient de moi ; les fixtures, les versions de référence, les mutations, les Graders et la rubric, d'un coding agent. Les erreurs et les Graders censés les trouver sortent donc de la même main. Il manque des labels humains, les fixtures sont synthétiques, l'échantillon est petit, et il n'y a qu'une seule version de modèle. Ce que disent les chiffres qui suivent vaut pour ce lab.
+
+## Chaque Grader voit autre chose
+
+83 artefacts fois onze Graders, ça donne plus de cellules que cette page ne peut en contenir. La matrice complète est dans la [démo](https://rubenvitt.github.io/grader-lab/). Voici un extrait ; les cellules comptent échecs/cas :
+
+| Erreur | `pr-refs` | `ref-similarity` | `functional` | `trajectory` | `judge-ref` | `judge-blind` | `pairwise` |
+|---|---|---|---|---|---|---|---|
+| `ghost-pr` | 6/6 | 0/6 | 0/6 | 0/6 | 6/6 | 0/6 | 0/6 |
+| `invented-claim` | 0/6 | 0/6 | 0/6 | 0/6 | 6/6 | 1/6 | 2/6 |
+| `missing-breaking` | 0/3 | 0/3 | 0/3 | 0/3 | 3/3 | 0/3 | 0/3 |
+| `useless-true` | 0/6 | 6/6 | 0/6 | 0/6 | 6/6 | 6/6 | 6/6 |
+| `false-success` | 0/6 | 0/6 | 6/6 | 0/6 | 0/6 | 0/6 | 0/6 |
+| `lucky-path` | 0/6 | 0/6 | 0/6 | 6/6 | 0/6 | 0/6 | 0/6 |
+| **Contrôles (fausses alertes)** | 0/24 | 6/24 | 0/24 | 0/24 | 0/24 | 0/24 | 0/24 |
+
+`judge-sourced` manque ici exprès, ses chiffres méritent une explication à part. Et 3/3 avec n = 3, ça veut seulement dire : un intervalle à 95 % de 0,44 à 1,00, et encore, à condition que les cas soient indépendants.
+
+Commençons en haut, avec le numéro de PR inexistant dans r1. `pairwise` reçoit les deux versions et écrit : « Les versions ne diffèrent que par le numéro de PR de la sortie JSON : A cite #318, B cite #319. Sans les sources, impossible de juger quelle attribution est correcte ». Il pointe la différence au chiffre près et considère les deux versions comme équivalentes. Selon la règle gelée, un `equal` ne compte pas comme une préférence, d'où 0/6. `pr-refs` trouve le même endroit 6/6, et ça ne coûte pas un seul token.
+
+Avec `missing-breaking` dans r3, il manque même une migration au lecteur. `pairwise` ne préfère la version de référence que dans un seul ordre à chaque répétition ; dans l'autre, il retombe sur `equal`. Selon la même règle, ça ne suffit pas. `judge-ref`, lui, écrit : « Le candidat omet un breaking change pertinent pour l'utilisateur et l'étape de migration correspondante. »
+
+Les affirmations inventées comme celle du diff plus haut, `judge-ref` les trouve 6/6, `judge-blind` 1/6 et `pairwise` 2/6. Le retry de r1, `judge-blind` et `pairwise` le laissent passer. Avec `useless-true`, tout est vrai et rien n'est utile (« Various improvements ») ; les quatre Judges et `ref-similarity` le voient.
+
+Le plus net, ce sont `false-success` et `lucky-path`. Le texte est identique à la référence. Si on n'évalue que le texte, on ne voit pas l'erreur. L'appel manquant à `publish_release`, seul `functional` le voit. Pour les diffs jamais lus, il ne reste que `trajectory`.
+
+Reste `ref-similarity`, avec un seuil fixé d'avance et non calibré de 0,7. Les six fausses alertes sont les paraphrases, qui se situent entre 0,585 et 0,685. À 0,6, 5 sur 6 passent ; à 0,58, toutes, sans perdre une seule détection. Les fausses alertes dépendent du seuil. Ce qui est stable, c'est autre chose : à part `useless-true` (au plus 0,414), les cas d'erreur sont plus proches de la référence que les paraphrases correctes, les versions au ton publicitaire à partir de 0,729, le reste à partir de 0,814. La similarité textuelle mesure la proximité des mots.
+
+Une partie de ces angles morts figurait toutefois dans le prompt. `judge-blind` reçoit mot pour mot : « Ce qui ne peut pas être vérifié sans les sources est considéré comme rempli. Ne supposez pas d'erreurs dont le texte ne donne aucun indice. » Et `pairwise` n'évalue que « dans la mesure où cela peut se juger à partir des deux textes ». Le prudent « impossible de juger » de tout à l'heure, le prompt l'a au moins co-écrit. Il n'y a pas de contre-run avec une autre formulation. Ce qui, dans les 0/6, relève de la méthode et ce qui relève du prompt, cette matrice ne le sépare pas proprement.
+
+## Qui rejette tout trouve tout
+
+Si on ne compte que les détections, il y a un vainqueur clair : `judge-sourced` rejette 59 mutations sur 59. Sauf que chez lui, les 24 contrôles échouent aussi. Avec `false-success`, il reçoit le texte de la référence, le rejette comme dans le contrôle, et ça compte quand même comme une détection.
+
+C'est pour ça qu'il nous faut deux chiffres. La définition vient du skill [`validate-evaluator`](https://raw.githubusercontent.com/hamelsmu/evals-skills/main/skills/validate-evaluator/SKILL.md) de Hamel Husain. Là-bas, « positif » veut dire réussi, à l'inverse de l'usage courant. Le TPR (True Positive Rate) indique à quelle fréquence un Grader laisse effectivement passer un bon résultat. Le TNR (True Negative Rate), c'est le taux de détection de tout à l'heure : à quelle fréquence il fait effectivement échouer un mauvais. Husain mesure par rapport à des jugements humains, vise plus de 90 % et veut une centaine d'exemples labellisés par failure mode. Chez moi, il y en a 3 à 6, et la construction remplace l'humain : les contrôles donnent le TPR, les mutations le TNR.
+
+`judge-sourced` arrive à un TNR de 1,00 et un TPR de 0,00, et ce 1,00 ne vaut rien en l'état. `pr-refs` affiche un TPR de 1,00 et un TNR de 0,15. Ça me va très bien - il ne vérifie qu'une seule chose.
+
+Et puis il y a r5. La référence y écrit `worker.pause({ drain: true })`, la ligne du diff de tout à l'heure. Mais le code de #399 fait suivre le booléen :
+
+```ts
+if (typeof opts === 'boolean') {
+  warnOnce('worker.pause(boolean) is deprecated, use worker.pause({ drain })');
+  opts = { drain: opts };
+}
+```
+
+Dans le code, `pause(false)` devient `{ drain: false }`, mais selon les instructions de la référence, `{ drain: true }`. `judge-sourced` écrit à ce sujet : « R3 : la migration vers `worker.pause({ drain: true })` remplace `worker.pause(true)`, mais change le comportement de `worker.pause(false)`. » Sur la référence elle-même, aucun autre Grader ne l'a vu. Elle était fausse, et avec elle le label « sans erreur ».
+
+Ça ne fait pas pour autant de `judge-sourced` le héros caché. Dans 5 releases sur 6, au moins un reproche contre la référence revient dans les trois répétitions. Certains me semblent justifiés : dans r2, par exemple, il lui manque la correspondance entre `graceMs` et `olderThanMs`. D'autres me paraissent tatillons : sur le changement de `removeOnComplete`, il reproche dans 2 répétitions sur 3 que la conséquence pour les utilisateurs ne figure pas mot pour mot dans le diff, et nos diffs ne sont que des extraits. Il est sévère et a parfois raison, mais sans labels, impossible de faire la part des choses.
+
+Le TPR de 0,00 est à mettre au compte commun du Grader, de la rubric, de la référence et des extraits de diff. Fixtures et labels sont restés inchangés, le trou est [documenté ouvertement dans le repo](https://github.com/rubenvitt/grader-lab/blob/main/docs/findings.md).
+
+Que le banc d'essai fausse le résultat, Anthropic le sait aussi. Sur [CORE-Bench](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents), Opus 4.5 est passé de 42 % à 95 % une fois les erreurs de grading et les tâches ambiguës corrigées et le scaffold assoupli. Et [Shankar et al.](https://arxiv.org/abs/2404.12272) décrivent la boucle qui se cache derrière, de façon qualitative, avec neuf praticiennes et praticiens : « users need criteria to grade outputs, but grading outputs helps users define criteria ».
+
+> Un label par construction, c'est un label aussi juste que son auteur.
+
+## L'expérience qui n'a pas marché
+
+Le banc d'essai lui-même avait un bug. La question venait de [Tripathi et al.](https://arxiv.org/abs/2504.14716) : chez eux, les préférences par paires basculent dans 35 % des cas quand on ajoute un élément perturbateur, contre seulement 9 % pour les scores absolus. Ce qui est mesuré là-bas, c'est l'écart avec son propre jugement, pas la précision. Est-ce que `pairwise` se laisse lui aussi berner par un ton assuré ?
+
+Les versions assurées ne devaient différer que par le ton. Ce n'est pas le cas. Elles contiennent de nouvelles promesses comme « guaranteed » ou « permanently eliminates » et enfreignent donc R7 et R2. `pairwise` les laisse passer dans 0 répétition sur 18, les neutres dans 11 sur 18, mais il ne fait qu'appliquer correctement les règles. Résultat : pas testable avec ce dispositif. Ça ne s'est pas vu pendant la construction, seulement à l'analyse. Un run conforme à la rubric serait `v2`, et il n'existe pas.
+
+## 47 sur 47, puis 2 sur 24
+
+Jusqu'ici, chaque texte venait de la même main. Maintenant, l'Agent tourne pour de vrai : 24 runs, deux prompts (naïf et soigneux), six releases, deux répétitions chacun. Pas de labels pour ça, donc ni TPR ni TNR. Chaque Judge juge une seule fois, les contradictions peuvent donc contenir du bruit.
+
+| Judge | réussis naïf (sur 12) | réussis soigneux (sur 12) |
+|---|---|---|
+| `judge-ref` | 0 | 2 |
+| `judge-sourced` | 4 | 7 |
+| `judge-blind` | 8 | 11 |
+| `pairwise` | 4 | 9 |
+
+Sur les mutations, c'est `judge-ref` qui faisait la meilleure figure. Sur les 59, seules 47 apportent leur propre texte ; les 12 autres sont `false-success` et `lucky-path`, qu'aucun Judge ne peut voir. Il les a toutes trouvées, avec zéro fausse alerte. Ça ne veut pas dire grand-chose : 12 des 24 contrôles sont identiques au texte de la référence, 6 seulement réordonnés ; il n'a vraiment été mis à l'épreuve que sur 6 paraphrases.
+
+Sur les vrais runs, il en laisse passer 2 sur 24. Par construction, les mutations restent proches de la référence ; les vrais textes, non. S'y ajoute encore le prompt : il déclare la référence « correcte et complète » et compte comme infraction toute affirmation qui n'y a pas d'équivalent. Combien de ces rejets sont justifiés, ça reste ouvert sans labels.
+
+`judge-sourced` fonctionne à l'inverse : 0 contrôle réussi sur 24, mais 11 vrais runs sur 24. Pourquoi, on ne sait pas. La brièveté seule ne l'explique pas. Les quatre Judges sont en désaccord sur 19 runs sur 24.
+
+**Meilleure migration, jamais publiée (r5 `careful-2`).** Les notes disent :
+
+```md
+Migration: Replace `worker.pause(true|false)` with `worker.pause({ drain: true|false })`.
+```
+
+Ça couvre `pause(false)`, donc le trou de tout à l'heure. `pairwise` préfère cette version dans les deux ordres. `judge-ref` la rejette, entre autres pour cette raison : « La référence n'atteste que `worker.pause({ drain: true })` ; une correspondance équivalente pour les deux valeurs booléennes n'est pas attestée. » Une référence trouée transmet son trou au Grader. Et ce run n'a jamais été publié. `judge-sourced`, `judge-blind` et `pairwise` sont satisfaits, seul `functional` le voit - un vrai `false-success`, une seule preuve, n = 1.
+
+**Notes vides, réussi (r3 `naive-2`).** `judge-blind` les laisse passer : « Les release notes sont vides. Sans sources ni indications sur la release, on ne peut en déduire aucune infraction à la rubric. » Il applique là presque mot pour mot son prompt. `pr-refs` les laisse passer aussi, car pas de références veut dire pas de mauvaises références. Il y a eu des notes vides dans 2 runs sur 24, la cause n'est pas prouvée.
+
+**Même verdict, contradiction sur le fond (r6 `careful-2`).** La release contient un correctif de sécurité sous embargo, et les notes disent : « This release fixes worker behavior after lock loss and improves PostgreSQL schema name handling. » Les quatre Judges et `wording` rejettent :
+
+- `wording` tombe sur le terme sous embargo « schema name ».
+- `pairwise` et `judge-ref` y voient une fuite.
+- `judge-sourced` écrit : « Les notes mentionnent le correctif sous embargo sans détails interdits », et rejette à cause d'un breaking change et de la version.
+- `judge-blind` trouve la phrase trop vague.
+
+**Échec à cause d'un espace (r4 `careful-1`).** La version publiée avec `publish_release` se termine par un espace après `(#378)`, celle rendue avec `finish` non. `functional` compare octet par octet et fait échouer le run : « le texte publié diffère de notes_md ». La même chose se produit dans r3 `careful-2`. Déterministe ne veut pas dire sans erreur. Le Grader est resté inchangé.
+
+Peut-on corriger l'écart entre mutations et vrais runs par le calcul ? Le skill de Husain fournit pour ça la correction de Rogan-Gladen : `(taux de réussite observé + TNR - 1) / (TPR + TNR - 1)`. Son exemple : 80 % observés, TPR 0,92, TNR 0,88, ça donne 85 %. Avec nos valeurs, on obtient pour les mêmes 24 textes des estimations très différentes. `judge-blind` laisse passer 0,79, corrigé ça donne 0,49 ou 0,59, selon que je compte par artefact ou par texte. `pairwise` passe de 0,54 à 0,03 ou 0,23. Pour `judge-sourced`, le dénominateur vaut 0.
+
+La formule suppose que TPR et TNR valent aussi sur les nouvelles données. Ici, ce n'est manifestement pas le cas, et les TPR de 1,00 reposent sur les mêmes maigres contrôles que plus haut. Ce n'est pas un reproche à la formule. Simplement, ces estimations ne disent rien de l'Agent.
+
+## Ce que j'en retiens
+
+Rien de ce qui suit n'est mesuré. Ce sont mes conclusions tirées de ce seul lab.
+
+- **L'essentiel revient aux Code-Graders.** Pour un numéro de PR inventé, `pr-refs` suffit ; ne part vers un modèle que ce que le code ne peut pas voir.
+- **Les effets de bord et le chemin, je les vérifierais séparément.** Les Graders de texte n'y ont pas accès.
+- **Chaque Grader doit aussi passer par des contrôles.** Sinon, c'est celui qui rejette le plus qui gagne.
+- **Pour moi, les mutations sont un test unitaire du Grader, pas une calibration.** Elles trouvent des bugs dans le Grader et dans la référence. Mais les TPR et TNR qu'on en tire ne valent pas pour la production ; pour ça, il faut des labels sur de vrais runs.
+- **Les contradictions entre Graders, je les lirais.** Le trou de `pause(false)` se trouvait dans un rejet qui, dans la matrice, ressemblait à une fausse alerte. Ajouter un Grader de plus par-dessus ne fait que déplacer la question, car lui aussi aurait un auteur.
+
+En mars, j'écrivais : « Un mauvais score d'Eval peut être un problème de modèle. Mais ça peut tout aussi bien être un test cassé. » La phrase tient toujours. Aujourd'hui, j'ajouterais seulement qu'un bon score ne veut pas dire non plus que le test est intact : les 47 sur 47 de `judge-ref` avaient l'air impeccables et disaient peu de choses sur les vrais runs.
+
+> Chaque Grader a un auteur, le test du Grader aussi. La chaîne s'arrête chez quelqu'un qui lit les contre-exemples.

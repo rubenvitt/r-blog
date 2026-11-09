@@ -1,0 +1,136 @@
+---
+title: "Drei Abende, drei Tools: Wenn Ehrenamt-Software auf einma machbar wird"
+description: "Ehrenamtliche Organisationen brauchen eigene Software - konnten sich die aber nie leisten. Wie AI dat grad ändert, und warum Deployment-Wissen wichtiger is als Code-Kenntnisse."
+date: 2026-04-12
+tags: ["ai", "software-engineering", "katastrophenschutz"]
+image: ../../blog/_images/drei-abende-drei-tools/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Ehrenamt braucht eigene Software. Bisher konnte sich dat keiner leisten. Dat hat sich geändert.
+
+Drei Projekte, drei Abende, keine Zeile Code selbst geschrieben. Alle in Produktion. Eins davon - 'ne Offline-PWA für Drohneneinsätze im Katastrophenschutz - hab ich im letzten Post beschrieben. Da war tiefes Domain-Wissen die Grundlage: Jede SORA-Berechnung spezifiziert, jede Prozedur validiert.
+
+<LinkCard url="/pott/blog/papier-fliegt-nicht"/>
+
+Die zwei neuen Tools sind 'ne andere Geschichte. Kein tiefes Domain-Wissen. Kein zeilenweises Spezifizieren. Bloß 'n Problem, 'n Prompt - und 'ne AI, die den Rest macht. Als Software-Engineer war meine Maloche nich, Code zu schreiben. Sondern zu wissen, wat am Ende rauskommen muss.
+
+## Wat fehlt - und wem
+
+Knapp 27 Millionen Menschen in Deutschland engagieren sich ehrenamtlich. Die organisieren sich in über 650.000 Vereinen, Hilfsorganisationen und Initiativen, vom Kaninchenzüchterverein bis zur Feuerwehr. Wat all diese Organisationen gemeinsam ham: Die arbeiten mit den Tools, die se sich leisten können. Und dat sind selten die richtigen.
+
+Zwei Probleme, die ich aussem Ehrenamt kenn:
+
+**Feedback nach Übungsabenden.** Die Leitung will wissen, wie et gelaufen is. Bisher: mündlich fragen, Zettel einsammeln, oder - am häufigsten - gar nich. Wat et bräuchte: QR-Code scannen, bewerten, Freitext dalassen. Anonym. Die Leitung sieht Trends über die Zeit. Nich komplizierter als 'ne Umfrage - aber et gibt kein Tool dafür, dat self-hosted läuft und DSGVO-sauber is.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anonymes Feedback-System für Dienstabende"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+**Dateien sicher teilen.** Dokumente, Fotos, Protokolle - intern teilen, ohne Dropbox, ohne WeTransfer, ohne Cloud-Abo. Passwortschutz, Download-Limits, Ablaufdatum. Self-hosted, auffem eigenen Server, keine Daten bei Dritten.
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted Filesharing mit Passwortschutz und Download-Limits"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Beides is banal. Feedback-Formulare und Filesharing - dat sind keine ungelösten technischen Herausforderungen. Die Lösungen gibbet. Aber nich für Vereine.
+
+Der Grund is Mathematik. 'Ne Individuallösung bei 'ner Agentur kostet schnell fünfstellig. Die Hälfte aller gemeinnützigen Organisationen in Deutschland hat weniger als 10.000 Euro Jahresbudget - insgesamt. Da is nach Trikots und Vereinsheim-Strom nich mehr viel über.
+
+> Dat Budget reicht für dat Problem, aber nich für die Lösung. Bisher.
+
+## Abend eins, Abend zwei
+
+Also gut. Wie sah dat konkret aus?
+
+Bei da-feedback war die Ausgangslage simpel: Wir brauchen 'n anonymes Feedback-Tool für Dienstabende. QR-Code scannen, Schulnoten vergeben, fertig. Ich hab dat Problem beschrieben - nich die Lösung. Den Stack hat die AI gewählt: Go, SQLite, HTMX. Ich hab genickt. Ob ich Go-Templates im Detail versteh? Nee. Musste ich auch nich. An einem Abend stand 'n Docker-Container mit CI/CD-Pipeline. Von Null auf deployed.
+
+Bei easy-fileshare dat gleiche Muster. Problem beschrieben: Dateiablage mit Zugriffskontrolle und Ablaufdaten. Die AI hat Next.js und MinIO gewählt. Chunked Uploads, OIDC-Authentifizierung, Download-Limits - alles AI-generiert. Ich hab getestet, ob die Uploads funktionieren. Den Upload-Code gelesen? Nee.
+
+Ich sach dat nich als Geständnis. Ich sach dat als Fakt. Ich hab den Code nich gelesen. Die Architekturentscheidungen - Go statt Node, SQLite statt Postgres, HTMX statt React - hab ich meistens bloß abgenickt.
+
+Und getz kommt der Teil, der wichtig is: Dat is kein Kontrollverlust. Dat is 'ne Entscheidung.
+
+Ich bin Software-Engineer. Ich könnte den Code lesen. Ich könnte jede Architekturentscheidung hinterfragen, jede Dependency prüfen, jeden Edge Case durchdenken. Aber bei 'nem internen Vereinstool mit 'ner Handvoll Nutzern? Die Frage is nich, ob ich den Code gelesen hab. Die Frage is, ob ich weiß, wat passiert, wenn der nich funktioniert. Und die Antwort is: Dann fix ich dat. Oder die AI fixt dat. Dat Risiko is ein Abend verlorene Arbeit, kein Produktionsausfall. Da säuft keine Zeche von ab.
+
+Andrej Karpathy hat dafür 'nen Begriff geprägt: Vibe Coding - "you fully give in to the vibes, embrace exponentials, and forget that the code even exists." Simon Willison hat die Grenze gezogen: Wenn de den Code reviewst und testest, is dat Softwareentwicklung. Wenn nich, is dat Vibe Coding. Nach dem Kriterium war dat hier Vibe Coding. Und et hat funktioniert - nich, weil Vibe Coding generell 'ne gute Idee is, sondern weil die Stakes niedrig waren und ich als Engineer einschätzen konnte, dat se niedrig sind.
+
+> Die Frage is nich, ob de den Code gelesen hast. Die Frage is, ob de weißt, wat passiert, wenn der nich funktioniert.
+
+## Wat ich nich prompten musste - und wat schon
+
+Die AI hat bei beiden Projekten den Stack gewählt, dat Datenbankschema entworfen, UI gebaut, Auth implementiert, API-Routen definiert, Rate Limiting eingebaut. Boah ey, beeindruckend. Aber dat is nur die halbe Wahrheit.
+
+Wat ich wissen musste - auch wenn ich et nich selbst implementiert hab:
+
+- Dat ich **Docker** brauch und wie 'n Multi-Stage-Build funktioniert
+- Dat et **OIDC** gibt und wie ich PocketID als Provider konfigurier
+- Dat **CI/CD** zu 'nem fertigen Produkt dazugehört - auch wenn et bloß 'n Docker-Image-Build is
+- Wie **Cloudflare Tunnel** funktioniert, damit der Service erreichbar wird
+- Dat **SQLite** für diese Use Cases reicht
+- Dat et **Storage-Optionen** gibt und welche Fragen ich der AI stellen muss, um die richtige zu wählen
+
+Kein einziger von diese Punkte is Code-Wissen. Dat is System-Wissen. Infrastruktur-Wissen. Deployment-Wissen.
+
+### Die unsichtbare Schwelle
+
+Hier liegt der blinde Fleck vonne Vibe-Coding-Debatte. Karpathy redet vom Code - "forget that the code even exists." Aber Code is nich der Bottleneck. Deployment is der Bottleneck.
+
+Wer keine Ahnung von Docker hat, kricht 'ne App, die lokal läuft. Wer nich weiß, wat OIDC is, kricht 'ne App ohne Auth. Wer CI/CD nich kennt, baut nach jeder Änderung von Hand 'n neues Image. Wer nich weiß, wie 'n Service öffentlich erreichbar wird, kricht 'ne App auf Port 3000 - erreichbar für keinen außer sich selbst. Dat is wie 'ne Pommesbude im eigenen Keller: Die Fritten sind top, aber kein Mensch kommt vorbei.
+
+| Wat AI entschieden hat | Wat ich wissen musste |
+|---|---|
+| Go als Sprache, HTMX für Interaktivität | Dat Docker fürs Deployment nötig is |
+| SQLite als Datenbank, Goose für Migrationen | Dat SQLite für den Use Case reicht |
+| OIDC-Flow mit PocketID | Wie ich den OIDC-Provider konfigurier |
+| Next.js mit App Router | Dat 'n automatischer Image-Build zum Produkt dazugehört |
+| MinIO für S3-kompatiblen Storage | Welche Storage-Optionen et gibt und welche Fragen ich stellen muss |
+| Tailwind fürs Styling | Wie Cloudflare Tunnel den Service erreichbar macht |
+| Rate Limiting pro IP | Wie ich dat Docker-Image auf meinen Server krich |
+
+Die linke Spalte is austauschbar. Ob Go oder Rust, ob Next.js oder Remix - die AI hätte jeden Stack genommen und et hätte funktioniert. Die rechte Spalte is nich austauschbar. Ohne dat Wissen bleibt die App 'n Localhost-Projekt.
+
+> Vibe Coding braucht kein Code-Wissen. Et braucht Engineering-Wissen. Dat is nich dat Gleiche - und genau dat macht den Unterschied zwischen 'ner Demo und 'nem Produkt.
+
+## Wo die Grenze verläuft
+
+Engineering-Wissen macht aus 'ner Demo 'n Produkt. Aber et gibt noch 'ne zweite Frage: Wann reicht dat Produkt - und wann braucht et mehr?
+
+Bei der UAV-App wär "bau mir 'ne Drohnen-App" 'ne Katastrophe gewesen. Die AI hätte SORA-Berechnungen erfunden, Prozeduren halluziniert, Wetter-Grenzwerte geraten. Im besten Fall nutzlos. Im schlimmsten Fall gefährlich - weil sich einer auf falsche Werte verlässt.
+
+Bei da-feedback und easy-fileshare war die Spezifikation überschaubar - 'n paar Absätze, die dat Problem und die gewünschten Features beschreiben. Kein Vergleich zu den seitenlangen Prozeduren vonne UAV-App. Und wenn die AI wat falsch implementiert hat? Dann war dat 'n UX-Problem, kein Sicherheitsrisiko.
+
+Wer sich fragt, warum Tool-Aufrufe in Agent-Systemen nich trivial sind - dat gleiche Prinzip gilt hier:
+
+<LinkCard url="/pott/blog/tools-sind-keine-prompts"/>
+
+Die Grenze verläuft nich bei "Vibe Coding ja oder nein". Die verläuft bei den Fehlerkosten:
+
+- **Niedrige Stakes**: Interne Tools, wenig Nutzer, kein regulatorischer Kontext. Hier funktioniert der Ansatz - wenn der Builder Engineering-Grundlagen drauf hat.
+- **Hohe Stakes**: Sicherheitskritische Systeme, regulierte Domains, komplexes Fachwissen. Hier braucht et Spezifikation, Review und Validierung. Hier is "Code nich gelesen" keine Option.
+
+Alle drei Projekte sind Open Source - weil genau dat der Punkt is. Über 650.000 Organisationen in Deutschland stehen vor ähnlichen Problemen. Die meisten werden nie 'nen Entwickler beauftragen können. Aber vielleicht ham se einen, der 'n Problem sieht, der weiß, wie Software ausgeliefert wird - und der bereit is, 'nen Abend reinzustecken.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Anonymes Feedback-System für Dienstabende"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Self-hosted Filesharing mit Passwortschutz und Download-Limits"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Ehrenamt braucht keine Entwickler-Abteilung. Et braucht Leute, die Probleme verstehen und wissen, wat Software braucht, damit se läuft.
+
+> Die Software war nie dat Problem. Dat Problem war, dat se keiner bauen konnte, der se gebraucht hat. Dat ändert sich grad.

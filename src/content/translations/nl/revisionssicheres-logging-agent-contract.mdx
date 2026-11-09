@@ -1,0 +1,535 @@
+---
+title: "Een prompt in de wiki is geen bewijs: audit-proof logging en het Agent Contract in gereguleerde omgevingen"
+description: "Het Agent Contract is de norm, de audit-proof log het bewijs van wat er echt gebeurde. Zonder het tweede is het eerste alleen een bewering. Wat DORA, GoBD en de komende MaRisk nu eisen."
+date: 2026-07-06
+tags: ["ai", "software-engineering", "compliance", "observability", "security"]
+image: ../../blog/_images/revisionssicheres-logging-agent-contract/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> Het Agent Contract is de norm. De audit-proof log is het bewijs van wat er echt gebeurde. Zonder het tweede is het eerste alleen een bewering.
+
+Deze serie heeft stukje bij beetje een AI-systeem in elkaar gezet waar je verantwoording voor kunt afleggen: Contracts in plaats van vrije tekst, Evals in plaats van hoop, auditeerbare tool-calls, Observability, release-discipline. Wat tot nu toe ontbrak, is het moment waarop iemand van buiten het bewijs komt opeisen: dat dit allemaal niet alleen in de wiki staat, maar voor elke afzonderlijke transactie ook echt heeft gewerkt.
+
+Nergens wordt dat moment zo scherp als in de financiële regelgeving. Een bank onder toezicht van BaFin (de Duitse financiële toezichthouder), een kredietscore, een verzekeringstarief, en maanden later de vraag welk model in welke versie dat heeft beslist en of je dat kunt bewijzen. De Digital Operational Resilience Act (DORA) geldt sinds begin 2025 rechtstreeks, de GoBD (de Duitse fiscale regels voor digitale boekhouding en archivering) met hun fiscale onveranderlijkheidsplicht sowieso, en de Mindestanforderungen an das Risikomanagement (MaRisk, de Duitse minimumvereisten voor risicobeheer) volgen nu ook voor modellen. Het uitstel van de EU AI-verordening is net besloten, maar nog niet gepubliceerd, en dat verleidt velen tot de verkeerde conclusie dat er nog tijd is.
+
+Deze post bundelt de serie tot één kernartefact en zet er de log naast die bewijst dat het wordt nageleefd. Twee artefacten, één bewijs. En een woord in de titel dat in geen enkele wet voorkomt.
+
+## De auditor vraagt "waarom?", en een prompt in de wiki is geen antwoord
+
+Stel je voor: je AI-feature heeft acht maanden geleden de kredietwaardigheid van een aanvrager beoordeeld en de aanvraag afgewezen. Of het heeft de premie voor een zorgverzekering berekend. Vandaag zit er iemand tegenover je die dat wil reconstrueren: een inspecteur van BaFin bij een bijzonder onderzoek, of de betrokkene zelf, die zich op grond van art. 22 AVG verzet tegen een geautomatiseerd individueel besluit en wil weten hoe het tot stand kwam.
+
+De vraag is dezelfde, wie hem ook stelt: welk model heeft dit besluit genomen, in welke versie, met welke prompt, met welke tools en op basis van welke data, en kunnen jullie dat bewijzen?
+
+Hier valt het gebruikelijke antwoord uit elkaar. "De prompt staat in de wiki." "Het model was GPT-nogwat, we hebben eind vorig jaar geüpdatet." "De tools? Moet ik even in de code kijken." Elk van die uitspraken is een bewering over een toestand die vandaag misschien al niet meer bestaat. De wiki-pagina is sindsdien twintig keer bewerkt, de model-alias wijst allang naar een nieuwere versie, de toolcatalogus is met de laatste deploy verschoven. Wat ontbreekt, is het bewijs dat het op het moment van het besluit ook echt zo was.
+
+Dat gat heb ik in de vorige post al blootgelegd: zonder bewijsketen is een agent-actie alleen een bewering. Toen ging het om refunds en support-agents. Hier gaat het om een gereguleerd kredietbesluit, en een auditor vergeeft beweringen minder snel dan een boze klant.
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+
+Daarmee zijn we bij de stelling waar deze hele post op rust. Ik noem de bundel van model, versie, prompt, tools en datagrenzen het Agent Contract: de norm waartegen een feature mag draaien. Dat is een engineering-framing, geen begrip uit een wettekst. Het Contract beschrijft wat er moet gebeuren. De audit-proof log is het bewijs van de praktijk: de registratie dat het op dat moment, voor dat geval, echt zo is gegaan. Zonder het tweede is het eerste onbewijsbaar.
+
+Waarom uitgerekend kredietwaardigheid en verzekeringstarieven? Omdat dat de gevallen zijn waar de wetgever het kritischst naar kijkt.
+
+<Callout type="info">
+Het doorlopende voorbeeld in deze post: een AI-feature bij een door BaFin gereguleerde bank of verzekeraar die ofwel de **kredietwaardigheid** van een natuurlijk persoon beoordeelt, ofwel het tarief van een **levens- of zorgverzekering** bepaalt. De EU AI-verordening noemt beide in bijlage III uitdrukkelijk als toepassingen met een hoog risico: nr. 5(b) voor de beoordeling van de kredietwaardigheid van natuurlijke personen, nr. 5(c) voor risicobeoordeling en prijsstelling bij levens- en ziektekostenverzekeringen. Juist op deze gevallen rust de zwaarste bewijsdruk, en daarom lopen ze door elk hoofdstuk heen.
+</Callout>
+
+Eén woord in die stelling draagt wel meer gewicht dan het laat merken: "audit-proof". Ik gebruik het omdat iedereen in onze branche het meteen plaatst. Maar zodra er een jurist in de kamer zit, wordt het ingewikkeld. Voordat we zo'n log bouwen, moeten we dus uitzoeken wat dat woord eigenlijk betekent. En of het überhaupt in de wet staat.
+
+## Wat "audit-proof" echt betekent, en wat niet
+
+Laten we met iets ongemakkelijks beginnen. Het woord "audit-proof" (in het Duits *revisionssicher*), waar we net nog zo vanzelfsprekend mee schermden, staat in geen enkele wet. Ik heb de volledige teksten doorzocht: GoBD, AO (de Abgabenordnung, het Duitse fiscale wetboek), HGB (het Duitse Wetboek van Koophandel), DORA inclusief de relevante technische RTS, de EU AI-verordening, zelfs de ZPO (het Duitse Wetboek van Burgerlijke Rechtsvordering). Nul hits. Het is een term uit de wereld van archivering en documentmanagement, een verzamelwoord uit de praktijk dat geen auditor je als norm kan voorhouden.
+
+Wat hij je wél kan voorhouden, heet onveranderlijkheid: § 146 lid 4 AO voor de belastingen, § 239 lid 3 HGB voor het handelsrecht. Dat is de bindende plicht. "Audit-proof" is de spreektaal-verpakking eromheen. Wie die verpakking in een DORA- of BaFin-context gebruikt zonder dat te markeren, maakt zich inhoudelijk kwetsbaar.
+
+<Callout type="warning">
+Twee centrale begrippen in deze post zijn geen juridische begrippen: "audit-proof" (*revisionssicher*) en "Agent Contract". Geen van beide komt voor in de relevante teksten: niet in GoBD, AO, HGB, DORA, de RTS, de EU AI-verordening en ook niet in de ZPO. De bindende plicht heet onveranderlijkheid (§ 146 lid 4 AO, § 239 lid 3 HGB). Waar ik "audit-proof" of "Agent Contract" schrijf, bedoel ik onze engineering-framing voor die plicht, geen citaat van de toezichthouder.
+</Callout>
+
+Het verschil is geen haarkloverij, het bepaalt wat je log moet kunnen. "Append-only" is een eigenschap van het opslagmedium: eenmaal geschreven, niet meer te overschrijven. Onveranderlijkheid in de zin van de GoBD is een eigenschap van het proces. Randnummer 110 zegt dat uitdrukkelijk: het moet "zowel hardwarematig ... als softwarematig ... als organisatorisch" gewaarborgd zijn. En dan de zin die het idee afserveert dat een logbestand volstaat: "Het opslaan van gegevens ... in een bestandssysteem voldoet doorgaans niet aan de eisen van onveranderlijkheid, tenzij aanvullende maatregelen worden genomen."
+
+Een append-only-bestand is daarmee een bouwsteen, geen bewijs. En nee, je kunt je er ook niet van vrijkopen. Een officieel "GoBD-gecertificeerd" product bestaat niet; Rz 180/181 maakt duidelijk dat certificaten en verklaringen van derden de fiscus niet binden. De sticker "audit-proof" op de landingspagina van een vendor is een marketingclaim. Het bewijs dat jouw proces de onveranderlijkheid draagt, lever je uiteindelijk zelf.
+
+Blijft het tweede begrip dat ik in deze post groot maak: "Agent Contract". Ook dat staat in geen enkele rechtshandeling. [Michael Seel](https://michaelseel.com/blog/2026-04-01-ai-systems-architecture-governance) en ik hebben het geïntroduceerd voor ons werk aan AI-systemen, de toezichthouder kent het niet. DORA noemt zijn contracten "contractuele regelingen voor het gebruik van ICT-diensten", en dat dekt een agent-besluit niet echt. We hebben een woord nodig voor de norm, en "Agent Contract" is het onze. De architectuur erachter geeft invulling aan de bindende plichten: onveranderlijkheid, logging, herleidbaarheid, voor een feature als onze kredietscoring uit het vorige hoofdstuk.
+
+Die eerlijkheid zet ik bewust vooraan. De voor de hand liggende tegenwerping tegen deze hele post is "jullie verzinnen zelf een eis". Voor die twee woorden klopt dat zelfs. De plichten erachter heb ik niet verzonnen. Die staan in de wet, ik heb ze alleen een bruikbare naam gegeven.
+
+<Accordion title="Waar de onveranderlijkheid in de wet staat">
+- **§ 146 lid 4 AO** - de kern van de onveranderlijkheid in het belastingrecht: een boeking of registratie mag niet zo worden gewijzigd dat de oorspronkelijke inhoud niet meer vast te stellen is.
+- **§ 239 lid 3 HGB** - dezelfde plicht voor het handelsrecht.
+- **GoBD Rz 107 e.v.** - werkt onveranderlijkheid uit als proceseis. **Rz 108**: niets mag "zonder dat dit zichtbaar wordt gemaakt overschreven, gewist, gewijzigd of vervalst" worden. **Rz 110**: hardwarematig, softwarematig en organisatorisch; een kaal bestandssysteem volstaat "doorgaans niet". **Rz 111**: ook de wijzigingshistorie zelf mag achteraf niet meer te wijzigen zijn.
+- **GoBD Rz 180/181** - geen enkel product is officieel gecertificeerd; verklaringen van derden binden de fiscus niet.
+
+De GoBD is een bestuursvoorschrift, geen wet. Maar de Duitse belastingdienst past haar toe, en § 146 AO / § 239 HGB daarachter zijn bindend.
+</Accordion>
+
+Blijft de vraag waar zo'n Contract concreet uit bestaat, zodat het meer wordt dan een mooi woord.
+
+## Het Agent Contract: de norm als één geversioneerd artefact
+
+Het vorige hoofdstuk heeft 'audit-proof' en 'Agent Contract' gemarkeerd als mijn engineeringtaal en de eigenlijke rechtsplicht tot de kern teruggebracht: onveranderlijkheid. Dat beantwoordt alleen nog niet wát er onveranderlijk vastgelegd moet worden. Wat is de norm waarvan de log later moet bewijzen dat hij is nageleefd?
+
+Als je de serie hebt gevolgd, ken je de vijf bouwstenen allang, alleen verspreid over meerdere posts. Het output-schema is het contract tussen model en applicatie. Daarbij komen de prompt, de set tools die de agent mag aanroepen, en het model inclusief provider. De vijfde bouwsteen is de eval-set, die bepaalt of een versie goed genoeg is. Samen leggen ze vast hoe een AI-feature zich gedraagt.
+
+<LinkCard url="/nl/blog/ai-systems-architecture"/>
+
+<LinkCard url="/nl/blog/ai-evals-ci-pipeline"/>
+
+In ai-rollout-canary-shadow heb ik die bundel al eens samengebracht, als release-manifest: alle artefacten met hashes en pins aan één Git-tag, zodat een rollback atomair wordt. Hier geef ik de bundel een naam en een rol. Ik noem hem het Agent Contract: onze term uit de engineeringpraktijk voor de volledige norm van een AI-feature in één geversioneerd artefact.
+
+<LinkCard url="/nl/blog/ai-rollout-canary-shadow"/>
+
+Waarom zou je bundelen? Omdat elk van de vijf onderdelen gedrag verandert. Een nieuwe prompt, een extra tool in de toegestane set, een modelupdate bij de provider, en de feature beslist daarna anders. Een nieuwe Contract-versie betekent dus een gedragsverandering. En een gedragsverandering in een feature die iemands kredietwaardigheid beoordeelt, wil ik niet stilletjes uitrollen. Die wordt geversioneerd, gaat door een review en draait tegen de eval-set voordat ze productie ziet.
+
+Engineering levert de vorm: schema, pins, hashes, het goedkeuringspad. De maatstaven komen van de business. De eval-set is het inhoudelijke contract over welke kredietdossiers goed beslist moeten worden, welke combinatie van score en motivering als fout telt en vanaf welke pass-rate een versie vrijgegeven mag worden. Die drempels zet het team dat uiteindelijk voor het kredietbesluit instaat, niet het team dat de agent bouwt. In ai-evals-ci-pipeline noemde ik dat het contract van de business, en in het Contract is het de bouwsteen die engineering niet in z'n eentje mag vastleggen.
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="si-title si-desc" class="w-full max-w-full h-auto">
+<title id="si-title">Agent Contract en audit-proof log</title>
+<desc id="si-desc">Bovenaan het Agent Contract als de norm, opgebouwd uit vijf bouwstenen: output-schema, prompt, toegestane tools, model en provider, eval-set. Een pijl omhoog verbindt het onderste element met het Contract en heeft het label "bewijst naleving van". Onderaan de audit-proof log als het bewijs van de praktijk: één onveranderlijke regel per transactie met het opgeloste model, de promptversie, de tools en de eval-baseline.</desc>
+<text x="360" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">HET AGENT CONTRACT · de norm</text>
+<rect x="12" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="76.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Output-schema</text>
+<text x="76.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">JSON-contract</text>
+<rect x="154" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="218.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Prompt</text>
+<text x="218.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">geversioneerd</text>
+<rect x="296" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="360.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Toegestane tools</text>
+<text x="360.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">allowlist</text>
+<rect x="438" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="502.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Model/provider</text>
+<text x="502.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">gedateerde pin</text>
+<rect x="580" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="644.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Eval-set</text>
+<text x="644.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">inhoudelijk contract</text>
+<line x1="360" y1="204" x2="360" y2="144" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 360 132 L 352 146 L 368 146 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<text x="374" y="172" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text-secondary)">bewijst naleving van</text>
+<rect x="12" y="210" width="696" height="74" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="360" y="244" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">DE AUDIT-PROOF LOG · het bewijs van de praktijk</text>
+<text x="360" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">één onveranderlijke regel per transactie: opgelost model, promptversie, tools, eval-baseline</text>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Het Agent Contract bundelt vijf bouwstenen tot de norm van een AI-feature. De audit-proof log zet daar voor elke afzonderlijke transactie de werkelijke toestand tegenover, en is daarmee het enige bewijs dat het Contract ook is nageleefd.</figcaption>
+</figure>
+
+Dat klinkt als een ordeningsidee voor de wiki. Maar het zit allang in tools ingebakken: de gangbare prompt-managementsystemen bundelen model, parameters, schema en tools als één eenheid en versioneren ze samen. Langfuse brengt modelparameters, het structured-output-schema en de tooldefinities samen in één config-object dat volgens de docs "versioned together with the prompt" is. Elke generatie draagt een handle naar de promptversie waar ze uit komt.
+
+Humanloop trekt de grens scherper: elke wijziging aan template, model, parameters of tools levert automatisch een nieuwe versie op. Dat is de grendel tegen stille Contract-drift, waarbij een prompt verandert en niemand het merkt. MLflow scheidt op zijn beurt de onveranderlijke versie van de verplaatsbare alias. De versie krijgt een oplopend nummer en wordt nooit overschreven, een alias als champion wijst naar de productieversie, en de lineage verwijst terug naar de run die haar heeft gebouwd.
+
+Versioneren alleen bewijst nog niet dat de versie in productie ook die is die door de eval-gate ging. Die stap zet je door de bundel te signeren. OpenSSF Model Signing verpakt de artefacten in een gesigneerde Sigstore-bundel met DSSE-envelope en in-toto-statement, waarin elk artefact staat als een paar van pad en digest, keyless beveiligd via de Rekor-transparency-log met inclusiebewijs. Samen met een SLSA-provenance-attestation ontstaat een machine-controleerbaar bewijs: deze bundel is in CI-run X uit deze inputs gebouwd en tegen eval-set-versie Y gegate. Geen "we hebben getest, echt waar", maar een handtekening die een machine kan narekenen.
+
+Zo ziet dat eruit als norm-artefact: hetzelfde patroon als het release-manifest, aangevuld met de velden die van een configuratie een bewijs maken: een handtekening, de eval-baseline waartegen gegate is, en het goedkeuringspad.
+
+<CodeTabs labels={["YAML"]}>
+```yaml
+contract: credit-scoring@4.2.0
+output_schema:
+  ref: schemas/credit-score-v4.json
+  sha256: 7c4a9e...
+prompt:
+  version: score-explainer@17
+  sha256: 3a1f7d...
+allowed_tools:
+  manifest: tools.pinned.json          # fetch_schufa_report, compute_dti_ratio, fetch_income_history
+  sha256: 9e8b21...
+model:
+  provider: anthropic
+  id: claude-sonnet-4-6-20260215        # gedateerde snapshot, geen -latest
+  pinned_at: 2026-06-15
+eval_baseline:
+  set: evals/credit-eval-2026-02.jsonl
+  version: v7
+  gate: thresholds/credit-score-v3.yaml
+signature: sigstore/credit-scoring-4.2.0.bundle   # DSSE + in-toto, Rekor
+approved_by:
+  gremium: model-risk-committee/2026-06-28
+  owner: head-of-credit-risk
+```
+</CodeTabs>
+
+De moeite voor dit ene YAML-bestand valt te rechtvaardigen met een principe dat ouder is dan welk LLM ook. Het belastingrecht kent het als programma-identiteit: over de hele bewaartermijn moet aantoonbaar zijn dat "het in de documentatie beschreven proces volledig overeenkomt met het in de praktijk gebruikte proces", zoals randnummer 154 van de GoBD het formuleert. En de GoBD zegt ook hoe dat lukt: "als de wijzigingen geversioneerd zijn en er een herleidbare wijzigingshistorie wordt bijgehouden." Dat is een bestuursvoorschrift bij het belastingrecht, geen DORA. Het idee laat zich toch netjes overzetten op het Agent Contract: de gedocumenteerde versie moet overeenkomen met de draaiende versie, en versionering is daar het bewijs van.
+
+Het Contract heeft alleen meer nodig dan een versienummer. Het heeft iemand nodig die het goedkeurt. DORA is hier sinds 17 januari 2025 rechtstreeks bindend en in art. 5 lid 2 onder a ondubbelzinnig: "Het leidinggevend orgaan draagt de eindverantwoordelijkheid voor het beheer van de ICT-risico's van de financiële entiteit." Die verantwoordelijkheid moet in het artefact terechtkomen, daarom staat in contract.yaml een approved_by met een benoemd gremium en een owner. "Owner" is mijn woord, niet dat van de verordening; DORA spreekt van het leidinggevend orgaan. De consequentie blijft dezelfde: een Contract-versie die door geen enkel goedkeuringspad is gegaan, deugt niet als norm. Het is een concept dat per ongeluk in productie is beland.
+
+Daarmee kun je bijna alles vastpinnen wat het gedrag van de agent bepaalt. Het schema, de prompt, de toegestane tools, de eval-set: alles wordt gehasht, gesigneerd en aan een goedkeuring gekoppeld. Zelfs de modelgewichten, als je ze zelf host, want Model Signing hasht ook het gewichtenbestand en neemt het op in hetzelfde bewijs. Bijna alles. Eén bouwsteen in contract.yaml heeft geen sha256, alleen een versiestring: het model achter de API.
+
+## Waarom het Contract het model niet kan signeren, en wat daaruit volgt
+
+"Bijna alles": met die beperking eindigde het vorige hoofdstuk, en op dat "bijna" komt het nu aan. Het Contract als geversioneerde bundel brengt prompt-template, output-schema, tooldefinities, parameters als temperature en max_tokens en de eval-set onder één gemeenschappelijke hash. Elk van die artefacten is een bestand of een serialiseerbaar object, en alles wat een bestand is, kun je hashen en signeren.
+
+Hoe ver dat reikt, laat OpenSSF Model Signing zien: een gesigneerde Sigstore-bundel met DSSE-envelope en in-toto-statement, waarvan de subjects paren van bestandspad en digest zijn, keyless beveiligd via een Sigstore/Rekor-transparency-log. Bij zelf gehoste gewichten werkt hetzelfde proces: het gewichten-artefact staat op jouw schijf, jij berekent de digest, jij signeert hem. Klaar.
+
+De breuk komt bij het gehoste model. Wie de kredietwaardigheidsbeoordeling via een provider-API laat lopen, bezit de gewichten niet. Die staan op andermans infrastructuur, en wat daar op het moment van de request echt geladen is, krijg je nooit als bestand in handen. Model Signing hasht lokale artefacten; een artefact zonder lokale toegang heeft geen digest die je zou kunnen signeren.
+
+Dat is mijn conclusie, geen citaat van een leverancier: voor het gehoste modeldeel van het Contract bestaat geen hash. De enige pin is de versiestring, en de custody over de gewichten blijft bij de provider. Die beslist welke gewichten achter de string zitten, en kan de snapshot met een opzegtermijn uitfaseren.
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 720 296" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="hs-title hs-desc" class="w-full max-w-full h-auto">
+<title id="hs-title">Wat je aan het Contract kunt signeren, en wat niet</title>
+<desc id="hs-desc">Links een kader met zes artefacten die je kunt hashen en signeren: output-schema, prompt-template, toegestane tools, sampling-parameters, eval-set en zelf gehoste gewichten. Rechts een apart kader met het gehoste model, dat niet te hashen is: alleen de versiestring blijft over, de custody over de gewichten ligt bij de provider, en daarom is de log het enige bewijs van wat er echt gebeurde.</desc>
+<text x="360" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="14" fill="var(--color-accent)">Wat het Contract kan vastpinnen, en het ene gat</text>
+<rect x="12" y="46" width="440" height="234" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="32" y="74" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Te hashen en te signeren</text>
+<text x="34" y="110" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="110" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Output-schema</text>
+<text x="34" y="137" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="137" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Prompt-template</text>
+<text x="34" y="164" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="164" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Toegestane tools (allowlist)</text>
+<text x="34" y="191" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="191" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Sampling-parameters</text>
+<text x="34" y="218" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="218" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Eval-set</text>
+<text x="34" y="245" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="245" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Zelf gehoste gewichten</text>
+<rect x="470" y="46" width="238" height="234" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="490" y="74" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Niet te hashen</text>
+<text x="492" y="116" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="14" fill="var(--color-accent)">✗</text>
+<text x="514" y="116" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Gehost model</text>
+<text x="490" y="150" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">Alleen de versiestring.</text>
+<text x="490" y="170" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">De custody over de</text>
+<text x="490" y="186" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">gewichten blijft bij de provider.</text>
+<text x="490" y="222" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">De log is het enige</text>
+<text x="490" y="238" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">bewijs van de praktijk.</text>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Prompt, schema, tools, parameters, eval-set en zelf gehoste gewichten kun je hashen en signeren. Het gehoste model niet: daar blijft alleen de versiestring over, en de gewichten liggen bij de provider. Dat gat vult de log.</figcaption>
+</figure>
+
+Als de string het enige is wat je kunt vastleggen, moet je hem op z'n minst goed zetten. Nooit de floating alias, altijd de gedateerde snapshot. Dat modellen gepind moeten worden, omdat een stille provider-update anders het gedrag van de ene op de andere dag verschuift, heb ik elders al aangestipt.
+
+<LinkCard url="/nl/blog/die-beste-antwort-ist-keine-zielgroesse"/>
+
+Anthropic zegt het ondubbelzinnig: "Every Claude model ID is a pinned snapshot", elke model-ID is een vastgepinde snapshot en geen evergreen-pointer. De belangrijkere bijzin staat er direct naast: "weights are fixed for a given ID, but the serving infrastructure ... can change." De gewichten liggen vast voor een ID, de serving-infrastructuur niet. Een pin garandeert je vaste gewichten, maar geen bit-identiek gedrag.
+
+Bij OpenAI loopt dezelfde scheiding onder andere namen: gedateerde snapshots tegenover de floating `-latest`. Wie `-latest` in het Contract zet, heeft een alias gepind en niets vastgelegd. Je houdt in elk geval reactietijd, want voor GA-modellen kondigt OpenAI een deprecation minstens 6 maanden van tevoren aan.
+
+Azure OpenAI is de echte valkuil, omdat de default hier tegen je werkt. Een deployment met de policy "Upgrade once new default version becomes available" zal, letterlijk volgens de docs, "automatically update to use the new default version". Het gedocumenteerde voorbeeld: gpt-4o schuift van 2024-08-06 naar 2024-11-20, minstens twee weken van tevoren aangekondigd. Twee weken. Wie die policy laat staan, doet niet aan pinning, maar draait een model dat zichzelf onder het lopende Contract verwisselt. In het extreme geval bepaalt op maandag een andere modelversie het tarief van de levensverzekering dan de versie waartegen je eval-set vrijdag nog groen was.
+
+Daarom is het niet genoeg om de snapshot in het Contract te declareren. Je moet per call de modelstring die de provider in de response werkelijk teruggeeft, in de log schrijven. Het Contract legt vast welk model de request had moeten afhandelen. Of het dat model ook was, weet je alleen uit de log.
+
+<Callout type="tip">
+Model-pinning in één zin: pin nooit de alias (`-latest`, `champion`, de Azure-default), maar altijd de gedateerde snapshot. En omdat zelfs de snapshot alleen een declaratie in het Contract is, schrijf je de modelstring die de provider per call werkelijk teruggeeft mee in de log.
+</Callout>
+
+Hier scheiden norm en praktijk zich. Het Contract kan prompt, schema, tools en eval-set vastpinnen, alleen niet het model dat de beoordeling uiteindelijk echt uitrekent. Geen enkele signatuurbundel dicht dat gat, omdat het artefact ontbreekt dat je zou kunnen signeren. Wat overblijft, is het bewijs in de log: welk model welke request heeft afgehandeld, en wat er verder in moet om dat bewijs overeind te houden.
+
+## De audit-proof log: het bewijs van de praktijk
+
+Het vorige hoofdstuk legde het ongemakkelijke deel bloot: het modeldeel van het Contract laat zich niet signeren. Gehoste gewichten kan niemand hashen, wie een API aanroept bezit ze niet, en het enige anker dat overblijft is de versiestring. Dan blijft er één vraag open: als ik de norm niet cryptografisch kan koppelen aan het model dat werkelijk draaide, hoe bewijs ik dan wat er echt liep?
+
+Het Contract, zoals ik het hier noem (een engineering-framing, geen juridisch begrip), beschrijft de norm: welk model, welke prompt, welke tools, welke goedkeuring tegen welke eval-baseline. De log is het bewijs van de praktijk. Staat in het Contract model X en in de log model Y, dan telt voor de auditor de log. En een log die dat bewijs moet dragen, is meer dan een trace om te debuggen.
+
+### Conformance is een logvraag
+
+Of een run aan het Contract voldeed, valt uiteen in een reeks ja/nee-vragen aan de log. Heeft de runtime het afgesproken output-schema gehaald? Heeft hij alleen de twee goedgekeurde tools aangeroepen en geen derde? Liep de request tegen de gedateerde modelsnapshot die in het Contract staat, of tegen een andere? Is deze Contract-versie überhaupt goedgekeurd tegen de actuele eval-baseline?
+
+Een trace kan dat niet beantwoorden. Een trace laat zien waarom een tool-call 800 ms duurde; hij is geoptimaliseerd voor debugging, niet voor verantwoording. Dat onderscheid heb ik in "Tools zijn geen prompts" uitgebreider gemaakt: tracing is geen auditing.
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+
+Daar stonden de bouwstenen van een audit-regel al: interne RequestID, IdempotencyKey, `actor`, ToolName, ApprovalId, `outcome`. Voor het conformance-bewijs is dat niet genoeg. Er ontbreken de velden die de norm pas benoemen: de `contract_version` en, belangrijker nog, het opgeloste model en de opgeloste promptversie. Niet het label "production", maar de waarde waar "production" in die ene call naar wees.
+
+### Eén logregel, veld voor veld
+
+Neem het doorlopende voorbeeld: een agent die de kredietwaardigheid van een aanvrager beoordeelt, volgens bijlage III nr. 5(b) van de EU AI-verordening een systeem met een hoog risico. Eén conformance-regel zou er zo uit kunnen zien:
+
+```json
+{
+  "request_id": "req_9f3a7c21b0e84d55",
+  "idempotency_key": "score-APP-000883-2026-07-14",
+  "timestamp": "2026-07-14T09:41:07.204Z",
+  "actor": "agent:bonitaets-scorer",
+  "subject": "application:APP-000883",
+  "contract_version": "credit-scoring@4.2.0",
+  "resolved_model": "claude-sonnet-4-6-20260520",
+  "resolved_prompt_version": "score-explainer@17#sha256:7b9c…e1",
+  "tools_called": ["fetch_schufa_report", "compute_dti_ratio"],
+  "tools_allowed": ["fetch_schufa_report", "compute_dti_ratio", "fetch_income_history"],
+  "schema_valid": true,
+  "eval_baseline": "credit-eval@2026-02 / claude-sonnet-4-6-20260215 (214/214 passed)",
+  "approval_id": null,
+  "outcome": "completed"
+}
+```
+
+De meeste velden zijn boekhouding: wie (`actor`), op wiens dossier (`subject`), met welk resultaat (`outcome`). Dat `tools_called` een deelverzameling is van `tools_allowed`, beantwoordt al een van de conformance-vragen. Interessant wordt een andere regel. `resolved_model` leest `claude-sonnet-4-6-20260520`, een gedateerde snapshot uit mei. De `eval_baseline` noemt de snapshot waartegen 4.2.0 is goedgekeurd: `claude-sonnet-4-6-20260215`, februari. Het model dat de baseline heeft gehaald, is een ander dan het model dat heeft geantwoord.
+
+Dat is de stilletjes gewisselde modelstring. De model-ID is een pinned snapshot, maar de alias erboven (een "production"-pointer, een Azure-default) is verplaatsbaar en kan onder je voeten verhuizen. Had de log alleen "production" opgeslagen, dan was de drift onzichtbaar. Omdat hij per call de opgeloste, gedateerde waarde vastlegt, valt de breuk tussen norm en praktijk op. Dat noem ik de caching-staleness-valkuil: een label is handig en liegt niet, het zegt alleen niets over waar het gisteren naar wees.
+
+Voor de promptkant bestaat hetzelfde patroon als kant-en-klare tool. Langfuse hangt aan elke generation een `langfuse_prompt`-handle die, letterlijk volgens de docs, "links this generation to the prompt version". Bedoeld is de concrete, onveranderlijke versie, geen verplaatsbare naam. `resolved_prompt_version` in de log is dezelfde terugverwijzing, uitgeschreven als versienummer plus hash.
+
+### Waarom een steekproef niet genoeg is
+
+Hier gaan debug-logging en conformance-log uit elkaar. Een audit-proof log mag geen gesamplede subset zijn. "We loggen 1% om te debuggen" is voor traces een volkomen legitieme zin; voor het bewijs van de praktijk is hij dodelijk. Een steekproef bewijst niets over die ene kredietaanvraag die later op het bureau van de auditors belandt.
+
+Het principe is niet nieuw, het staat al jaren in het belastingrecht. De GoBD eisen in Rz 36 individuele registratie: zakelijke transacties moeten "volledig en zonder hiaten" worden vastgelegd. Ik neem dat grondbeginsel bewust mee als engineeringhouding naar de conformance-context; of een kredietbeoordeling fiscaal een zakelijke transactie is, doet daarbij niet ter zake. Het punt is: een bewijs dat alleen elke honderdste run kent, is geen bewijs.
+
+Dat is niet in tegenspraak met de break-glass- en sampling-logica uit "Observability voor AI-features". Daar ging het om contentvolume; volledige prompts en completions hebben in geen enkele trace iets te zoeken en horen achter een gecontroleerde lane. Hier telt niet het volume van de inhoud, maar de volledigheid van de conformance-metadata. Elke run produceert zijn regel. Wat er in die regel staat, is een tweede vraag.
+
+### Het bindende kader
+
+Tot hier is het engineering. Het bindende deel komt uit DORA, preciezer: uit de technische reguleringsnormen. Art. 12 van de RTS over ICT-risicobeheer (Gedelegeerde Verordening (EU) 2024/1774, "Registratie van gegevens") eist twee dingen die rechtstreeks op deze log mikken. Ten eerste maatregelen om de gegevensregistratie te beschermen "tegen manipulatie, verwijdering en onbevoegde toegang", en dat voor opgeslagen, verzonden en in gebruik zijnde gegevens. Ten tweede de "synchronisatie van de klokken van elk ICT-systeem … op basis van een gedocumenteerde betrouwbare referentietijdbron". De `timestamp` hierboven is dus geen decoratie; de tijdbron erachter moet gedocumenteerd en betrouwbaar zijn. DORA geldt rechtstreeks, zonder nationale omzetting.
+
+Wat art. 12 niet zegt: ook maar iets over modellen, modelversies of inferentie. De RTS-tekst is technologieneutraal. Dat daaruit "log de modelversie" wordt, is interpretatie. BaFin maakt die interpretatie in haar handreiking (Orientierungshilfe), waar ze een "sluitende logging van AI-besluiten, modelversies en trainingsdata" aanbeveelt. En ze beveelt alleen aan, ze eist niets: de handreiking noemt zichzelf "niet-verplichtende ondersteuning" en "geen bindende DORA-interpretatie". De velden hierboven operationaliseren dus een bindende beschermings- en tijdeis; een wetscitaat zijn ze niet.
+
+Een vaste bewaartermijn noemt art. 12 bewust niet. De financiële entiteit legt de bewaartermijn zelf vast en onderbouwt die op basis van risico en doel. Wat dat betekent voor de houdbaarheid voor de rechter, komt zo.
+
+### Wat niet in de log hoort
+
+Volledigheid van de conformance-metadata betekent niet dat alles erin hoort. Het SCHUFA-rapport (van het Duitse kredietbureau), het inkomen, de naam van de aanvrager: dat zijn de gegevens die in de trace niets te zoeken hebben. In "Observability voor AI-features" heb ik beschreven wat niet in de trace hoort; dezelfde grens geldt hier. Het conformance-bewijs heeft de `contract_version` en het opgeloste model nodig, niet de leesbare inhoud van het kredietdossier. Dat spanningsveld tussen bewijsplicht en gegevensbescherming (AVG) lossen we later op, als de kaart van de regimes staat.
+
+<LinkCard url="/nl/blog/observability-ai-features"/>
+
+Een volledige, correct gekoppelde, netjes getimede log is het bewijs van de praktijk, mits hij nog klopt. Maar een log die je achteraf kunt bewerken, bewijst helemaal niets.
+
+## Van append-only naar een log die standhoudt voor de rechter
+
+Aan het eind van het vorige hoofdstuk stond een ongemakkelijke zin: een log die je kunt bewerken, bewijst niets. Hij registreert het verloop, maar hij houdt geen stand. Niet tegenover een auditor die drie jaar later wil weten waarom deze kredietaanvraag automatisch is afgewezen, en al helemaal niet voor een rechter, waar de afgewezen persoon procedeert en beweert dat de regel achteraf is opgepoetst.
+
+"Append-only" in applicatiecode is in eerste instantie een bewering. Een vlag in de database, een trigger die `UPDATE` en `DELETE` verbiedt, een ORM zonder wijzigmethode. Allemaal goed bedoeld, allemaal binnen dezelfde vertrouwensruimte waarin ook de persoon met DB-adminrechten zit. Om van de bewering een bewijs te maken, moeten meerdere lagen samenkomen, en geen enkele vervangt de andere: een opslagmedium dat niet wist; een opbouw die elke stille wijziging van de volgorde zichtbaar maakt; en een geattesteerd tijdstip.
+
+### WORM: het medium dat niet wist
+
+De onderste laag is storage die schrijftoegang maar in één richting toestaat: erin, er nooit meer uit. WORM staat voor write once, read many. Bij S3 heet de implementatie Object Lock, en de modus waar het om draait is Compliance Mode. AWS beschrijft die ondubbelzinnig: een object "can't be overwritten or deleted by any user, including the root user", en de enige manier om er voor het verlopen van de termijn toch vanaf te komen, is "to delete the associated AWS account". Dat is de harde variant. Zelfs de account-owner met alle rechten kan niet bij de regel.
+
+Daarnaast bestaat Governance Mode: technisch bijna hetzelfde, maar met een achterdeur. Wie de permissie `s3:BypassGovernanceRetention` heeft, kan de vergrendeling omzeilen. Voor een log die jarenlang een kredietafwijzing moet bewijzen, is dat de verkeerde keuze. Een speciale permissie die bestaat, wordt ooit gebruikt.
+
+De Legal Hold kent daarentegen geen termijn. Hij houdt een object onbeperkt vast tot iemand hem actief opheft: handig als er een concreet juridisch geschil loopt en de reguliere bewaartermijn allang verstreken zou zijn. De andere hyperscalers hebben hetzelfde mechanisme onder een andere naam. Azure Immutable Blob Storage onderscheidt locked en unlocked; een gelockte container kan alleen nog worden verlengd, "not even by users with account administrative privileges". Google Cloud Bucket Lock is nog compromislozer: "Locking a bucket's retention policy is an irreversible action." Eenmaal gelockt is er geen weg terug, ook niet voor jou.
+
+Veel leverancierspagina's zijn hier niet eerlijk: S3 Object Lock en Azure Immutable Blob hebben verklaringen die klinken als iets wat ze niet zijn. De beoordelingen komen van Cohasset Associates, een private assessor in opdracht van de leverancier, en ze toetsen de conformiteit met Amerikaans effectenrecht: SEC Rule 17a-4, FINRA, CFTC. Dat is een echte standaard. Maar het is geen GoBD-conformiteit, geen DORA-conformiteit en al helemaal geen Duits *revisionssicher*: een term die sowieso uit het handels- en belastingrecht komt en in geen van de wetteksten als norm voorkomt. Een SEC-17a-4-verklaring bewijst dat een medium geschikt is voor de administratie van Amerikaanse brokers. Over de eisen uit § 146 AO of de RTS RMF zegt ze niets. Wie het ene als het andere verkoopt, verkoopt een façade.
+
+### Tamper-evident: het bewijs dat niemand ertussen zat
+
+WORM voorkomt dat iemand een regel wist. Het levert alleen geen bewijs dat ik uit het systeem kan halen en een derde in handen kan drukken, en het veronderstelt dat ik de storage-aanbieder zelf vertrouw. De tweede laag draait het probleem om: in plaats van manipulatie te voorkomen, maakt ze manipulatie aantoonbaar. Dat is het verschil tussen tamper-proof en tamper-evident. Mijn inschatting: voor een bewijslog is de tweede eigenschap de belangrijkere, want preventie houdt alleen zolang de controles houden. Detectie maakt ook het omzeilen van de controles zichtbaar.
+
+De beproefde bouwvorm daarvoor is een Merkle-log, en het bekendste voorbeeld in productie is Certificate Transparency. RFC 6962 beschrijft zo'n log als "a single, ever-growing, append-only Merkle Tree". Elke nieuwe regel wordt gehasht, de hashes worden paarsgewijs tot een boomstructuur geketend, tot er bovenaan één waarde overblijft: de Merkle-root. Verandert er ergens onderin één bit, dan verandert de root. Twee cryptografische bewijzen maken daar een audit-instrument van. De inclusion proof laat zien dat een bepaalde regel in een boom met een gegeven root zit. De consistency proof laat zien dat een latere boom de eerdere volledig bevat, en bewijst daarmee de append-only-eigenschap zelf. Wie achteraf een regel herschrijft of tussenvoegt, maakt dat bewijs kapot.
+
+Zelf bouwen hoeft niet. Trillian is de referentie-implementatie achter Certificate Transparency, immudb verpakt hetzelfde idee als database met een "cryptographic commit log with parallel Merkle Tree". Eén detail voor de eerlijkheid, omdat immudb graag als open-source-alternatief opduikt: de licentie is de Business Source License 1.1, dus source-available, niet klassiek open source in de OSI-zin. Praktisch relevant is ook waar de tijdstempel aangrijpt: op de Merkle-root van een hele batch, één stempel per batch in plaats van per logregel. Dat houdt de kosten bij de tijdstempeldienst binnen de perken en volstaat toch, omdat de root de hele batch cryptografisch vastlegt.
+
+<Callout type="danger">
+Een waarschuwend voorbeeld waarom je de bewijssemantiek niet aan een closed-source managed service moet hangen: Amazon QLDB. Die database had deze cryptografische verifieerbaarheid ingebouwd, en AWS heeft de support per 31 juli 2025 stopgezet. Het aanbevolen migratiepad leidt naar Aurora PostgreSQL, dat die eigenschap mist. AWS' eigen toelichting (Dan Blaner) is duidelijk: Aurora PostgreSQL "does not keep a permanent, immutable record", het auditbewijs "must be generated as audit data and stored outside of the database". Wie zijn integriteitsbewijs in een propriëtair product had ingebouwd, stond na de uitfasering met lege handen. De verifieerbaarheid hoort in een open, na te bouwen laag, niet in een product waarvan de roadmap niet van jou is.
+</Callout>
+
+Het bindende kader boven beide lagen heet niet WORM en niet Merkle-boom. Het heet RTS RMF (Gedel. Verord. 2024/1774) art. 12 "Registratie van gegevens": rechtstreeks toepasselijk level-2-recht onder DORA. Art. 12 lid 2 onder d eist "maatregelen om systemen en informatie voor gegevensregistratie te beschermen tegen manipulatie, verwijdering en onbevoegde toegang". Hoe die maatregelen eruitzien, schrijft de tekst niet voor; hij is technologieneutraal en noemt geen WORM, geen Merkle-boom, geen model. WORM en tamper-evidence zijn mijn antwoord op die eis, geen passage uit de verordening.
+
+### De juridische sluitsteen: het geattesteerde tijdstip
+
+Merkle-root en WORM borgen het wat en het of. Het wanneer blijft open. Een log waarvan ik de root vandaag achteraf genereer, kan cryptografisch onberispelijk zijn en toch geantedateerd. Hier grijpt een tweede eis uit hetzelfde artikel in: RTS RMF art. 12 lid 2 onder f eist de "synchronisatie van de klokken van elk ICT-systeem ... op basis van een gedocumenteerde betrouwbare referentietijdbron". Een gekwalificeerde tijdstempeldienst is zo'n referentietijdbron. Dat het deze dienst moet zijn, staat zo niet in de verordening; dat is mijn operationalisering, geen citaat.
+
+Het mechanisme erachter is RFC 3161. Naar de tijdstempeldienst gaat alleen de hash, de message imprint. Het document zelf verlaat het huis nooit. De dienst signeert de hash samen met de actuele tijd en stuurt een token terug. Voor onze kredietlog betekent dat concreet: de Merkle-root van een batch gaat naar de Timestamping Authority, de inhoud van de regels blijft binnen. Juridisch interessant wordt het door eIDAS. Artikel 41 lid 2 van Verordening (EU) nr. 910/2014 verbindt aan gekwalificeerde tijdstempels een wettelijk vermoeden: het vermoeden van "de juistheid van de datum en de tijd" en van "de integriteit van de ... verbonden gegevens".
+
+Het woord in de titel van dit hoofdstuk belooft meer dan de techniek waarmaakt. Het vermoeden uit eIDAS is weerlegbaar. Het verschuift de bewijslast: niet ik moet de echtheid van de log bewijzen, de tegenpartij moet die aan het wankelen brengen. Voor de rechter is dat een enorm voordeel, een onaantastbaar volledig bewijs is het niet.
+
+Hetzelfde patroon vind je in de Duitse ZPO. § 371a lid 1 ZPO geeft gekwalificeerd ondertekende elektronische documenten een prima-facie-bewijs van echtheid. Ook dat is een bewijsverlichting, uitdrukkelijk geen volledig bewijs. Wat we hier bouwen, is de sterkste bewijspositie die je technisch kunt neerzetten. Ze kan worden aangevallen, ze kan in een individueel geval ook sneuvelen. De uitgangspositie is toch een andere dan bij een bewerkbaar logbestand, waarvan ik de echtheid voor de rechter helemaal zelf zou moeten onderbouwen.
+
+Twee voetnoten die over de jaren heen beslissend zijn. Ten eerste is een tijdstempel niet eeuwig geldig. Signatuuralgoritmen verouderen, certificaten verlopen. RFC 4998 (Evidence Record Syntax) beschrijft hoe de bewijswaarde over lange bewaartermijnen behouden blijft: door de tijdstempels tijdig te vernieuwen, voordat het oude procedé cryptografisch zwak wordt. Bij 10 jaar bewaren wordt dat een doorlopend proces dat iemand actief moet runnen. Ten tweede bestaat daar in Duitsland een gedocumenteerde stand van de techniek voor: de BSI TR-03125 (TR-ESOR) van het Duitse federale bureau voor informatiebeveiliging beschrijft de architectuur voor langetermijnopslag die de bewijswaarde behoudt. Wie zich daaraan houdt, hoeft niet zelf te onderbouwen dat zijn archivering aan de actuele stand voldoet.
+
+<Accordion title="Bewaartermijnen en de BaFin-carve-out">
+De bewaartermijn is in § 257 lid 4 HGB gestaffeld: handelsboeken, inventarissen en balansen 10 jaar, boekingsbescheiden 8 jaar, ontvangen handelscorrespondentie 6 jaar. Zin 2 bevat de carve-out die voor ons beslissend is: voor instellingen in de zin van § 1 lid 1b KWG, § 1 lid 1 VAG en § 2 lid 1 WpIG blijven boekingsbescheiden op 10 jaar. Wie een door BaFin gereguleerde bank of verzekeraar bouwt, rekent dus met 10 in plaats van 8 jaar.
+
+En de termijn is naar boven open. § 147 lid 3 zin 5 AO kent een verlengingsregel: zolang de stukken van belang zijn voor een nog niet verstreken aanslagtermijn, bijvoorbeeld tijdens een lopend boekenonderzoek, loopt de bewaartermijn niet af. Een log die ik voor een kredietscore uit 2026 bijhoud, kan me dus flink langer dan 10 jaar vergezellen. Daarmee is RFC 4998 geen academisch detail.
+</Accordion>
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 560 466" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="st-title st-desc" class="w-full max-w-full h-auto">
+<title id="st-title">De integriteitsstack van de log</title>
+<desc id="st-desc">Een verticale stapel van zes lagen, van boven naar beneden: volledige logregel per transactie, append-only Merkle-log, Merkle-root per batch, RFC-3161-tijdstempel met eIDAS-vermoeden, WORM-storage in Compliance Mode en tot slot het prima-facie-bewijs van echtheid volgens § 371a ZPO. Elke laag bouwt voort op de laag erboven.</desc>
+<rect x="90" y="18" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Logregel - één transactie, volledig</text>
+<rect x="90" y="94" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">append-only Merkle-log</text>
+<line x1="280" y1="68" x2="280" y2="82" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 92 L 273 80 L 287 80 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="170" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Merkle-root - één batch</text>
+<line x1="280" y1="144" x2="280" y2="158" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 168 L 273 156 L 287 156 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="246" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="276" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">RFC-3161-tijdstempel · eIDAS-vermoeden</text>
+<line x1="280" y1="220" x2="280" y2="234" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 244 L 273 232 L 287 232 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="322" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="352" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">WORM-storage · Compliance Mode</text>
+<line x1="280" y1="296" x2="280" y2="310" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 320 L 273 308 L 287 308 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="398" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="280" y="428" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">§ 371a ZPO · prima-facie-bewijs van echtheid</text>
+<line x1="280" y1="372" x2="280" y2="386" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 396 L 273 384 L 287 384 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Van logregel naar bewijs dat standhoudt voor de rechter: de tijdstempel zit op de Merkle-root van een hele batch, niet op elke afzonderlijke regel. eIDAS en § 371a ZPO maken van technische onveranderlijkheid een weerlegbaar vermoeden van echtheid. Geen volledig bewijs, maar wel de sterkste bewijspositie.</figcaption>
+</figure>
+
+Daarmee staat de stack: append-only, Merkle-root, gekwalificeerde tijdstempel, WORM eronder. Technisch is dat de meest robuuste manier om een kredietlog een decennium lang bewijsbaar te houden. Blijft de vraag die dit hoofdstuk bewust open heeft gelaten: wie schrijft een bank eigenlijk voor zoiets bij te houden, en waarom juist nu? Wat daarvan is vandaag bindend, wat alleen een aanbeveling, en wat schuift er net in de kalender?
+
+## De regelgevingskaart voor instellingen onder BaFin-toezicht, en waarom nu
+
+De onveranderlijke log staat. Hij doorstaat wijzigingen achteraf, hij draagt zijn tijdstempel, hij is te koppelen aan een Contract-snapshot. Blijft de vraag die het vorige hoofdstuk open heeft gelaten: wie eist dit eigenlijk, en hoe bindend?
+
+Voor ons doorlopende voorbeeld, een AI-feature bij een door BaFin gereguleerde bank of verzekeraar die de kredietwaardigheid van een persoon beoordeelt of een tarief voor een levens- of zorgverzekering bepaalt, is het antwoord ongemakkelijk: meerdere regimes tegelijk, met verschillende bindende kracht en verschillende termijnen. Laten we ze ordenen.
+
+| Regime | Wat het eist | Geldt sinds/vanaf | Artefact dat eraan voldoet |
+|---|---|---|---|
+| DORA + RTS RMF (Gedel. Verord. 2024/1774) | Registratie beschermd tegen manipulatie/verwijdering (RTS art. 12), provider in het informatieregister (art. 28), auditrechten/datalocaties/exit in het contract (art. 30), meldketen voor incidenten (art. 19) | bindend sinds 17-01-2025, rechtstreeks | Onveranderlijke log plus geversioneerd Contract met providermetadata |
+| EU AI-verordening, hoog risico (bijlage III 5(b)/5(c)) | Automatische event-logging (art. 12), logs ≥ 6 maanden (art. 19), techn. documentatie 10 jaar (art. 18) | Classificatie bindend; plichten formeel vanaf 02-08-2026 (uitstel besloten, zie hieronder) | Log als event-registratie, Contract als deel van de techn. documentatie |
+| GoBD / § 257 HGB / § 147 AO | Onveranderlijkheid (§ 146 lid 4 AO), bewaring (boekingsbescheiden bij instellingen 10 jr.), machinale verwerkbaarheid | bindend, voor zover boekhoudkundig relevant | Append-only log met bewaar- en hold-logica |
+| MaRisk AT 4.3.4 "Gebruik van modellen" | Herleidbare aannames (Tz. 2), validatie (Tz. 5), uitlegbaarheid (Tz. 6), regeling van overrides (Tz. 4) | Consultatieontwerp, niet van kracht (actueel RS 06/2024) | Contract documenteert aannames en overrides, log bewijst de validatie |
+| BaFin-handreiking (18-12-2025) | "sluitende logging van AI-besluiten, modelversies en trainingsdata" (aanbeveling) | niet bindend | concretiseert log en Contract, maar bindt niet |
+
+
+### DORA is het anker, niet VAIT
+
+DORA geldt sinds 17 januari 2025, rechtstreeks in elke lidstaat, zonder nationale omzetting (art. 64). Dat is de bodem waarop voor financiële entiteiten al het andere staat. Registratie eist de verordening alleen niet op de plek waar we eerst zoeken: het anker zit een niveau dieper, in de technische reguleringsnorm Gedel. Verord. 2024/1774 (RTS RMF). Art. 12 daarvan, "Registratie van gegevens", eist bescherming tegen manipulatie, verwijdering en onbevoegde toegang, voor opgeslagen, verzonden en in gebruik zijnde gegevens: het beschermingsprofiel waar onze log technisch al aan voldoet.
+
+Voor ons geval draait het om twee details. Het eerste is de klok: art. 12 eist dat alle systeemklokken gesynchroniseerd worden met een gedocumenteerde, betrouwbare referentietijdbron. De tijdstempel in de log is dus geen extraatje. Het tweede is de retentie: een vaste termijn schrijft DORA niet voor; de financiële entiteit legt de "bewaartermijn" zelf vast op basis van risico en doel, en onderbouwt die. Wie 6 maanden kiest, moet dat kunnen onderbouwen. Wie 10 jaar kiest ook.
+
+De LLM-provider is in deze architectuur een derde aanbieder van ICT-diensten in de zin van DORA, met alles wat daarbij hoort. De verantwoordelijkheid blijft bij ons: de financiële entiteit "blijft te allen tijde volledig verantwoordelijk voor de naleving …" (art. 28 lid 1). De functie kun je uitbesteden, de verantwoording niet. Het contract met de provider hoort in het informatieregister (art. 28 lid 3), dat de toezichthouder op verzoek kan inzien. En art. 30 dicteert de verplichte inhoud: auditrechten (lid 3 onder e), vastgelegde datalocaties met voorafgaande kennisgeving bij wijziging (lid 2 onder b), een exitstrategie met overgangsperiode (lid 3 onder f) en de regeling van sub-outsourcing (lid 2 onder a), waarmee de keten van LLM-provider tot hyperscaler is afgedekt.
+
+En als er iets misgaat, loopt er een klok. DORA art. 19 regelt de meldketen voor ernstige ICT-incidenten, de concrete termijnen staan in Gedel. Verord. 2025/301. Die klok tikt vandaag al, niet pas vanaf 2027.
+
+<Callout type="warning">
+Wie in 2026 nog VAIT, BAIT, KAIT of ZAIT citeert, werkt met een verouderde kaart. VAIT, BAIT, KAIT en ZAIT zijn met het van toepassing worden van DORA vervallen. Het anker voor de ICT- en uitbestedingseisen heet nu DORA, samen met de bijbehorende RTS. Voor het modelniveau komt daar de MaRisk bij, waarvan de AI-module wel nog in consultatie is.
+</Callout>
+
+<Accordion title="De relevante DORA-artikelen in detail">
+
+- **Art. 5 lid 2 onder a DORA** - eindverantwoordelijkheid: "Het leidinggevend orgaan draagt de eindverantwoordelijkheid voor het beheer van de ICT-risico's." De verantwoordelijkheid ligt bij het leidinggevend orgaan, niet bij een "owner".
+- **Art. 12 RTS RMF (Gedel. Verord. 2024/1774), registratie van gegevens:** bescherming tegen manipulatie, verwijdering en onbevoegde toegang (lid 2 onder d); kloksynchronisatie met een gedocumenteerde referentietijdbron (lid 2 onder f); bewaartermijn vast te leggen op basis van risico en doel.
+- **Art. 17 RTS RMF, ICT-wijzigingsbeheer.** Geen woord over modellen in de tekst. Dat "modelversies archiveren" hierin wordt gelezen, is de interpretatie van de BaFin-handreiking, niet de letterlijke tekst van de RTS.
+- **Art. 28-30 DORA, risico van derden:** accountability niet uitbesteedbaar (art. 28 lid 1), informatieregister (art. 28 lid 3), verplichte contractinhoud over auditrechten, datalocaties, exit en sub-outsourcing (art. 30).
+- **Termijnen (Gedel. Verord. 2025/301 art. 5):** eerste melding 4 uur na de classificatie als ernstig (backstop 24 uur na kennisname), tussentijdse melding 72 uur na de eerste melding, eindmelding 1 maand na de tussentijdse melding.
+
+</Accordion>
+
+De meest concrete interpretatie van deze DORA-plichten levert de BaFin-handreiking "IKT-Risiken beim Einsatz von KI" (ICT-risico's bij de inzet van AI) van 18-12-2025. Die beveelt aan om, risicogebaseerd, een "sluitende logging van AI-besluiten, modelversies en trainingsdata" in te richten, en leest de "systematische archivering van alle modelversies en -parameters" in art. 17 RTS RMF. Alleen: deze handreiking noemt zichzelf "niet-verplichtende ondersteuning", die "geen bindende DORA-interpretatie" vormt. Ze is de kaart van hoe BaFin de eisen leest, niet de rechtsnorm zelf. De norm is DORA; de handreiking concretiseert hoe een log en een Contract daaraan zouden kunnen voldoen.
+
+### Als de feature een systeem met hoog risico wordt
+
+Het tweede grote blok is de EU AI-verordening, en hier wordt ons voorbeeld een schoolvoorbeeld. Bijlage III nr. 5(b) noemt AI-systemen voor de beoordeling van de "kredietwaardigheid van natuurlijke personen", nr. 5(c) die voor "risicobeoordeling en prijsstelling … in het geval van levens- en ziektekostenverzekeringen". Kredietscoring en verzekeringspricing, onze twee gevallen, zijn daarmee systemen met een hoog risico. Daaruit volgen concrete registratieplichten: automatische event-logging gedurende de levensduur van het systeem (art. 12), bewaring van de logs gedurende minstens 6 maanden (art. 19), technische documentatie gedurende 10 jaar (art. 18).
+
+Voor financiële instellingen komt hier de waardevolste bevinding van dit hoofdstuk. De AI-verordening dwingt niet tot een tweede governance-apparaat naast het financieel toezicht. Art. 17 lid 4 laat het kwaliteitsbeheersysteem als vervuld gelden voor zover een instelling de betreffende plichten al via haar governance onder het financieel toezichtrecht afdekt, met drie uitdrukkelijke uitzonderingen (onder g, h, i) die zelfstandig blijven. Dezelfde autoriteit houdt toezicht op beide: art. 74 lid 6 maakt de nationale financiële toezichthouder tot markttoezichtautoriteit voor AI met een hoog risico bij financiële instellingen, in Duitsland dus BaFin. Het geversioneerde Contract en de log betalen zich daarmee voor beide regimes tegelijk uit. Een dubbele boekhouding heb je alleen nodig voor wat onder de drie uitzonderingen valt.
+
+<Accordion title="EU AI-verordening: gedeelde vs. aanvullende bewijsvoering">
+
+Art. 17 lid 4 verklaart het kwaliteitsbeheersysteem voor financiële instellingen "met uitzondering van lid 1, punten g), h) en i)" als vervuld wanneer de governance onder het financieel toezichtrecht van toepassing is. Zelfstandig te vervullen blijven:
+
+- **Punt g → art. 9** - het risicobeheersysteem voor het AI-systeem met hoog risico.
+- **Punt h → art. 72** - de monitoring na het in de handel brengen.
+- **Punt i → art. 73** - de melding van ernstige incidenten.
+
+Op dezelfde manier behandelen art. 18 lid 3 en art. 19 lid 2 de technische documentatie en de logs als onderdeel van de documentatie onder het financieel toezichtrecht. Eén artefact, twee geadresseerden. De boete die erachter hangt: tot 15 miljoen euro of 3% van de jaaromzet bij verplichtingen van gebruiksverantwoordelijken (art. 99).
+
+</Accordion>
+
+<Callout type="warning">
+**Stand juli 2026, de regelgeving is in beweging.** De Digital Omnibus verschuift de plichten voor zelfstandige systemen met hoog risico uit bijlage III (inclusief 5(b) en 5(c)) van 02-08-2026 naar 02-12-2027. De Raad heeft dat op 29-06-2026 definitief aangenomen, maar de publicatie in het Publicatieblad moet nog volgen, zodat formeel nog steeds 02-08-2026 geldt. Aan de classificatie als hoog risico verandert het uitstel niets. En de MaRisk-herziening met AT 4.3.4 is een consultatieontwerp (reactietermijn 08-05-2026), geen geldend recht: van kracht is de MaRisk in de versie RS 06/2024, waarin AT 4.3.4 nog niet staat.
+</Callout>
+
+### MaRisk volgt voor de modellen
+
+Wat DORA is voor het ICT-niveau, wordt MaRisk voor het modelniveau. De 9e herziening introduceert met de module AT 4.3.4 "Gebruik van modellen" voor het eerst uitdrukkelijk AI: Tz. 1 maakt duidelijk dat de eisen "ook gelden voor geautomatiseerde modellen, technologiegedreven innovatie en kunstmatige intelligentie". Wat het ontwerp eist, leest als een beschrijving van het Contract: herleidbaar onderbouwde aannames (Tz. 2), regelmatige validatie (Tz. 5), uitlegbaarheid, gedefinieerd als aantoonbare "verbanden tussen invoer- en uitvoergrootheden" (Tz. 6), en de regeling van overrides, dus "van het model afwijkende waarden door directe ingreep" (Tz. 4). Nog is het een ontwerp, maar de richting is ondubbelzinnig.
+
+Dat laatste punt is waar Contract en log de mens tegenkomen. Wie een modeluitkomst overschrijft, wanneer en met welke motivering, hoort in de log, anders is de override onzichtbaar. Die ontwerpvraag heb ik eerder al uitgebreider behandeld.
+
+<LinkCard url="/nl/blog/human-in-the-loop"/>
+
+### Waarom nu, en niet pas in 2027
+
+Uit het Omnibus-uitstel trek je makkelijk de verkeerde conclusie: AI-verordening pas in 2027, dus nog tijd. Voor een door BaFin gereguleerde instelling is die conclusie duur. De scherpste hefboom is juist niet de AI-verordening, maar DORA en de bewaarplicht uit handels- en belastingrecht. Beide gelden vandaag, rechtstreeks, zonder overgangstermijn. De meldketen voor incidenten uit DORA art. 19 loopt al, met haar venster van vier uur na de classificatie. MaRisk volgt voor de modellen. Wie wacht tot de AI-verordening in 2027 tanden krijgt, heeft de regimes over het hoofd gezien die nu al gelden.
+
+### Bewaren tegenover wissen
+
+Eén conflict blijft. De bewaarplichten uit § 257 HGB en § 147 AO zeggen: bewaren. De AVG zegt voor persoonsgegevens, en een kredietscore is in hoge mate persoonsgebonden: wissen zodra het doel vervalt. Uit een onveranderlijke, append-only log kun je echter niets selectief wissen zonder de onveranderlijkheid zelf kapot te maken.
+
+<Callout type="info">
+De oplossing heet blokkeren in plaats van wissen. Art. 18 AVG kent de "beperking van de verwerking" als alternatief voor wissen: het record blijft bestaan, maar wordt voor regulier gebruik geblokkeerd. In de log vertaalt zich dat in een hold-vlag in plaats van een automatische wisregel op kalenderbasis. Fiscaal wordt dat gestut door de verlengingsregel in § 147 lid 3 zin 5 AO: de bewaartermijn loopt niet af zolang de transactie fiscaal relevant is.
+</Callout>
+
+Eerlijkheid over de scope hoort erbij. § 257 HGB en § 147 AO gelden alleen voor zover een transactie boekhoudkundig relevant is. Niet elke agent-log valt daarmee onder de handels- of fiscale bewaarplicht; het gros van onze registraties loopt via DORA, MaRisk en de AI-verordening, niet via het HGB. Die regimes netjes uit elkaar houden, is zelf al onderdeel van de zorgvuldigheid.
+
+Dat is een hoop regelgeving voor één feature: veel artefacten, meerdere termijnen, meerdere toezichthouders die naar dezelfde logs kijken. Is die moeite het wel waard? Dat is de meest voor de hand liggende tegenvraag, en die verdient een eerlijk antwoord.
+
+## Gebruikelijke tegenwerpingen
+
+De kostenvraag uit het vorige hoofdstuk komt zelden alleen. Zodra ik Contract en audit-proof log als verplicht programma op tafel leg, komen de bezwaren gegarandeerd. Een paar daarvan duiken in bijna elke discussie op. Ze zijn goed genoeg om serieus te nemen.
+
+### "Audit-proof is pure compliance-façade."
+
+Het wantrouwen is terecht: veel van wat onder "compliance" loopt, is een map die nooit iemand opent. Alleen klopt het hier niet. De log is het enige oppervlak waartegen je het Contract kunt diffen: het enige mechanisme waarmee je een stille modelwissel, driftende prompts, een out-of-scope tool-call of een gebroken schema-belofte überhaupt opmerkt. Hetzelfde bezwaar heb ik bij de eval-loop al eens ontkracht, en het antwoord is hetzelfde: de waarde ontstaat in productie, het bewijs krijg je er als bijproduct bij.
+
+<LinkCard url="/nl/blog/incident-zu-regressionstest"/>
+
+### "LLM's zijn niet-deterministisch, dus niet auditeerbaar."
+
+Dat is een categoriefout. Een audit registreert wat er gebeurde; hij reproduceert niet wat er nog eens zou gebeuren. Het niet-determinisme is juist de reden dat we loggen. Zelfs de harde versie van het bezwaar wankelt: Thinking Machines Lab heeft in 2025 laten zien dat je het niet-determinisme kunt wegnemen. Met batch-invariante kernels leverde Qwen3-235B in 1000 van de 1000 runs dezelfde completion. De vaak geciteerde 1,6 tot 2,1 keer hogere kosten komen uit een aparte timing met een kleiner model (Qwen-3-8B) en horen niet in dezelfde zin. Voor een audit heb je dat determinisme overigens helemaal niet nodig. Dat is mijn conclusie; de auteurs laten alleen zien dat determinisme haalbaar is.
+
+### "Te duur, te veel overhead voor één feature."
+
+De asymmetrie loopt andersom. De meldtermijnen van DORA-incidentrapportage zijn zonder Contract en log gewoon niet haalbaar: vier uur na de classificatie als ernstig de eerste melding, 72 uur daarna de tussentijdse melding, een maand daarna de eindmelding (art. 19 DORA, uitgewerkt in Gedel. Verord. 2025/301). Het artefact zelf is goedkoop: een YAML-bestand in git plus een append-only event-stream. De tokens heb je sowieso, je schrijft ze alleen mee. Dat kost dagen, geen platform, en verdient zich over features heen terug.
+
+### "Prompt plus model is genoeg als documentatie."
+
+Dat beschrijft de norm, niet de praktijk. Neem de kredietwaardigheidsfeature uit de vorige hoofdstukken: prompt en modelnaam vertellen je niet welke tools werkelijk zijn aangeroepen, tegen welke exacte modelversie, met welke sampling-parameters, met welke RAG-context, of de schemavalidatie van het score-object slaagde en tegen welke versie van de eval-set het antwoord is afgenomen. Een prompt in de wiki is niet geversioneerd, niet gereviewd, niet eval-gated, en driftet stilletjes weg tot niemand meer weet welke versie in september een aanvraag heeft afgewezen.
+
+### "Dat doet onze SIEM toch al."
+
+Andere laag. Een SIEM verzamelt infrastructuur- en security-events, meestal mutable, roterend, met korte retentie. De Contract-conformance-log zit op applicatie- en semantisch niveau, is tamper-evident en staat op WORM. In een eerdere post noemde ik dat "tracing is geen auditing"; hier wordt dat "een SIEM is geen conformance-log". Dat er voor GenAI-telemetrie inmiddels eigen OpenTelemetry-conventions bestaan, lees ik als hetzelfde signaal: twee behoeften, twee lagen.
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+
+### "De provider verandert het model stilletjes, ik kan niets pinnen."
+
+Deels onjuist. Bij Anthropic is elke model-ID een gepinde snapshot; bij OpenAI gelden de gedateerde snapshots als stabiele referentie, het risico zit in de floating alias of in de Azure-default, die bij de volgende release automatisch omhoog schuift. Wie naar `-latest` wijst, heeft het probleem zelf gebouwd. Pinnen kan, en de ID die werkelijk heeft geantwoord hoort in de log, omdat een pin niet eeuwig houdt. Dat een snapshot ooit wordt ingetrokken, is een argument vóór de log, niet tegen pinnen.
+
+## Slot: norm zonder praktijk is een bewering
+
+De hardste bezwaren liggen achter ons, en geen ervan heeft de kern omvergeworpen. Twee artefacten dragen deze hele post, en ze dragen hem alleen samen.
+
+Het Agent Contract is de norm: welk model in welke versie, met welke prompt, welke tools, welke parameters en welke toegestane outputruimte. De audit-proof log is het bewijs van de praktijk: wat daarvan op het moment van het besluit echt liep, onveranderlijk vastgelegd. Ontbreekt de log, dan is het Contract een bewering. Een document in de wiki dat beschrijft hoe het systeem zich zou moeten gedragen, zonder één enkel bewijs dat het zich zo heeft gedragen. Ontbreekt het Contract, dan is de log ruis zonder maatstaf: miljoenen regels waartegen niemand iets kan toetsen, omdat de norm nooit is gedefinieerd. Pas samen vormen ze een bewijs.
+
+Beide begrippen zijn onze framing, geen wettekst. "Audit-proof" (*revisionssicher*) staat in geen van de rechtshandelingen, "Agent Contract" al helemaal niet. Wat de regelgeving eist, heeft nuchterdere namen: onveranderlijkheid, herleidbaarheid, logging. De zaak erachter is dezelfde.
+
+Neem de score die beslist over iemands kredietwaardigheid, of het model dat de premie van een zorg- of levensverzekering bepaalt: volgens de EU AI-verordening de gevallen met hoog risico uit bijlage III. Maakt die persoon een half jaar later bezwaar en vraagt waarom, dan is "ons Contract schreef model X in versie Y voor" geen antwoord. Het antwoord is de logregel die laat zien dat model X in versie Y het besluit heeft genomen en dat niemand er sindsdien aan heeft gezeten. Dat je het model bij een provider hebt ingekocht, ontslaat je daarbij nergens van: volgens art. 28 DORA blijf je volledig verantwoordelijk.
+
+DORA geldt sinds 17 januari 2025 rechtstreeks, en art. 12 van de RTS RMF, de technische norm voor ICT-risicobeheer, eist dat gegevensregistraties worden beschermd tegen manipulatie, verwijdering en onbevoegde toegang; de bewaartermijn leg je risicogebaseerd zelf vast, een vast getal staat er niet. De GoBD eisen voor het fiscaal relevante spoor onveranderlijkheid, en een bestandssysteem alleen volstaat daar uitdrukkelijk niet voor. De 9e MaRisk-herziening, nog consultatieontwerp en niet van kracht, zou met AT 4.3.4 het gebruik van modellen in dat kader trekken: aannames herleidbaar onderbouwen, regelmatig valideren, uitlegbaar houden. Of je het woord "audit-proof" nu mooi vindt of niet, aan deze verplichtingen verandert dat niets.
+
+Nieuw uitgevonden is er weinig aan. Deze post benoemt een artefact waar de serie allang omheen cirkelde, en geeft het een regelgevend kader. Elke voorganger heeft er een stuk van gebouwd:
+
+- **Contracts** trekken de grenzen tussen model, tools en code; daar komt het begrip vandaan.
+- **Evals** maken de eval-set tot het inhoudelijke contract dat voor de deploy toetst of de norm overeind blijft.
+- **Tool-audit** maakt duidelijk wat een individuele call mag, en scheidt tracing netjes van auditing.
+- **Observability** beslist wat in de log hoort en wat niet: PII, break-glass, de rode lijnen.
+- **Rollout-manifest** levert de mal waaruit het Contract eigenlijk ontstaat.
+
+<LinkCard url="/nl/blog/ai-systems-architecture"/>
+<LinkCard url="/nl/blog/ai-evals-ci-pipeline"/>
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/nl/blog/observability-ai-features"/>
+<LinkCard url="/nl/blog/ai-rollout-canary-shadow"/>
+
+Deze post vouwt de vijf samen tot één benoemd kernartefact. En daarmee bij het punt dat ik in deze serie niet moe word te herhalen: dit is geen extra werk dat de regelgeving je oplegt. Het Contract is engineering-hygiëne; je wilt weten welk model er in productie draait, gereguleerd of niet. En de onveranderlijke log bouw je uiterlijk bij het eerste incident zelf, omdat je dan nu eenmaal moet weten wat er echt is gebeurd, en niet alleen wat er had moeten gebeuren. Wie beide toch al bouwt omdat het goede engineering is, heeft het geëiste bewijs uiteindelijk al in handen. De governance komt voort uit de discipline, ze zit er niet als façade bovenop.
+
+Twee draden uit eerdere posts blijven open, en beide hangen aan deze log. De [reikwijdte-eval](/nl/blog/nicht-das-modell-ist-das-risiko) heeft de logdata nodig om te meten hoe ver een modelwijziging in de praktijk reikt. [FinOps voor AI](/nl/blog/die-beste-antwort-ist-keine-zielgroesse) leest kosten en latency uit dezelfde regels. De log is voor beide de databron. Maar dat is een andere post.
+
+> Het Contract is de norm, de log het bewijs van de praktijk. Los van elkaar bewijzen ze geen van beide iets. Pas samen zijn ze het bewijs.
+
+<InfoBox>
+  **Primaire bronnen (selectie, stand juli 2026, regelgeving in beweging):**<br />
+  DORA - Verord. (EU) 2022/2554: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)<br />
+  RTS ICT-risicobeheer - Gedel. Verord. (EU) 2024/1774: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)<br />
+  RTS meldtermijnen incidenten - Gedel. Verord. (EU) 2025/301: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2025/301/oj)<br />
+  EU AI-verordening - Verord. (EU) 2024/1689: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)<br />
+  eIDAS - Verord. (EU) 910/2014 (art. 41 e.v.): [eur-lex.europa.eu](https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:02014R0910-20241018) (Duitstalige versie)<br />
+  §§ 146, 147 AO / § 257 HGB / § 371a ZPO: [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__146.html) (in het Duits)<br />
+  BaFin - handreiking "IKT-Risiken beim Einsatz von KI" (18-12-2025, niet bindend): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2025/meldung_2025_12_18_orientierungshilfe_ikt_risiken.html) (in het Duits)<br />
+  BaFin - 9e MaRisk-herziening, consultatie 02/2026 (ontwerp): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2026/meldung_2026_04_01_konsultation_02_2026_marisk-novelle.html) (in het Duits)
+</InfoBox>

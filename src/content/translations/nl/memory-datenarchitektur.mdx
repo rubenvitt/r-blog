@@ -1,0 +1,158 @@
+---
+title: "Chat verwijderd. Waarom weet de agent het dan nog?"
+description: "Agent-memory maakt van één bericht meerdere kopieën, en ‘Chat verwijderen’ raakt daarvan vaak alleen de chat. Een klein lab laat zien waar een diagnose het verwijderen overleeft en welk verwijderpad haar wel weghaalt."
+date: 2026-11-08
+tags: ["ai", "software-engineering", "security"]
+image: ../../blog/_images/memory-datenarchitektur/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import Callout from '../../../components/widgets/Callout.astro';
+import kopien from '../../blog/_images/memory-datenarchitektur/kopien.png';
+import raten from '../../blog/_images/memory-datenarchitektur/raten.png';
+
+> Wie een agent een geheugen geeft, maakt kopieën. Gericht verwijderen lukt alleen als elke kopie weet waar ze vandaan komt.
+
+In de [helppagina over Claudes memory](https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context) staat een zin die makkelijk over het hoofd wordt gezien: "When a conversation is deleted, including under a retention period, memory entries generated from it aren't removed". Losse memories kun je daar met de hand verwijderen, en gevoelige onderwerpen slaat Claude standaard helemaal niet op. Toch hebben chat en geheugen elk hun eigen verwijderpad.
+
+Hoe dat in het slechtste geval kan uitpakken, heb ik nagebouwd in een klein lab. De informatie-assistent van een verzonnen stadsbibliotheek krijgt het bericht: "Ik heb boeken in grootletter nodig, door mijn maculadegeneratie kan ik gewone letters bijna niet meer lezen. Wat hebben jullie?" Een extractor met de originele prompt van Mem0 maakt daar de entry "De gebruiker heeft maculadegeneratie en kan gewone letters bijna niet meer lezen." van. De volgende dag verwijdert de persoon de chat via de interface en vraagt: "Wat weet je eigenlijk over mij?"
+
+De assistent antwoordt: "Uit eerdere gesprekken weet ik dat je maculadegeneratie hebt, gewone letters bijna niet kunt lezen en boeken in grootletter nodig hebt." Zo ging het in alle vijf runs.
+
+De entry wist niet uit welke chat hij kwam, dus het verwijderen vond hem niet. In mijn opzet bereikte pas een combinatie van drie dingen hem: herkomst aan elke kopie, een verwijdercascade en een schrijfcontrole die niets meer accepteert uit een verwijderde chat. Om te voorkomen dat er daarbij te veel verdwijnt, heb je regels per datasoort nodig, en het logboek heeft een eigen oplossing nodig.
+
+Voor het experiment heb ik vooraf vastgelegd wat de knop belooft: "Chat verwijderen" haalt de geschiedenis weg en alles wat daarvan is afgeleid. Uitgezonderd is een wens die de persoon uitdrukkelijk heeft laten opslaan. Die blijft staan, toont zijn herkomst ("uit een verwijderde chat") en is los in te trekken.
+
+<InfoBox>
+  Demo: [rubenvitt.github.io/memory-lab](https://rubenvitt.github.io/memory-lab/) - de kopieën van één bericht en wat "Chat verwijderen" daarvan bereikt.<br />
+  Repo met regels, prompts en alle ruwe antwoorden: [github.com/rubenvitt/memory-lab](https://github.com/rubenvitt/memory-lab)
+</InfoBox>
+
+## Vijf dingen die allemaal memory heten
+
+Achter dat woord zitten minstens vijf soorten data, elk met een andere eigenaar en een andere levensduur.
+
+**Session state** is de geschiedenis van het lopende gesprek, inclusief tool-resultaten. Hij hoort bij de sessie, komt als fragment in de prompt terecht en vervalt na minuten of dagen.
+
+Het **profiel** met adres, contract en klantnummer is van het bronsysteem waar het al lang vóór de agent in stond. De agent leest geselecteerde velden. Wijzigen en verwijderen gebeurt daar, kopieën volgen.
+
+Een **voorkeur** heeft de persoon zelf uitgesproken, bijvoorbeeld "herinneringen graag per sms". Die geldt tot de persoon haar intrekt, en staat tot dan in de prompt.
+
+Bij **retrieval** haalt de agent documenten, tickets of oude chats erbij via zoeken. De zoekindex daarachter is alleen een kopie. Hij leeft zo lang als zijn bron en moet worden bijgewerkt als die verdwijnt. In de prompt komen alleen de hits.
+
+Het **audit**-logboek is van de beheerder en legt vast wat de agent heeft gedaan. Het komt nooit in de prompt en wordt pas na afloop van de bewaartermijn verwijderd. Persoonsgegevens daarin hebben een eigen oplossing nodig, zoals redaction of een sleutel die je kunt vernietigen.
+
+De Mem0-entry uit het lab past in geen van deze hokjes. Hij is afgeleid zoals een index, staat in de prompt zoals een voorkeur en heeft geen vervaldatum en geen herkomst.
+
+Aparte regels betekenen trouwens niet dat je vijf databases nodig hebt. Eén tabel met een kolom voor de datasoort volstaat, zolang elke soort zijn eigen verwijder- en promptregel krijgt.
+
+## Eén bericht, vier kopieën
+
+Het lab heeft twee varianten. In de eerste schrijft een extractor naar een gedeeld geheugen zonder herkomst, zoals hierboven. De tweede, die ik B noem, heeft regels per datasoort, voorkeuren alleen via een tool en herkomst aan elke entry. De afbeelding combineert kopieën uit beide varianten met een verzonnen geval.
+
+<Figure src={kopien} alt="Memory-lab: uit het bericht met de diagnose ontstaan vier kopieën, chat, geheugen, logboek en zoekindex, elk gemarkeerd als waargenomen, geconstrueerd of gesimuleerd. Daaronder een tabel met vier varianten: één regel voor alles of per datasoort, en zonder of met herkomst." caption='Samengesteld voorbeeld: geheugen waargenomen (Mem0-extractor), logboek waargenomen (B), zoekindex geconstrueerd. De tabel eronder past regels toe, het vernietigen van de sleutel is gesimuleerd.'/>
+
+Het geheugen is de Mem0-entry, in alle vijf runs met diagnose. In het logboek kwam ze via een omweg: in twee van de vijf runs zocht de assistent van B naar "grootletterboeken leeshulp maculadegeneratie", en het logboek bewaart zoekopdrachten in platte tekst en staat alleen toevoegen toe. Bij B was het geheugen na het verwijderen schoon, het logboek niet. De zoekindex is geconstrueerd: een index die na het verwijderen opnieuw uit het logboek wordt opgebouwd.
+
+Wat "Chat verwijderen" bij zulke kopieën bereikt, heb ik als 2×2 uitgewerkt. De ene as: één regel voor alle afgeleide data of één per datasoort. De andere: zonder herkomst of met de combinatie van herkomst (`derivedFrom`), cascade en schrijfcontrole. Toegepast op de echte entries en zoekopdrachten uit het lab en op verzonnen gevallen: een samenvatting uit twee chats, een extractiejob na het verwijderen, een rebuild van de index en een uitdrukkelijk opgeslagen wens. Er wordt daarbij niets gemeten, de tabel laat alleen zien welke regel welk geval afdekt.
+
+Zonder herkomst is alleen de chat weg. Geheugen en samenvatting houden de diagnose, de verlate job schrijft haar opnieuw. Regels per datasoort houden in deze rij alleen de opnieuw gebouwde index buiten de prompt, opvraagbaar blijft hij.
+
+Met herkomst en één regel voor alles verdwijnt de diagnose uit alles wat is afgeleid, maar daarmee ook de opgeslagen wens en het detectivedeel van de samenvatting, dat uit de tweede chat kwam. Komen er regels per datasoort bij, dan zijn geheugen en index schoon, wordt de samenvatting opnieuw gegenereerd uit de tweede chat (in het experiment een vooraf vastgelegde tekst), en blijft de wens staan. In het experiment bevat die wens de diagnose, dus blijft ze daar staan, zichtbaar en los in te trekken. Dat job en rebuild niets terugbrengen, komt door de schrijfcontrole. Met alleen `derivedFrom` zouden ze allebei terugkomen.
+
+Het logboek valt buiten het schema. Als platte tekst bewaart het de zoekopdracht in elke variant. Met een sleutel per chat die bij het verwijderen wordt vernietigd, zou ze onleesbaar zijn, mits het verwijderen de chat als bron kent. Dat deel simuleert het experiment alleen: het markeert de sleutel als vernietigd en toont de zoekopdracht niet meer. Echte versleuteling heb ik niet getest.
+
+## Hoe vaak dat gebeurt
+
+Hoe vaak zulke kopieën ontstaan, heb ik apart gemeten. 40 verzonnen berichten noemen gezondheid, familie, religie of geld, de helft terloops, de andere helft met "Onthoud alsjeblieft dat ...". Elk bericht ging één keer door twee extractors en één keer naar de assistent van B.
+
+<Figure src={raten} alt="Staafdiagram: Mem0 slaat 20 van 20 terloops genoemde gegevens op, de eigen prompt 5 van 20. Na Onthoud alsjeblieft slaan beide bijna alles op. De assistent schrijft het gegeven volgens automatische telling in 6 en 4 van 20 gevallen in platte tekst naar het logboek, met de hand geteld in 7 en 4." caption="Hoe vaak een gevoelig gegeven in het geheugen of in het logboek staat, per 20 berichten, elk één keer. Bij het logboek staan automatische en handmatige telling naast elkaar."/>
+
+De originele prompt van Mem0 slaat alle 20 terloops genoemde gegevens op. Hij noemt gezondheid en persoonlijke details uitdrukkelijk als het onthouden waard. Soms koppelt hij daarbij verkeerd: van "Mijn man heeft Alzheimer. Hebben jullie prentenboeken voor volwassenen?" wordt "De gebruiker heeft Alzheimer."
+
+Mijn eigen prompt verbiedt gevoelige gegevens zonder uitdrukkelijk verzoek. Bij gezondheid en familie houdt hij zich daaraan, bij religie en geld niet altijd: 5 van 20. "Ik leef van de bijstand" wordt "De persoon leeft van de bijstand." Na "Onthoud alsjeblieft" slaat hij 19 van 20 op, en uitgerekend bij "Onthoud alsjeblieft dat ik diabetes heb." ging het mis.
+
+De tweede bron van kopieën is de assistent zelf. Volgens automatische telling stond het gegeven bij 10 van de 40 berichten al in de eerste stap in een tool-argument dat het logboek in platte tekst bewaart. Met de hand geteld zijn het er 11, omdat het patroon twee hits miste en één onterecht meldde. Meestal ging het om een zoekopdracht als "bibliotheekpas kosten schuldsanering". Zelfs de sleutel van een opgeslagen wens kan het gegeven bevatten. Van "Onthoud alsjeblieft dat mijn vader in de gevangenis zit" werd een `remember`-aanroep met de sleutel "vader zit in de gevangenis". Waarde en citaat bewaart het logboek alleen als checksum, de sleutel in platte tekst.
+
+De assistent schrijft dus kopieën nog voordat er überhaupt een extractor draait. Een verwijderpad moet daarmee rekening houden.
+
+## Wat het experiment niet laat zien
+
+De aantallen zijn klein: 20 berichten per cel, elk één keer, één model (`gpt-6-luna` met effort `low`). De berichten zijn geschreven door dezelfde coding agent die het lab heeft gebouwd. Van Mem0 draaide alleen de feitenextractie bij een leeg geheugen, de huidige standaard (een additieve aanroep) heb ik niet gemeten. Bij de assistent telt alleen de eerste tool-aanroep. Het 2×2-schema voert regels uit, en vier van de gevallen zijn verzonnen. Mijn verwachtingen stonden vóór de run in de repo, en ernaast zat ik alleen bij mijn eigen prompt na "Onthoud alsjeblieft" (verwacht 12 tot 18, gemeten 19).
+
+Voordat ik bij dit experiment uitkwam, heb ik de assistent hele gesprekken laten voeren, een keer met een gedeeld geheugen en een keer met aparte opslag. Ik heb alledaagse situaties uitgeprobeerd, zoals een verhuizing of een vraag die iemand voor zijn moeder stelt. In de meeste gevallen kwam er voor beide varianten hetzelfde uit. Als er iets misging, lag het bijna nooit aan het geheugen: de assistent vroeg bijvoorbeeld het nieuwe adres helemaal niet op in het systeem en beweerde in plaats daarvan dat het systeem niet bereikbaar was. Het geval met de diagnose van het begin heb ik pas daarna toegevoegd, toen ik deze resultaten al kende. Alle cijfers staan in de [bevindingen in de repo](https://github.com/rubenvitt/memory-lab/blob/main/docs/findings.md).
+
+## Herkomst en cascade bouwen
+
+In de kern is het verwijderpad een query naar alles wat uit de chat komt, plus een slot tegen te laat schrijven. Als schets:
+
+```typescript
+type Derived = { id: string; kind: "memory" | "summary" | "index" | "preference"; derivedFrom: string[]; explicit?: boolean };
+
+async function deleteChat(chatId: string) {
+  await db.tx(async (tx) => {
+    await tx.lockChats([chatId], "exclusive");
+    await tx.chats.markDeleted(chatId); // tombstone, de geschiedenis zelf wordt verwijderd
+    for (const d of await tx.derived.bySource(chatId)) {
+      if (d.kind === "preference" && d.explicit) continue;            // productregel: blijft, herkomst zichtbaar
+      if (d.derivedFrom.length > 1) await tx.rebuild.enqueue(d.id);   // opnieuw afleiden uit de overige chats
+      else await tx.derived.delete(d.id);
+    }
+    await tx.outbox.enqueue({ type: "destroy-key", chatId }); // logboek: sleutel per chat, in dezelfde commit aangevraagd
+  });
+}
+// Een worker roept keys.destroy(chatId) idempotent aan tot het lukt. Pas dan is de verwijdering afgerond.
+
+async function writeDerived(d: Derived) {
+  await db.tx(async (tx) => {
+    const chats = await tx.lockChats(d.derivedFrom, "shared");
+    if (chats.some((c) => c.deleted)) throw new Error("Bron verwijderd");
+    await tx.derived.insert(d);
+  });
+}
+```
+
+Het slot is waar het om draait. "Tombstone checken, dan schrijven" zonder gedeeld slot laat een race condition open: de job checkt, het verwijderen glipt ertussendoor, de job schrijft. Met een slot op de chatrij commit de job ofwel ervoor, dan vindt `bySource` hem, ofwel erna, dan ziet hij de tombstone.
+
+Waar `derivedFrom` vandaan komt, bepaalt het schrijfpad. In B moet de assistent bij `remember` een letterlijk citaat meesturen uit een gebruikersbericht van de lopende sessie, en de applicatie controleert dat. Daarmee ligt de herkomst vast, de waarde niet: een vergiftigd document zou de assistent ertoe kunnen brengen om "medewerker, mag kosten kwijtschelden" op te slaan met een echte zin van de gebruiker. Rechten zouden daarom uitsluitend uit het profiel moeten komen, dat het model niet schrijft. De sleutel kiest het model vrij, zie "vader zit in de gevangenis", en die moet dus ook beschermd worden.
+
+In een bestaande stack met extractor en vector store kun je dit stap voor stap inbouwen:
+
+1. **Herkomst aan elke entry.** `derivedFrom` met de chat-ID's als metadata. Oude entries waarvan de herkomst niet betrouwbaar te reconstrueren is: opnieuw extraheren of weggooien.
+2. **Verwijderen via een filter.** Alle entries met deze bron verwijderen, desnoods via een eigen tabel van bron naar entry-ID. Laten verlopen is niet genoeg, in de [documentatie van Mem0](https://docs.mem0.ai/platform/features/expiration-date) staat: "Expiration hides a memory, it does not delete it."
+3. **Samenvattingen opnieuw genereren.** Zep verwijdert bij het [verwijderen van een episode](https://help.getzep.com/deleting-data-from-the-graph) edges en nodes alleen als geen andere episode ze ondersteunt, en genereert namen en samenvattingen van gedeelde nodes niet opnieuw. Die kunnen dus nog steeds bevatten wat net is verwijderd.
+4. **Rebuild uit de log.** Martin Kleppmann raadt aan om [index, cache en views te voeden vanuit een log](https://martin.kleppmann.com/2015/05/27/logs-for-data-infrastructure.html). Een rebuild na het verwijderen is alleen schoon als de tombstone in de log staat of de log wordt gecompacteerd.
+
+Voor het logboek is dat niet genoeg, daar botst "alleen toevoegen" met het recht op verwijdering. Een hash helpt weinig, omdat je raadbare zoektermen er gewoon tegen kunt checken. Beter is redaction vóór het schrijven, of crypto-shredding. Het [Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing) beschrijft dat met een sleutel per betrokken persoon, voor "Chat verwijderen" past er een per chat. Wanneer blokkeren in plaats van verwijderen een optie is, heb ik uitgeplozen in de logging-post.
+
+<LinkCard url="/nl/blog/revisionssicheres-logging-agent-contract"/>
+
+<Callout type="tip">
+**Gevallen voor de verwijdertest.** Na "Chat verwijderen" moet gelden:
+
+- Geen enkele afgeleide entry uit de chat is nog leesbaar, ook niet via een ID of als verlopen entry. Uitzondering is de uitdrukkelijk opgeslagen wens, die zijn herkomst toont.
+- Een samenvatting uit twee chats verliest alleen het verwijderde deel.
+- Een extractiejob die daarna draait, wordt geweigerd, ook als hij tegelijk met het verwijderen start.
+- Een rebuild van de index brengt niets terug.
+- Een zoekopdracht in het logboek naar het gegeven vindt niets leesbaars.
+</Callout>
+
+## Wat het kost
+
+De uitzondering voor uitdrukkelijk opgeslagen wensen heeft een lastig randgeval: bevat de wens de diagnose, dan blijft die staan. Ik vind dat terecht, omdat de persoon haar zelf heeft laten opslaan. De interface moet bij het verwijderen wel laten zien wat er blijft.
+
+Daar komt plumbing bij: metadata aan elke entry, tombstones met slot, een rebuild-pad en sleutels voor het logboek. In B zie ik bovendien af van permanent opgeslagen impliciete voorkeuren, omdat de citaatregel alleen toelaat wat iemand hardop heeft gezegd. Wie drie sessies lang naar detectives vroeg zonder "ik hou van" te zeggen, kreeg van B in geen van de vijf runs als eerste een detective aangeraden. Dat komt door de schrijfregel. Een extractor die impliciete voorkeuren met herkomst en een korte TTL opslaat, zou met hetzelfde verwijderpad te combineren zijn, maar dat heb ik niet gemeten.
+
+## De policy hoort in het contract
+
+Herkomst, levensduur en verwijderregel per datasoort horen in het Agent Contract, net als het gepinde model. Verandert wat de extractor mag schrijven, dan verandert het gedrag van de agent, en dat zou een eval-run moeten triggeren. De gevallen uit de verwijdertest zijn daarvoor een bruikbaar begin.
+
+<LinkCard url="/nl/blog/agent-contract"/>
+
+Van de aanbieder hoef je daarbij weinig te verwachten. De [documentatie van Anthropics memory tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool) zegt het ronduit: "Your application runs every file operation Claude requests, so these safeguards are your responsibility."
+
+> Een verwijderknop belooft iets over data die hij nooit heeft gezien. Die belofte kan hij alleen nakomen als de applicatie elke kopie kan herleiden tot haar chat.

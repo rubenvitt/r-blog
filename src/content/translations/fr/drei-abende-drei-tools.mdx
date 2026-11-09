@@ -1,0 +1,136 @@
+---
+title: "Trois soirées, trois outils : quand le logiciel pour le bénévolat devient soudain réalisable"
+description: "Les associations de bénévoles ont besoin de leurs propres logiciels, mais n'ont jamais pu se les offrir. Comment l'IA est en train de changer ça, et pourquoi savoir déployer compte plus que savoir coder."
+date: 2026-04-12
+tags: ["ai", "software-engineering", "katastrophenschutz"]
+image: ../../blog/_images/drei-abende-drei-tools/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Le bénévolat a besoin de ses propres logiciels. Jusqu'ici, personne ne pouvait se les payer. Ça a changé.
+
+Trois projets, trois soirées, pas une ligne de code écrite moi-même. Tous en production. L'un d'eux, une PWA hors ligne pour les opérations de drones en protection civile, je l'ai décrit dans l'article précédent. Là, tout reposait sur une connaissance pointue du domaine : chaque calcul SORA spécifié, chaque procédure validée.
+
+<LinkCard url="/fr/blog/papier-fliegt-nicht"/>
+
+Les deux nouveaux outils, c'est une autre histoire. Pas de connaissance pointue du domaine. Pas de spécification ligne par ligne. Juste un problème, un prompt, et une IA qui fait le reste. En tant que software engineer, mon travail n'était pas d'écrire du code. C'était de savoir ce qui devait en sortir à la fin.
+
+## Ce qui manque, et à qui
+
+Près de 27 millions de personnes s'engagent bénévolement en Allemagne. Elles s'organisent dans plus de 650 000 associations, organisations de secours et initiatives. Point commun de toutes ces structures : elles travaillent avec les outils qu'elles peuvent se permettre. Et ce sont rarement les bons.
+
+Deux problèmes que je connais du bénévolat :
+
+**Les retours après les soirées d'exercice.** Les responsables veulent savoir comment ça s'est passé. Jusqu'ici : demander à l'oral, ramasser des bouts de papier ou, le plus souvent, ne rien faire du tout. Ce qu'il faudrait : scanner un QR code, donner une note, laisser un commentaire libre. Anonymement. Les responsables voient l'évolution dans le temps. Pas plus compliqué qu'un sondage, mais il n'existe aucun outil pour ça qui soit auto-hébergé et propre côté RGPD.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Système de retours anonymes pour les soirées de service"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+**Partager des fichiers en sécurité.** Documents, photos, comptes rendus : les partager en interne, sans Dropbox, sans WeTransfer, sans abonnement cloud. Protection par mot de passe, limite de téléchargements, date d'expiration. Auto-hébergé, sur son propre serveur, aucune donnée chez des tiers.
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Partage de fichiers auto-hébergé avec mot de passe et limite de téléchargements"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Les deux sont banals. Des formulaires de retour et du partage de fichiers, ce ne sont pas des défis techniques non résolus. Les solutions existent. Mais pas pour les associations.
+
+La raison, c'est de l'arithmétique. Une solution sur mesure commandée à une agence atteint vite les cinq chiffres. La moitié des organisations à but non lucratif en Allemagne disposent de moins de 10 000 euros de budget annuel. Au total.
+
+> Le budget suffit pour le problème, pas pour la solution. Jusqu'ici.
+
+## Soirée un, soirée deux
+
+Bon. Concrètement, ça ressemblait à quoi ?
+
+Pour da-feedback, le point de départ était simple : il nous faut un outil de retours anonymes pour les soirées de service. Scanner le QR code, mettre des notes comme à l'école, terminé. J'ai décrit le problème, pas la solution. La stack, c'est l'IA qui l'a choisie : Go, SQLite, HTMX. J'ai acquiescé. Est-ce que je comprends les templates Go dans le détail ? Non. Et je n'en avais pas besoin. En une soirée, j'avais un conteneur Docker avec un pipeline CI/CD. De zéro à déployé.
+
+Pour easy-fileshare, même schéma. Problème décrit : un dépôt de fichiers avec contrôle d'accès et dates d'expiration. L'IA a choisi Next.js et MinIO. Uploads par morceaux, authentification OIDC, limite de téléchargements : tout généré par l'IA. J'ai testé que les uploads fonctionnaient. Lu le code d'upload ? Non.
+
+Je ne le dis pas comme un aveu. Je le dis comme un fait. Je n'ai pas lu le code. Les choix d'architecture (Go plutôt que Node, SQLite plutôt que Postgres, HTMX plutôt que React), je me suis le plus souvent contenté de les valider d'un signe de tête.
+
+Et maintenant, la partie importante : ce n'est pas une perte de contrôle. C'est une décision.
+
+Je suis software engineer. Je pourrais lire le code. Je pourrais remettre en question chaque choix d'architecture, vérifier chaque dépendance, réfléchir à chaque edge case. Mais pour un outil interne d'association avec une poignée d'utilisateurs ? La question n'est pas de savoir si j'ai lu le code. La question est de savoir si je sais ce qui se passe quand il ne marche pas. Et la réponse, c'est : je le corrige. Ou l'IA le corrige. Le risque, c'est une soirée de travail perdue, pas une panne en production.
+
+Andrej Karpathy a inventé un terme pour ça : le vibe coding, « you fully give in to the vibes, embrace exponentials, and forget that the code even exists. » Simon Willison a tracé la frontière : si vous relisez et testez le code, c'est du développement logiciel. Sinon, c'est du vibe coding. Selon ce critère, c'était du vibe coding. Et ça a marché, pas parce que le vibe coding est en général une bonne idée, mais parce que les enjeux étaient faibles et qu'en tant qu'ingénieur, je pouvais évaluer qu'ils l'étaient.
+
+> La question n'est pas de savoir si vous avez lu le code. La question est de savoir si vous savez ce qui se passe quand il ne marche pas.
+
+## Ce que je n'ai pas eu à prompter, et ce que j'ai dû savoir
+
+Sur les deux projets, l'IA a choisi la stack, conçu le schéma de base de données, construit l'UI, implémenté l'auth, défini les routes d'API, ajouté du rate limiting. Impressionnant. Mais ce n'est que la moitié de la vérité.
+
+Ce que je devais savoir, même sans l'implémenter moi-même :
+
+- Qu'il me faut **Docker**, et comment fonctionne un build multi-stage
+- Qu'**OIDC** existe, et comment configurer PocketID comme provider
+- Que le **CI/CD** fait partie d'un produit fini, même si ce n'est qu'un build d'image Docker
+- Comment fonctionne **Cloudflare Tunnel** pour rendre le service accessible
+- Que **SQLite** suffit pour ces cas d'usage
+- Qu'il existe des **options de stockage**, et quelles questions poser à l'IA pour choisir la bonne
+
+Aucun de ces points n'est une connaissance du code. C'est de la connaissance système. De la connaissance d'infrastructure. De la connaissance du déploiement.
+
+### Le seuil invisible
+
+C'est là que se trouve l'angle mort du débat sur le vibe coding. Karpathy parle du code : « forget that the code even exists. » Mais le code n'est pas le goulot d'étranglement. Le déploiement, si.
+
+Sans la moindre idée de ce qu'est Docker, vous obtenez une app qui tourne en local. Sans savoir ce qu'est OIDC, vous obtenez une app sans auth. Sans connaître le CI/CD, vous reconstruisez une image à la main après chaque modification. Sans savoir comment un service devient accessible publiquement, vous obtenez une app sur le port 3000, joignable par personne d'autre que vous.
+
+| Ce que l'IA a décidé | Ce que je devais savoir |
+|---|---|
+| Go comme langage, HTMX pour l'interactivité | Que Docker est nécessaire pour le déploiement |
+| SQLite comme base de données, Goose pour les migrations | Que SQLite suffit pour le cas d'usage |
+| Flux OIDC avec PocketID | Comment configurer le provider OIDC |
+| Next.js avec App Router | Qu'un build d'image automatique fait partie du produit |
+| MinIO pour un stockage compatible S3 | Quelles options de stockage existent et quelles questions poser |
+| Tailwind pour le style | Comment Cloudflare Tunnel rend le service accessible |
+| Rate limiting par IP | Comment amener l'image Docker sur mon serveur |
+
+La colonne de gauche est interchangeable. Go ou Rust, Next.js ou Remix : l'IA aurait pris n'importe quelle stack, et ça aurait marché. La colonne de droite ne l'est pas. Sans ces connaissances, l'app reste un projet localhost.
+
+> Le vibe coding n'exige pas de savoir coder. Il exige un savoir d'ingénieur. Ce n'est pas la même chose, et c'est précisément ce qui sépare une démo d'un produit.
+
+## Où passe la frontière
+
+Le savoir d'ingénieur transforme une démo en produit. Mais il reste une deuxième question : quand le produit suffit-il, et quand faut-il plus ?
+
+Pour l'app UAV, « fais-moi une app de drones » aurait été une catastrophe. L'IA aurait inventé des calculs SORA, halluciné des procédures, deviné des seuils météo. Au mieux inutile. Au pire dangereux, parce que quelqu'un se serait fié à de fausses valeurs.
+
+Pour da-feedback et easy-fileshare, la spécification tenait en peu de place : quelques paragraphes décrivant le problème et les fonctionnalités voulues. Rien à voir avec les procédures de plusieurs pages de l'app UAV. Et si l'IA avait mal implémenté quelque chose ? C'était un problème d'UX, pas un risque de sécurité.
+
+Si vous vous demandez pourquoi les appels d'outils dans les systèmes d'agents ne sont pas triviaux, le même principe s'applique ici :
+
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+
+La frontière ne passe pas entre « vibe coding, oui ou non ». Elle passe par le coût de l'erreur :
+
+- **Enjeux faibles** : outils internes, peu d'utilisateurs, pas de contexte réglementaire. Ici, l'approche fonctionne, à condition que la personne qui construit ait des bases d'ingénierie.
+- **Enjeux élevés** : systèmes critiques pour la sécurité, domaines réglementés, expertise métier complexe. Ici, il faut de la spécification, de la relecture et de la validation. Ici, « je n'ai pas lu le code » n'est pas une option.
+
+Les trois projets sont open source, parce que c'est exactement le propos. Plus de 650 000 organisations en Allemagne font face à des problèmes similaires. La plupart ne pourront jamais engager un développeur. Mais elles ont peut-être quelqu'un qui voit un problème, qui sait comment on livre un logiciel, et qui est prêt à y consacrer une soirée.
+
+<ProjectCard
+  title="DA-Feedback"
+  description="Système de retours anonymes pour les soirées de service"
+  githubUrl="https://github.com/rubenvitt/da-feedback"
+/>
+
+<ProjectCard
+  title="Easy Fileshare"
+  description="Partage de fichiers auto-hébergé avec mot de passe et limite de téléchargements"
+  githubUrl="https://github.com/rubenvitt/easy-fileshare"
+/>
+
+Le bénévolat n'a pas besoin d'un service de développement. Il a besoin de gens qui comprennent les problèmes et qui savent ce qu'il faut à un logiciel pour tourner.
+
+> Le logiciel n'a jamais été le problème. Le problème, c'est que ceux qui en avaient besoin ne pouvaient pas le construire. C'est en train de changer.
