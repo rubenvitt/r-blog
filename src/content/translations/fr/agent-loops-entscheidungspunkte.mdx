@@ -1,0 +1,342 @@
+---
+title: "Donnez la décision à l'IA, pas le contrôle : pourquoi les agent loops libres sont souvent trop ouvertes"
+description: "L'autonomie est un curseur, pas un interrupteur. Pourquoi la plupart des systèmes d'IA en production s'améliorent quand le modèle n'intervient qu'à des points de décision bien délimités - au lieu de piloter une agent loop ouverte."
+date: 2026-05-29
+tags: ["ai", "software-engineering", "security"]
+image: ../../blog/_images/agent-loops-entscheidungspunkte/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+> L'autonomie est un curseur, pas un interrupteur - et la plupart des systèmes en production ne le poussent pas à fond.
+
+À la fin du dernier article, j'avais volontairement laissé un levier de côté : *« Au lieu de protéger l'agent de `delete_account` dans le centième test, nous pourrions tout simplement ne pas lui mettre le tool entre les mains à cet endroit. [...] Mais c'est un autre article. »* Le voici, cet article.
+
+Pour rappel, le cas en question : un agent self-service pour les paramètres de compte. Un utilisateur écrit « Merci de désactiver les e-mails marketing envoyés à mon adresse », l'agent appelle `delete_account` au lieu de `unsubscribe_marketing`. Le tool call passe sans accroc, `success: true`, le compte a disparu. Trois jours plus tard, l'utilisateur cherche son historique de factures, parti avec le compte. Un routing failure sur un tool destructif, déclenché par une formulation parfaitement anodine.
+
+<LinkCard url="/fr/blog/incident-zu-regressionstest"/>
+
+Jusqu'ici, la réponse de toute la série était : une eval de plus pour couvrir ce cas. Un confirmation gate de plus devant l'action irréversible. Et un post-processor qui rattrape les dégâts après coup. Tout cela est juste. Et tout cela arrive après coup - des couches de protection que nous empilons autour d'une architecture qui rend l'erreur possible au départ.
+
+Mais une question vient avant tout ça : pourquoi l'agent avait-il `delete_account` sous la main à ce moment-là, avec le droit de choisir librement entre les tools ? « Modifier les préférences marketing » et « supprimer le compte » ne sont pas la même opération avec un autre argument. Si ce sont deux chemins structurellement distincts, l'action destructive ne fait tout simplement pas partie des choix du modèle à cet endroit. Le failure n'a alors tout simplement pas lieu, il n'y a plus rien à rattraper.
+
+Derrière tout ça se cache une décision d'architecture : quelle marge de manœuvre laissons-nous au modèle pour déterminer son propre déroulement ? L'hypothèse par défaut est souvent « le plus possible ». Dans la plupart des systèmes en production, c'est le mauvais réglage par défaut.
+
+## Le curseur : à qui appartient le control flow ?
+
+Imaginons ce curseur concrètement. Tout à gauche, un système dont le déroulement est entièrement écrit dans le code et qui ne consulte le modèle qu'à quelques endroits précis. Tout à droite, un système qui décide lui-même de sa prochaine étape, du tool qu'il appelle et du moment où il a terminé. Entre les deux, tout le reste - et l'essentiel de ce qui tourne réellement en production se trouve justement au milieu.
+
+L'axe derrière ce curseur se résume à une seule question : à qui appartient le control flow ? Dans un workflow, il appartient au code. Anthropic le définit ainsi dans « Building Effective Agents » : « Workflows are systems where LLMs and tools are orchestrated through predefined code paths. » Dans un agent, il appartient au modèle : « Agents ... are systems where LLMs dynamically direct their own processes and tool usage, maintaining control over how they accomplish tasks. » Ce qui change, c'est qui a la main sur l'ordre des étapes. Le modèle, lui, est le même dans les deux cas.
+
+À gauche du curseur se trouve l'Augmented LLM, chez Anthropic la brique de base des systèmes agentiques : un modèle avec retrieval, tools et memory, mais sans déroulement propre. Un peu plus à droite vient le prompt chaining, où le code découpe une tâche en étapes fixes et passe chaque output à l'appel suivant. Puis le routing, qui classe une entrée et l'envoie vers une étape suivante spécialisée. Ensuite la parallelization, qui découpe une tâche en morceaux fixes ou l'exécute plusieurs fois, et l'orchestrator-workers, où un modèle central ne répartit les sous-tâches qu'au moment de l'exécution et rassemble les résultats. Et tout à droite, l'agent loop libre, qui trouve son chemin toute seule.
+
+Voici à quoi ressemble le curseur :
+
+<figure class="not-prose my-8">
+  <svg viewBox="0 0 904 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="al-spec-title al-spec-desc" class="w-full max-w-full h-auto">
+    <title id="al-spec-title">Le spectre de l'autonomie, du workflow à l'agent</title>
+    <desc id="al-spec-desc">Six niveaux d'architecture de gauche à droite, classés selon qui possède le control flow. À gauche, le code possède le control flow (contrôle maximal) : Augmented LLM, Prompt Chaining, Routing, Parallelization, Orchestrator-Workers. Tout à droite, le modèle possède le control flow (flexibilité maximale) : l'agent loop libre. À chaque pas vers la droite, le code cède davantage de pilotage du déroulement au modèle.</desc>
+
+    <rect x="24" y="56" width="132" height="92" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="90" y="92" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Augmented</text>
+    <text x="90" y="109" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">LLM</text>
+    <text x="90" y="131" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">1 appel + tools</text>
+
+    <rect x="169" y="56" width="132" height="92" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="235" y="92" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Prompt</text>
+    <text x="235" y="109" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Chaining</text>
+    <text x="235" y="131" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">Étapes + gates</text>
+
+    <rect x="314" y="56" width="132" height="92" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="380" y="100" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Routing</text>
+    <text x="380" y="122" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">Classifier</text>
+
+    <rect x="459" y="56" width="132" height="92" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="525" y="100" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Parallelization</text>
+    <text x="525" y="122" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">Sectioning · Voting</text>
+
+    <rect x="604" y="56" width="132" height="92" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="670" y="92" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Orchestrator-</text>
+    <text x="670" y="109" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Workers</text>
+    <text x="670" y="131" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">Tâches dynamiques</text>
+
+    <rect x="749" y="56" width="132" height="92" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+    <text x="815" y="92" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Agent loop</text>
+    <text x="815" y="109" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">libre</text>
+    <text x="815" y="131" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-accent)">Le modèle pilote</text>
+
+    <path d="M 24 196 L 38 189 L 38 203 Z" fill="var(--color-text-muted)" opacity="0.7"/>
+    <path d="M 880 196 L 866 189 L 866 203 Z" fill="var(--color-text-muted)" opacity="0.7"/>
+    <line x1="38" y1="196" x2="866" y2="196" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.7"/>
+
+    <text x="24" y="224" text-anchor="start" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">Le code possède le control flow</text>
+    <text x="24" y="242" text-anchor="start" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">contrôle maximal</text>
+
+    <text x="880" y="224" text-anchor="end" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">Le modèle possède le control flow</text>
+    <text x="880" y="242" text-anchor="end" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">flexibilité maximale</text>
+
+    <text x="452" y="280" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">Workflows : chemins de code prédéfinis · Agent : le modèle pilote lui-même le déroulement et l'usage des tools</text>
+  </svg>
+  <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">L'autonomie comme curseur : de gauche à droite, le code cède davantage de pilotage du déroulement au modèle. À gauche, l'Augmented LLM comme brique de base, puis quatre des cinq workflow patterns d'Anthropic - dans tous, le code possède le control flow, le modèle n'intervient qu'à des points de décision isolés. Ce n'est que tout à droite, avec l'agent loop libre, que le modèle pilote lui-même le processus.</figcaption>
+</figure>
+
+<Callout type="info">
+**Augmented LLM** - un appel unique au modèle avec tools, retrieval et memory, mais sans déroulement propre.
+
+**Workflow** - des étapes LLM et tools dont l'ordre est fixé dans du code prédéfini.
+
+**Agent** - un système qui pilote lui-même, de façon dynamique, son propre déroulement et son usage des tools.
+</Callout>
+
+La notion qui rend ce curseur réellement manipulable, c'est le point de décision. C'est un endroit où le jugement du modèle apporte une vraie valeur ajoutée : classification, extraction, gestion de l'ambiguïté, synthèse à partir de plusieurs sources. Aucun `if` ne fait ça de manière fiable. Le pilotage du déroulement, en revanche, le code le fait mieux : ce qui vient après quoi, quand on s'arrête, quelle branche s'exécute. Un chemin déterministe exécute tout ça plus précisément, moins cher et de manière plus traçable que n'importe quel modèle. Bien régler le curseur, c'est donner au modèle les points de décision et lui retirer le pilotage du déroulement.
+
+Ce que cela veut dire en pratique se voit sur une seule tâche, placée à trois positions du curseur. Prenons « répondre à un ticket de support ».
+
+Tout à gauche, en appel Augmented LLM : un prompt, le ticket en entrée, une réponse en sortie, éventuellement avec accès à une recherche dans la FAQ. Rapide, pas cher, prévisible. Ce qui manque, c'est tout ce qui dépasse une étape - le modèle ne peut pas d'abord consulter le statut de la commande, puis décider de la suite en fonction du résultat.
+
+Un cran plus à droite, en workflow de routing : un premier appel classe le ticket en question de facturation, problème technique ou réclamation, et le code l'envoie au handler adéquat. Chaque handler a ses propres tools, étroitement délimités. Vous gagnez de la structure et gardez le contrôle sur ce qui a le droit de se passer dans chaque cas. Vous perdez la flexibilité pour les cas qui ne rentrent dans aucune de vos cases.
+
+Tout à droite, en agent libre : le modèle reçoit le ticket, un jeu de tools et l'objectif « règle ça ». Il cherche, pose des questions, appelle des API, décide lui-même quand il a fini. La variante la plus puissante - et celle où vous savez le moins ce qui s'est réellement passé entre l'arrivée du ticket et la réponse.
+
+Anthropic en tire une conclusion sobre : « When building applications with LLMs, we recommend finding the simplest solution possible, and only increasing complexity when needed. This might mean not building agentic systems at all. » Le message, c'est de régler le curseur délibérément, au lieu de le pousser par défaut tout à droite. C'est le même principe que le Least Agency, que j'ai décrit dans l'article sur le human-in-the-loop : juste autant d'autonomie que la tâche en exige réellement.
+
+<LinkCard url="https://www.anthropic.com/research/building-effective-agents"/>
+
+<LinkCard url="/fr/blog/human-in-the-loop"/>
+
+Reste à savoir pourquoi « tout à droite » a un prix. Après tout, la loop libre sait faire tout ce que savent faire les variantes de gauche, et en plus ce qu'elles ne savent pas faire. La réponse : chaque étape supplémentaire dans la loop a un coût - et ce coût ne croît pas de façon linéaire.
+
+## Pourquoi la loop ouverte casse en production
+
+Que ce coût ne croisse pas de façon linéaire, c'était la réponse courte à la fin du chapitre précédent. Les forces derrière se nomment sans détour : une loop libre casse en production dans quatre directions, et chacune empire à mesure que le curseur glisse vers la droite.
+
+**Compounding error.** Chaque étape de la loop est un lancer de dés à part entière. Dans l'article sur l'observability, j'ai fait le calcul : 10 steps d'agent à 99 % d'accuracy chacun donnent 90 % d'accuracy globale. Ça ressemble à du pinaillage de comptable, mais c'est une multiplication - 0,99 puissance dix. Un workflow avec trois étapes fixes et un appel au modèle au milieu ne fait qu'un seul de ces lancers. Une loop libre qui cherche son chemin sur quinze itérations en fait quinze. La structure raccourcit la loop, et une loop plus courte se dégrade moins vite.
+
+<LinkCard url="/fr/blog/observability-ai-features"/>
+
+**Non-déterminisme et rollout.** Plus de branchements libres, c'est plus de chemins qu'aucun test n'a jamais vus. Dans l'article sur le rollout, c'était la régression stochastique qui touche peut-être 3 % des cas. La latence p99 reste au vert. Le taux d'erreur reste au vert. Sauf que, dans ces 3 %, le modèle prend désormais un embranchement qui n'existait pas avant, et personne ne s'en aperçoit jusqu'à ce qu'un client se manifeste. Un flow structuré a un nombre fini de chemins, nommés. Ceux-là, je peux les tester en shadow, les comparer à la baseline, les déployer un par un en canary. Avec la loop libre, il ne reste qu'à prier.
+
+<Callout type="warning">
+Une loop libre est tout aussi verte dans le dashboard qu'une loop structurée - jusqu'à ce que les 3 % frappent.
+</Callout>
+
+<LinkCard url="/fr/blog/ai-rollout-canary-shadow"/>
+
+**Coûts et latence.** Pour son système de recherche multi-agents, Anthropic a rendu public le fait que les agents consomment typiquement environ quatre fois plus de tokens qu'une interaction de chat, et les systèmes multi-agents même environ quinze fois plus. La raison est banale : la loop « réfléchit » aussi là où un `if` aurait suffi. Anthropic formule elle-même ce tradeoff sobrement - les systèmes agentiques échangent de la latence et du coût contre de meilleures performances sur la tâche, et il faut évaluer quand l'échange en vaut la peine. Pour une recherche ouverte, ça peut être le cas. Pour « se désabonner des e-mails marketing », vous payez des reasoning tokens pour une décision qu'une table de routage prend en une milliseconde.
+
+**Auditabilité.** Un flow connu est traçable : pour la requête X, c'est le chemin A qui a tourné, voici les logs. Une loop libre peut emprunter un chemin différent à chaque requête, ce qui transforme la question « pourquoi le système a-t-il fait ça ? » en exercice d'analyse forensique. Pour les systèmes à haut risque, le règlement européen sur l'IA (EU AI Act) en fait une obligation. L'article 14 exige que des humains puissent intervenir, outrepasser et arrêter ; l'article 12 exige un enregistrement complet. Dans un flow structuré, vous obtenez les deux presque gratuitement, parce que les points d'intervention et les logs se trouvent aux frontières des chemins, déjà présentes dans le code. Dans une loop libre, il faut les greffer après coup.
+
+Les quatre points ont une chose en commun : ils se dégradent de façon monotone avec l'ouverture de la loop. Il n'existe aucun seuil à partir duquel plus de liberté devient soudain gratuite.
+
+Un cas rendu public montre à quoi ça ressemble à grande échelle. En juillet 2025, pendant un code freeze en cours, un agent Replit a supprimé la base de données de production de l'entreprise SaaStr, malgré l'instruction explicite de ne rien modifier. Selon l'AI Incident Database, les données d'environ 1 200 entreprises étaient concernées. Ce qui est intéressant, c'est moins que le modèle se soit « trompé » que le fait qu'une commande destructive sur la base de données se soit trouvée dans l'espace de choix accessible à l'agent et ait été exécutée de manière autonome, sans validation. D'après les captures d'écran publiées par Jason Lemkin, l'agent a qualifié après coup sa propre action de « catastrophic error in judgment » - il n'existe pas de postmortem officiel avec cette formulation.
+
+La réaction de Replit ensuite est révélatrice. Le CEO Amjad Masad a annoncé une séparation automatique des bases de données de développement et de production, avec staging, un mode planning ou chat-only et une restauration en un clic. Ce sont les structures qui encadrent la loop après coup - les mêmes qu'on aurait pu mettre en place avant.
+
+Rien de tout cela ne plaide contre les agents. Cela montre seulement que les quatre points de rupture découlent d'une décision d'architecture et peuvent être évités avec une autre : en laissant le code posséder le déroulement et le modèle décider uniquement là où son jugement compte. À quoi cela ressemble concrètement, comment une commande destructive n'atterrit jamais dans le même espace de choix qu'une commande anodine, c'est ce que nous allons voir maintenant.
+
+## L'IA aux points de décision - le pattern
+
+Les quatre points de rupture de la section précédente ont une racine commune : le modèle possède le control flow. Il ne décide pas seulement de *ce qui* est correct sur le plan métier, mais aussi de l'ordre dans lequel les tools s'exécutent, du moment où la loop s'arrête et du moment où lancer un appel destructif. L'alternative inverse cette seule responsabilité, et elle est plus ancienne que la plupart des frameworks d'agents.
+
+Les 12-Factor Agents de HumanLayer appellent ça le Factor 8 : *Own Your Control Flow*. Le point de départ du repo est un constat dérangeant : la plupart des produits qui se présentent comme des « AI Agents » ne seraient pas si agentiques que ça - « mostly deterministic code, with LLM steps sprinkled in at just the right points to make the experience truly magical ». Tout le mode d'emploi tient dans cette phrase. Du code déterministe comme charpente, des LLM steps saupoudrés aux points où le jugement compte. Le LLM produit des données structurées, une décision ou une classification. Votre code prend ces données et exécute. Chaque étape devient ainsi un endroit où vous pouvez faire une pause, valider ou journaliser.
+
+Si vous avez lu l'article sur les tools, vous connaissez déjà la moitié de l'idée. Il y était question d'« Intent vs. Execution » au niveau des tools : le modèle exprime une intention, un gate vérifie l'appel individuel avant qu'il ne soit exécuté. Ici, nous remontons cette même séparation d'un étage, au niveau du flow. Ce n'est pas l'appel individuel qui est vérifié, mais l'ordre dans lequel les choses se produisent.
+
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+
+> Le modèle décide de ce qui doit se passer. Le code décide si et comment cela se passe.
+
+Concrètement, voilà à quoi ça ressemble dans le refund-agent. Au lieu de laisser le modèle choisir parmi tous les tools dans une loop libre, il ne prend qu'une seule décision, la route, et le reste est un switch déterministe :
+
+<CodeTabs labels={["TypeScript"]}>
+```typescript
+import { generateObject } from "ai";
+import { z } from "zod";
+
+// 1. Le modèle décide UNIQUEMENT de la route - un seul point de décision.
+const RouteDecision = z.object({
+  route: z.enum(["refund", "lookup", "account", "clarify"]),
+  reason: z.string(),
+});
+
+const { object: decision } = await generateObject({
+  model,
+  schema: RouteDecision,
+  prompt: buildRoutingPrompt(userMessage),
+});
+
+// 2. Le code possède le control flow - un switch déterministe exécute.
+switch (decision.route) {
+  case "refund":  return handleRefund(ctx);   // handler aux tools strictement isolés
+  case "lookup":  return handleLookup(ctx);    // uniquement des tools read-only
+  case "account": return handleAccount(ctx);   // sépare le réversible du destructif
+  case "clarify": return askClarifyingQuestion(decision.reason);
+}
+
+// Le handler de compte sépare la route sans conséquence de la route irréversible.
+function handleAccount(ctx: Ctx) {
+  const intent = classifyAccountIntent(ctx); // encore un point de décision étroit
+  if (intent.kind === "preferences") {
+    return updatePreferences(ctx);           // réversible, pas besoin de gate
+  }
+  // destructif : chemin dédié avec approval gate - jamais dans l'espace de choix libre
+  return requireConfirmation(intent, ctx);   // gate de l'article sur le human-in-the-loop
+}
+```
+</CodeTabs>
+
+Deux choses se passent ici. Le modèle classe la requête dans l'une des quatre routes, rien de plus. Il ne choisit aucun tool et ne planifie aucun ordre. Et le `switch` possède le control flow : chaque route mène à un handler taillé sur mesure, `lookup` ne reçoit que des tools read-only, `refund` un chemin aux tools isolés.
+
+La partie intéressante se trouve dans `handleAccount`. Vous vous souvenez de l'agent self-service qui, sur « se désabonner des e-mails marketing », a appelé `delete_account` par erreur ? Dans une loop libre, `unsubscribe_marketing` et `delete_account` se trouvent dans le même espace de choix, deux entrées dans la même liste de tools, et seul le jugement du modèle sépare le réversible de l'irréversible. Dans le flow structuré, cet espace commun n'existe pas. Le handler classe d'abord s'il s'agit de préférences anodines ou d'une action destructive. Ce qui est sans conséquence passe directement. L'irréversible reçoit son propre chemin avec un approval gate, le même gate que dans l'article sur le human-in-the-loop. L'erreur `delete_account` ne peut structurellement plus se produire - non pas parce que le modèle est plus malin, mais parce que l'appel irréversible n'a jamais fait partie des choix libres.
+
+Effet secondaire agréable : un tel flow est aussi plus facile à évaluer. Dans l'article sur les evals, l'une des familles de graders était `routeMatch` et `requiredToolsCalled` - le modèle a-t-il choisi la bonne route, les tools attendus ont-ils été appelés ? Avec une loop libre, chaque requête prend un chemin différent, difficile à saisir. Un flow avec quatre routes nommées a quatre cas vérifiables.
+
+Ce routing n'est qu'une brique parmi d'autres. Dans « Building Effective Agents », Anthropic a décrit cinq patterns de ce genre - une boîte à outils entre le workflow pur et l'agent libre.
+
+<Accordion title="Les cinq workflow patterns d'Anthropic en accéléré">
+**Prompt Chaining** - découpe une tâche en une séquence d'étapes, chaque appel au LLM traite l'output du précédent.
+
+**Routing** - classe un input et le transmet à une tâche suivante spécialisée (le pattern du code ci-dessus).
+
+**Parallelization** - en deux variantes : le sectioning découpe une tâche en sous-tâches indépendantes qui tournent en parallèle ; le voting exécute la même tâche plusieurs fois pour obtenir des résultats variés.
+
+**Orchestrator-Workers** - un LLM central découpe les tâches de façon dynamique, les délègue à des LLM workers et synthétise leurs résultats. Contrairement à la parallelization, les sous-tâches ne sont pas fixées à l'avance, mais déterminées par l'orchestrator en fonction de l'input.
+
+**Evaluator-Optimizer** - un appel au LLM produit une réponse, un second l'évalue et donne du feedback, en boucle.
+</Accordion>
+
+Ces briques se combinent : un workflow avec des étapes d'IA intégrées, un agent placé entièrement derrière un gate, ou un workflow qui lance un agent comme worker en cas de besoin. Quand on possède le control flow, on se construit la structure de contrôle adaptée à son use case. Jusqu'où ça va dépend de l'outil.
+
+<Accordion title="Frameworks pour posséder son control flow">
+**LangGraph** - modélise les chemins explicitement sous forme de nodes et d'edges ; `interrupt()` met le graphe en pause pour le human-in-the-loop et le reprend plus tard. ([Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api), [Interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts))
+
+**Temporal** - durable execution : si le processus plante, le state est restauré automatiquement et le traitement reprend là où il s'était arrêté. ([Temporal & AI](https://temporal.io/blog/durable-execution-meets-ai-why-temporal-is-the-perfect-foundation-for-ai))
+
+**Version légère** - pour des flows de routing simples, du structured output plus un switch maison suffisent. Pas besoin de framework, le code ci-dessus, c'est déjà tout.
+</Accordion>
+
+<LinkCard url="https://github.com/humanlayer/12-factor-agents/blob/main/content/factor-08-own-your-control-flow.md"/>
+
+Le spectre va du switch léger au moteur de workflow durable. Reste la question du dosage : un bot FAQ n'a pas besoin d'un cluster Temporal, une recherche dans une codebase ne va pas loin avec quatre routes fixes. Alors, quelle dose m'en faut-il, et quand ?
+
+## Combien de loop cette tâche supporte-t-elle ?
+
+Le pattern du chapitre précédent répond au *comment* : le modèle décide de ce qui doit se passer, le code décide si et comment. Il ne répond pas au *combien*. L'endroit où une tâche concrète atterrit sur le curseur est une décision d'architecture, et je la fonde sur quelques axes. Chacun pousse le curseur vers la gauche, côté workflow, ou vers la droite, côté loop.
+
+### Prévisibilité des sous-tâches
+
+**Est-ce que je connais les étapes à l'avance, ou ne se décident-elles qu'à l'exécution ?**
+
+Pour un remboursement, je connais le déroulement à l'avance : consulter la commande, vérifier le droit au remboursement, rembourser, confirmer. Des étapes connues et en nombre fini ont leur place dans un workflow, dans du code qui possède l'ordre. Si le déroulement ne peut pas être planifié à l'avance, parce que chaque étape intermédiaire détermine la suivante (une recherche où chaque trouvaille ouvre la recherche suivante), cela plaide pour l'orchestrator-workers ou une loop libre.
+
+### Blast radius et réversibilité
+
+**Que se passe-t-il dans le pire des cas, et puis-je revenir en arrière ?**
+
+Read-only et sans conséquence ? Alors la loop n'a rien de critique. Un modèle qui s'égare pendant une recherche coûte des tokens, pas de l'argent ni des données. Dès qu'une action est irréversible, déplace de l'argent ou touche aux données clients, elle doit se trouver derrière de la structure et un gate. C'est le chemin `delete_account` de l'intro : jamais dans l'espace de choix libre, toujours un chemin à part avec confirmation.
+
+### Auditabilité et réglementation
+
+**Devrai-je prouver plus tard pourquoi le système a agi ainsi ?**
+
+Pour un outil interne à faible risque, plus de liberté, ça passe. Dès que l'application relève de la catégorie des systèmes à haut risque au sens du règlement européen sur l'IA, cela devient une exigence ferme - les obligations d'override et de logging évoquées au chapitre 2 se lisent ici comme un axe de décision : un flow aux chemins connus les remplit presque en passant, une loop libre transforme la preuve ultérieure en archéologie.
+
+### Coûts et latence
+
+**Combien coûte le fait de laisser le modèle réfléchir là où un `if` aurait suffi ?**
+
+Une loop libre calcule aussi là où une distinction de cas dans le code ferait le travail de façon plus fiable et moins chère. Avec des budgets de latence ou de coût serrés, c'est donc le workflow qui gagne. Pour des tâches rares et complexes, où la qualité passe avant le coût, la loop peut être rentable.
+
+Les quatre axes tirent rarement dans la même direction, mais pour les tâches courantes, on peut les condenser :
+
+| Tâche | Position du curseur | Pourquoi |
+|---|---|---|
+| Réponse FAQ | Augmented LLM, appel unique | Un point de décision, sans conséquence, read-only |
+| Statut de commande | Workflow de routing | Déroulement connu, tools en lecture seule |
+| Traitement d'un remboursement | Workflow + approval gate | Déplace de l'argent, irréversible, soumis à audit |
+| Extraction de factures | Workflow avec étape d'IA | Étapes en nombre fini, modèle uniquement pour le parsing |
+| Recherche ouverte dans une codebase | Loop libre / orchestrator-workers | Déroulement non planifiable, read-only, la qualité compte |
+
+La tendance générale va dans le même sens. Gartner prévoit que « 40% of Enterprise Apps Will Feature Task-Specific AI Agents by 2026, Up from Less Than 5% in 2025 » - task-specific veut dire étroitement délimité, avec une mission claire.
+
+La dernière ligne du tableau reste pourtant le point honnête : il y a des tâches pour lesquelles la structure est une cage. La recherche ouverte et la synthèse créative vivent du fait que le système suit des pistes que personne ne peut connaître à l'avance. Anthropic rapporte qu'un système multi-agents composé d'un lead Claude Opus 4 et de subagents Claude Sonnet 4 a battu un agent unique de 90,2 % sur son eval de recherche interne, en particulier sur les requêtes breadth-first qui suivent plusieurs pistes indépendantes en même temps. Pas un benchmark public, mais un signal clair : là où les sous-tâches n'apparaissent qu'en cherchant, la loop ouverte est le bon choix.
+
+Le curseur n'est pas non plus un réglage qu'on fait une fois pour toutes. Ce qui part en production devrait démarrer étroit et structuré, et ne s'ouvrir de manière contrôlée qu'avec des performances mesurées, pas l'inverse. Dans l'article sur les evals, le conseil était de « ne pas définir les chemins de manière trop stricte - sinon, c'est le signe qu'un système déterministe serait peut-être plus approprié ». Si vous constatez sur votre workflow que les chemins fixes sont sans cesse trop étroits, vous avez une raison fondée sur des données d'ouvrir le curseur. Démarrer à droite et espérer que tout se passe bien, c'est exactement l'inverse.
+
+<LinkCard url="/fr/blog/ai-evals-ci-pipeline"/>
+
+Klarna est le contre-exemple rendu public, le curseur dans l'autre sens. En 2024, l'entreprise a largement automatisé son support : selon Klarna, l'assistant a pris en charge 2,3 millions de conversations dans ses premières semaines, deux tiers de tous les chats du service client, soit le travail d'environ 700 agents à temps plein. Pas d'agent loop libre, mais du routing et du triage, plus du self-service pour des demandes bien délimitées ; les cas complexes allaient à des humains. En 2025 est venue la correction. L'approche AI-first par défaut coûtait certes moins cher, mais offrait une qualité moindre, et Klarna a réembauché des humains et fait machine arrière vers un modèle hybride, avec l'humain comme option par défaut. Ils n'ont pas supprimé l'IA, ils l'ont seulement fait tourner de façon moins autonome. Le réglage se déplace dans les deux sens : on l'ouvre avec des données et on le referme quand la qualité l'exige.
+
+<Callout type="tip">
+Si vous ne retenez qu'une chose : par défaut, l'architecture la plus étroite qui remplit la tâche - et n'ouvrez qu'avec des données.
+</Callout>
+
+Si vous m'avez suivi jusqu'ici, vous avez sans doute déjà quelques objections en réserve. La plus bruyante d'abord : un meilleur modèle ne rend-il pas tout ce scaffolding superflu de toute façon ?
+
+## Les contre-arguments habituels
+
+Quand je plaide pour une architecture structurée plutôt que pour des loops libres, quatre objections reviennent à coup sûr. Elles sont toutes bonnes - et aucune ne renverse la thèse. La plus bruyante d'abord.
+
+### « La Bitter Lesson : votre scaffolding sera rendu obsolète par le prochain modèle. »
+
+En 2019, Rich Sutton a formulé [la leçon amère](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) : « general methods that leverage computation are ultimately the most effective, and by a large margin. » [Dean Ball](https://www.hyperdimensional.co/p/the-bitter-lessons) la transpose à aujourd'hui : on peut passer beaucoup de temps sur un scaffolding qui fait tourner les modèles actuels en production, simplement pour que la génération suivante sache le faire sans. C'est vrai - pour le scaffolding de capacités, c'est-à-dire tout ce qui apprend au modèle comment penser ou découper une tâche. Le scaffolding de contrôle est une autre catégorie : ce qui a le droit d'être exécuté, ce qui est journalisé, quelle est la taille du blast radius. Un meilleur modèle ne rend pas `delete_account` moins irréversible. Vous ne contraignez pas l'intelligence, vous contraignez les conséquences.
+
+### « Mais la recherche multi-agents d'Anthropic bat l'agent unique de 90 %. »
+
+Les 90,2 % du chapitre précédent reviennent ici sous forme d'objection - et sonnent du coup plus tranchants. Le chiffre est réel : un système multi-agents avec un lead Opus 4 et des subagents Sonnet 4 contre un Opus 4 seul, sur l'eval de recherche interne d'Anthropic. Il vaut pour de la recherche large et parallélisable, où l'on suit de nombreuses pistes indépendantes en même temps. Cognition défend le contraire : sur des tâches cohérentes, où le contexte est critique, plusieurs agents qui collaborent deviennent fragiles, parce que le contexte ne se partage pas proprement entre eux. Les deux ont raison, tout dépend de la classe de tâche - Anthropic reconnaît elle-même que la plupart des tâches de coding sont bien moins parallélisables que la recherche. Que ce débat existe tout court est la meilleure preuve qu'il n'y a pas de réglage par défaut.
+
+<Accordion title="Cognition vs. Anthropic : le débat multi-agents en 60 secondes">
+**Anthropic (pour le multi-agents) :** pour la recherche breadth-first, un lead agent avec des subagents a nettement battu l'agent unique. Plusieurs agents suivent des pistes indépendantes en parallèle, le surcoût en tokens (environ 15x plus qu'un chat) se justifie parce que la valeur de la tâche est élevée.
+
+**Cognition (contre le multi-agents) :** plusieurs agents qui collaborent produisent des systèmes fragiles, parce que les décisions sont dispersées et que le contexte n'est pas partagé de bout en bout. Dans l'exemple Flappy Bird, un subagent construit l'arrière-plan dans le style de Super Mario pendant qu'un autre construit l'oiseau - les morceaux ne vont pas ensemble.
+
+**Résolution :** il s'agit de deux classes de tâches. Parallélisable et indépendant plaide pour le multi-agents ; cohérent et critique en contexte, pour un seul agent ou un flow structuré.
+</Accordion>
+
+<LinkCard url="https://cognition.ai/blog/dont-build-multi-agents"/>
+<LinkCard url="https://www.anthropic.com/engineering/multi-agent-research-system"/>
+
+### « Autant de structure, c'est de l'over-engineering, et ça enlève la magie au modèle. »
+
+Le modèle reste dans le jeu là où le jugement compte : classification, extraction, ambiguïté, synthèse. Ce que vous lui retirez, c'est le pilotage du déroulement, et le code le fait de manière plus fiable que n'importe quelle heuristique dans le prompt. L'over-engineering, ce serait de remplacer un switch déterministe par une agent loop parce que ça fait plus moderne. La magie reste au point de décision ; tout ce qu'il y a autour sert juste à ne pas la gâcher.
+
+### « Ce n'est que de la programmation de workflows rebaptisée. »
+
+En partie, oui - et c'est justement le point. Les nodes, les edges, les switches, les guards existent depuis des décennies. La structure est ancienne ; ce qui est nouveau, c'est la discipline qui consiste à placer le modèle, à l'intérieur de cette structure, exactement aux points où son jugement apporte quelque chose, et nulle part ailleurs. Qui balaie ça d'un « ce n'est qu'un workflow » a déjà compris la partie coûteuse et n'a plus qu'à la prendre au sérieux.
+
+Quatre objections, aucun K.-O. Ce qui reste, c'est une question de dose : combien de loop cette tâche précise exige vraiment. Et la meilleure façon d'y répondre, c'est d'accorder aussi peu d'autonomie que nécessaire.
+
+## Least Agency, jusqu'au bout
+
+Le débat du chapitre précédent n'a pas de vainqueur, et c'est là le vrai point : il n'existe pas de degré d'autonomie par défaut qu'on pourrait simplement reprendre. Si Cognition et Anthropic se contredisent, ce n'est pas un hasard : elles parlent de classes de tâches différentes. On choisit la position du curseur - tâche par tâche, avec une justification. Et un meilleur modèle ne fait pas ce choix à notre place : il ne rend pas une action destructive moins destructive. L'idée n'est pas nouvelle dans cette série, elle est simplement montée d'un étage.
+
+Dans l'article sur le human-in-the-loop, il était question de Least Agency au niveau des actions : la loop tourne, mais à l'endroit risqué, un approval gate l'arrête et fait intervenir un humain. Cet article se place un niveau plus tôt. Au lieu de freiner la loop à un endroit, il demande quelle part de loop doit exister tout court. Un point de décision dans un flow structuré, c'est une action dont le modèle ne dispose même pas librement. Les deux relèvent du même principe, juste autant d'autonomie que la tâche en exige : une fois au niveau de l'action, une fois au niveau de l'architecture.
+
+Les articles précédents de la série s'emboîtent ainsi. Chacun a tiré sur un levier différent, tous dans la même direction. Sept prédécesseurs, un modèle d'exploitation - celui-ci les réunit :
+
+- **Architecture** trace les frontières entre le modèle, les tools et le code.
+- **Tools** définit ce qu'un appel individuel a le droit de faire, et sépare l'intent de l'execution.
+- **Evals** vérifient avant le déploiement que les chemins tiennent.
+- **Observability** rend visible ce qui se passe réellement dans la loop.
+- **Rollout** amène les changements en production de façon contrôlée et réversible.
+- **Human-in-the-Loop** freine la loop au moment de l'action risquée.
+- **Incident** transforme chaque incident en test de régression.
+
+Les evals, le rollout et la loop d'incidents attrapent les erreurs une fois qu'elles sont nées. L'approval les freine avant qu'elles ne fassent effet. L'architecture de loop dont il était question ici décide encore un cran plus tôt : combien d'erreurs peuvent naître tout court. Chaque step que la loop ne fait pas est un step qui n'a pas 99 % de chances de presque tomber juste. Dix steps de ce genre, et 99 % deviennent 90 %. Et un `delete_account` qui ne se trouve jamais à côté de `unsubscribe_marketing` dans l'espace de choix libre, c'est toute une classe de failures qu'aucune eval n'a plus besoin d'attraper, qu'aucun approval n'a plus besoin d'arrêter.
+
+<LinkCard url="/fr/blog/human-in-the-loop"/>
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/fr/blog/incident-zu-regressionstest"/>
+
+Ce n'est pas un manifeste anti-agents. Il y a des tâches qui ont vraiment besoin de la loop ouverte - la recherche ouverte, la synthèse créative, bref, tout ce dont les sous-tâches ne se dévoilent qu'en cours de route. Là, la structure est une cage, et un agent libre l'emporte. Mais cela reste l'exception. L'erreur est rarement de construire une agent loop. Elle est de la prendre comme point de départ évident, au lieu de la justifier.
+
+Si l'on prend ça au sérieux, on commence la prochaine feature avec l'architecture la plus étroite qui remplit la tâche, et on n'ouvre le curseur que lorsque les evals et les données de rollout le justifient. C'est plus de travail au début et moins de surprises en exploitation.
+
+L'article sur les tools contenait une phrase qui valait au niveau de l'appel individuel : ce n'est pas le LLM qui exécute, c'est le système. Un étage plus haut, au niveau du flow tout entier, elle vaut une nouvelle fois. Le modèle fournit le jugement aux points où le jugement compte. Le déroulement appartient au code.
+
+> Ce n'est pas le LLM qui pilote, c'est le système.

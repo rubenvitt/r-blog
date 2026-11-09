@@ -1,0 +1,245 @@
+---
+title: "Chat is de interface die er het eerst was - niet de interface die werkt"
+description: "Zodra een agent iets doet met gevolgen, is chat zelden de beste interface. Een blik op editor, diff, approval-panel en timeline - en wanneer een tekstveld toch het juiste gereedschap is."
+date: 2026-06-11
+tags: ["ai", "software-engineering", "ux"]
+image: ../../blog/_images/die-bessere-ui-ist-kein-chat/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import DemoInlineEdit from '../../../components/widgets/DemoInlineEdit.astro';
+import DemoCompare from '../../../components/widgets/DemoCompare.astro';
+import DemoApproval from '../../../components/widgets/DemoApproval.astro';
+import DemoTimeline from '../../../components/widgets/DemoTimeline.astro';
+
+> Chat is niet fout. Chat als default is fout.
+
+Al jaren krijgt bijna elke nieuwe AI-feature hetzelfde gezicht: onderaan een tekstveld, daarboven een stroom antwoorden. Of ik nu een vraag stel, een tekst laat herschrijven of een agent op een database loslaat - de interface is altijd dezelfde kolom tekstballonnen. Dat is goedkoop om te bouwen en voelt vertrouwd. Alleen past het zelden bij wat we eigenlijk met de output doen.
+
+Zodra een agent niet alleen antwoordt, maar iets produceert waar ik mee verder werk - een plan, een migratie, een terugbetaling -, begint het echte probleem. Met zo'n resultaat wil ik heel verschillende dingen doen, en maar weinig daarvan komen neer op "nog een bericht typen". Voor de meeste bestaat er een weergave die beter past dan nog een tekstveld: een editor, een diff, een approval-panel, een timeline.
+
+Deze post loopt die weergaven één voor één door, aan de hand van één doorlopend voorbeeld: een tool die van een GitHub-issue een implementatieplan maakt. Hij is de interactielaag bovenop een serie die tot nu toe over de binnenkant van agent-systemen ging - contracts, toolveiligheid, approval, observability. De interface is de plek waar die binnenkant zichtbaar wordt of onzichtbaar blijft.
+
+<LinkCard url="/nl/blog/agent-loops-entscheidungspunkte"/>
+
+## Issue erin, 40 regels plan eruit - LGTM?
+
+Je kopieert de URL van een GitHub-issue, plakt hem in een veld en klikt op "Analyseren". Een paar seconden later begint er tekst binnen te druppelen: eerst een samenvatting van wat het issue eigenlijk wil. Dan de betrokken delen van de code. Dan een lijst met risico's, de concrete implementatiestappen en tot slot een paar testideeën. 40 regels, netjes ingedeeld, met kopjes en opsommingen. Een plan, geen gekeuvel.
+
+In de meeste tools die ik ken zou dat een chatgeschiedenis zijn. De ene tekstballon na de andere, van boven naar beneden, en jij scrolt mee. Hier is het iets anders: een document. Gestructureerd, in één keer leesbaar, met duidelijke secties in plaats van een eindeloze draad van antwoord en wedervraag. Het verschil lijkt in eerste instantie cosmetisch. Dat is het niet.
+
+Want nu komt de vraag die deze hele post draagt: wat doe je vervolgens met dit plan?
+
+Je leest het grondig, niet vluchtig, want er wordt zo meteen code van gemaakt. Je struikelt over stap 3, die de migratie vóór de backup zet, en wilt die ene regel corrigeren. Je wilt het plan naast het oorspronkelijke issue leggen om te zien of het de eis echt raakt of er langs plant. Je wilt de twee riskante stappen - de schemamigratie, de ingreep in de auth - expliciet goedkeuren voordat er iets gebeurt. En dan wil je het plan toepassen, het omzetten in echt werk.
+
+Vijf dingen die je met het kant-en-klare plan doet. Lezen, corrigeren, vergelijken, goedkeuren, toepassen. En geen enkele daarvan heet "verder chatten".
+
+Dit is het moment waarop de chatinterface stilletjes faalt. 40 regels plan. LGTM. Approve. Done. Of... in welk tekstveld typ ik nu de correctie voor stap 3? Schrijf ik "pas stap 3 even aan, de migratie moet na de backup draaien" en hoop ik dat het model de juiste regel raakt zonder de andere 39 te herschrijven? Dat is geen bewerken. Dat is bewerken beschrijven en bidden.
+
+Zodra een agent iets produceert waar je mee werkt, valt dat ene gesprek uiteen in verschillende handelingen. Chat perst ze allemaal terug in hetzelfde tekstveld. Waarom dat überhaupt de standaard voor alles is, terwijl het zo zelden past, is de eigenlijke vraag.
+
+## Zes taken, één tekstveld
+
+Laten we kijken wat er rond het plan uit het vorige hoofdstuk gebeurt. Invoer en generatie komen ervoor - en dan alles wat je met het kant-en-klare plan doet: lezen en controleren, bewerken, goedkeuren, toepassen. Een half dozijn handelingen, elk met een eigen ritme. Invoeren is een korte stoot. Review is langzaam, springend lezen. Bewerken is precisiewerk. Goedkeuren is een bewust, afzonderlijk moment. En een chatthread serialiseert dat allemaal in één enkele kolom die naar beneden groeit.
+
+Daar zit de wrijving. Een thread is een slechte workflowtracker, omdat het ritme van een gesprek en het ritme van een workflow verschillende klokken zijn. Het gesprek wil dat ik op het laatste bericht reageer. De workflow wil dat ik terugspring naar stap drie, daar twee regels aanpas en de rest laat staan. In de thread betekent dat: scrollen, zoeken, de context in mijn hoofd reconstrueren, een nieuw bericht typen dat beschrijft wat ik eigenlijk direct wilde aanpakken. Het plan is een object met toestanden - de thread behandelt het als een opeenvolging van spraakhandelingen.
+
+In de UX-discussie over agent-interfaces valt in 2026 steeds hetzelfde punt, onder meer door Adi Leviim in UX Collective: chat is de interface die het snelst te leveren was. Dat betekent nog lang niet dat hij het best werkt. Een tekstveld plus antwoordstroom is goedkoop om te bouwen en inzetbaar voor elke use case. De prijs daarvoor is verschoven, niet verdwenen. Zes verschillende soorten taken, één invoerveld - en de last om tussen de modi te onderscheiden ligt bij de user. Ik moet in proza formuleren of ik nu iets wil vragen, corrigeren of goedkeuren - terwijl de UI dat onderscheid zou kunnen overnemen. Die weet immers bij welke stap we zijn.
+
+Het is dezelfde beweging als bij autonomie - een schuifregelaar die de meeste systemen niet helemaal opendraaien. Voor de UI geldt iets vergelijkbaars: de interface is een keuze per taak. Welke weergave bij welke taak past, kun je vrij direct opschrijven:
+
+| Soort taak | Passende weergave |
+|---|---|
+| plan bekijken, overzicht krijgen | document |
+| één regel aanpassen | inline-edit |
+| toetsen aan de eis | diff- / compare-view |
+| een riskante stap goedkeuren | approval-panel |
+| nagaan wat er gebeurd is | timeline |
+| vrij verkennen, nog zonder vorm | chat |
+
+Chat staat in de laatste regel, en dat is geen afscheid: voor vrij verkennen, als de taak nog geen vorm heeft, is een tekstveld de juiste keuze. Het probleem is niet chat. Het probleem is chat als default voor alles - ook voor de vijf regels daarboven, waar een specifiekere weergave het werk zou overnemen.
+
+Laten we bovenaan de tabel beginnen. Als een tool van een issue een implementatieplan maakt, doe ik er eerst dit mee: lezen en de structuur zien. De passende weergave daarvoor is geen gespreksgeschiedenis, maar een document - een plan is een editorprobleem.
+
+## De editor: een plan is een document
+
+Terug naar ons plan: één regel klopt niet helemaal - de migratie moet pas na de backup draaien.
+
+In een chat schrijf je nu terug: "Nee, draai stap 3 en 4 om, de backup moet eerst." De agent leest je vrije tekst, interpreteert die en genereert het plan opnieuw. In het betere geval klopt de volgorde nu. In het slechtere geval is stap 6, die eerst goed was, stilletjes meeverschoven - omdat een regeneratie de hele state opnieuw door elkaar gooit en geen enkele garantie kent dat alles behalve jouw ene wijziging hetzelfde blijft.
+
+Dat is de kern van het probleem met re-prompting als correctiemechanisme: je hebt een gestructureerde state - een getypeerd plan-object met `summary`, `steps[]`, `risks[]` - en jaagt die door een interpretatie van vrije tekst om één gerichte wijziging te maken. De agent moet uit jouw zin eerst reconstrueren wat je bedoelt en produceert dan een compleet nieuw object. Het contract tussen UI en agent bestaat nog, maar wordt bij elke correctie een keer volledig opnieuw ingevuld in plaats van gericht aangepast.
+
+Een plan is een artefact. Artefacten bewerk je direct: klik op de regel van stap 3, pas de tekst in het document aan, klaar. De UI vervangt alleen die ene entry in het plan-object en laat de rest ongemoeid. Het contract blijft intact, omdat je op het niveau van het object werkt, niet op het niveau van een nieuwe generatie.
+
+<CodeTabs labels={["Chatcorrectie", "Inline-edit"]}>
+```ts
+// Correctie als vrije tekst terug naar de agent.
+// Die regenereert het HELE plan-object uit jouw zin -
+// summary, steps[] en risks[] worden opnieuw geïnterpreteerd.
+// Wat eerst klopte, kan daarbij meeverschuiven.
+async function correctViaChat(message: string) {
+  const newPlan = await agent.send({
+    role: "user",
+    content: message, // "Nee, draai stap 3 en 4 om"
+  });
+  setPlan(newPlan); // volledige vervanging, geen diff
+}
+```
+
+```ts
+// Directe manipulatie van een getypeerd plan-object.
+// Alleen de aangepaste stap wordt vervangen, het contract
+// (summary, steps[], risks[]) blijft structureel intact.
+function onSave(stepId: string, next: string) {
+  setPlan((plan) => ({
+    ...plan,
+    steps: plan.steps.map((step) =>
+      step.id === stepId ? { ...step, text: next } : step,
+    ),
+  }));
+}
+```
+</CodeTabs>
+
+Het verschil klinkt abstract, tot je het zelf probeert. Klik in het plan op een regel en pas hem direct aan:
+
+<DemoInlineEdit />
+
+Als je de autonomieregelaar van net in je achterhoofd houdt, is dit dezelfde scheiding op UI-niveau: intent tegenover execution. Je bewerkt het resultaat, niet de prompt. De bedoeling heb je allang geformuleerd - nu corrigeer je de uitvoering, zonder het hele apparaat opnieuw op te starten.
+
+Een eerlijke kanttekening: deze platte state - stappen als lijst, één veld per entry - is een bewuste keuze, geen noodoplossing. Zolang de stappen onafhankelijk naast elkaar staan, volstaat een array. Pas als stappen echte volgorde-afhankelijkheden hebben (stap 5 mag alleen draaien als 2 en 3 geslaagd zijn), heb je een task-graph nodig in plaats van een lijst. Dat is een andere datastructuur en een ander bewerkingsmodel - en voor de meeste plannen heb je het gewoon niet nodig.
+
+Bewerken lost het ene probleem op: ik kan het plan vormen zonder de state kapot te schieten. Het andere lost het niet op. Hoe weet ik of het plan überhaupt raakt wat er in het issue stond? Een vlot geformuleerde stappenlijst ziet er altijd plausibel uit. Of hij de eis echt vervult, zie ik pas als ik beide naast elkaar leg.
+
+## De compare-view: wat de agent zegt vs. wat er gebeurt
+
+Denk even terug aan de refund-agent uit deze serie. In de chat staat de vriendelijke zin: "Terugbetaling in gang gezet, het bedrag staat over een paar dagen weer op je rekening." De tool-call is doorgelopen, geen fout, geen rode rand. Alleen beweegt er geen geld. In de ledger staat niets - geen entry, geen transactie, geen spoor. De agent heeft een bewering geproduceerd, geen resultaat. Precies dat is false success: een antwoord dat eruitziet als succes, terwijl de backend-state onaangeroerd blijft.
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+
+Een alinea in een chat nodigt uit tot vluchtig lezen. Hij is vloeiend geformuleerd, beleefd, plausibel - en onze ogen glijden over de samenvatting heen, omdat die leest als een resultaat. Een diff doet het tegenovergestelde. Hij zet twee toestanden naast elkaar en dwingt ons te kijken: links het een, rechts het ander, daartussen het verschil. Waar de chat vertelt, vergelijkt de compare-view.
+
+> Een groene chatgeschiedenis met een kapotte backend-state is gevaarlijker dan een rode stacktrace. De stacktrace schreeuwt tegen je. De groene geschiedenis fluistert je toe dat alles in orde is.
+
+De diff kent in agent-systemen twee varianten, en elk legt andere gaten bloot.
+
+De eerste: **origineel issue ↔ gegenereerd plan.** Hier ligt de eis naast wat de agent ervan gemaakt heeft. Dekt het plan echt alle drie de punten uit het issue, of zijn het er maar twee, omdat de derde onderweg stilletjes is ingeslikt? In lopende tekst valt een ontbrekende eis nauwelijks op - het plan klinkt compleet zolang we het issue er niet naast leggen. De vergelijking maakt de weglating zichtbaar voordat er ook maar één regel code ontstaat.
+
+De tweede: **bewering ↔ systeemtoestand.** Wat de agent beweert gedaan te hebben, tegenover wat het systeem werkelijk laat zien. "Refund in gang gezet" links - de ontbrekende ledger-entry rechts. Deze variant is de belangrijkere, omdat hij aangrijpt waar de chat het overtuigendst liegt: bij de succesmelding na een muterende actie. De agent mag gerust beweren. Wij toetsen de bewering aan de state.
+
+Beide varianten naast elkaar - schakel ertussen heen en weer:
+
+<DemoCompare />
+
+Dit idee is geen losse vondst. In meerdere UX-handleidingen voor agent-systemen uit 2026 duiken patronen op die in de kern hetzelfde bedoelen: de "action receipt", die elke actie met een bewijsstuk bevestigt, of de tool-call-review met een before/after-diff en een rollbackpad. Verschillende namen, één beweging richting de toetsbare vergelijking. Elke agent-actie produceert niet alleen een uitspraak over wat er gebeurd zou moeten zijn, maar een artefact waarin we kunnen nakijken wat er gebeurd is.
+
+<Callout type="warning">
+Een groen plan is geen vervulde eis - net zo min als een groene eval-score een vrijgave voor productie is. De diff laat je het verschil zien tussen bewering en werkelijkheid. Wat je met dat verschil doet, blijft jouw discipline: pas als de rechtertoestand de linker waarmaakt, is de actie klaar. Niet de chatgeschiedenis beslist dat.
+</Callout>
+
+De compare-view lost een probleem van zichtbaarheid op. Hij maakt het verschil tussen claim en effect tastbaar, in plaats van het in lopende tekst te verstoppen. Maar zichtbaarheid is geen controle. Een diff laat me zien dat het plan een database migreert of een betaling uitvoert - hij houdt de stap niet tegen. Bij de onschuldige acties volstaat achteraf kijken. Bij de riskante heb ik een poortwachter vooraf nodig: een punt waarop ik beslis of deze stap überhaupt mag draaien.
+
+## Het approval-panel: goedkeuren als primaire interactie
+
+De compare-view eindigde met een open vraag: wie keurt de riskante stap goed? In een chat is het antwoord meestal een pop-up die midden in de geschiedenis valt - een modale onderbreking die je uit je leesflow trekt en je alleen laat met een ja/nee-beslissing. Je klikt, het dialoogvenster verdwijnt, en wat je net bevestigd hebt scrolt naar boven weg. Goedkeuren verdient een eigen plek, geen overlay over het gesprek.
+
+Een approval-panel maakt de toestand zichtbaar en scanbaar: in afwachting → in bevestiging → goedgekeurd. Het laat zien welke tool-call met welke argumenten zou draaien, *voordat* hij draait - niet als beschrijving in lopende tekst, maar als concreet, geparst voorstel. Je ziet de mutatie, niet het verhaal erover. En je ziet hem op een vaste plek die niet in de geschiedenis verdwijnt zolang er nog iets op jouw beslissing wacht.
+
+Om te voorkomen dat elke stap bij jou belandt, heb je een voorsortering op risico nodig: read-only, low-risk mutatie, high-risk mutatie, onomkeerbaar. Het model kan zelf markeren wat goedkeuring nodig heeft - een `requiresApproval`-flag, gezet bij databasemigraties, wijzigingen aan auth en rechten, billing-logica, destructieve of naar buiten werkende breaking changes. Betrouwbaarder is het om die indeling als policy op toolniveau af te dwingen - een allowlist per tooltype. Alleen op de zelfinschatting van het model vertrouwen is riskant: bij prompt injection of hallucinatie noemt het uitgerekend de gevoelige actie onschuldig. Zo gebeurt een read stil op de achtergrond, terwijl een `DROP`-statement stopt voor bevestiging. Bij de mens komt alleen terecht wat de wrijving echt rechtvaardigt.
+
+<LinkCard url="/nl/blog/human-in-the-loop"/>
+
+En hier ligt het eigenlijke probleem op de loer. Een goedkeuringsknop verleidt tot doorklikken. Wie tien keer achter elkaar op "Approve" klikt, controleert de elfde keer niet meer - dat is rubber-stamping, en het is meetbaar gevaarlijk. In de discussie over human-in-the-loop wordt automation complacency al jaren beschreven: zodra de voorgestelde antwoorden fout waren en blind werden overgenomen, daalde de trefzekerheid van de betrokkenen meetbaar - het foute voorstel trok hen mee naar beneden, in plaats van door hen gecorrigeerd te worden. Toezicht dat alleen knikt, is geen toezicht.
+
+De tegenmaatregel heet cognitive forcing: een bewuste tussenstap die de reflex doorbreekt. De toestand "in bevestiging" is zo'n stap - een korte pauze met verplichte motivering, waarin je niet alleen klikt, maar in één zin vastlegt waarom deze mutatie mag draaien. De wrijving is hier de feature. Ze dwingt de blik terug naar de argumenten van de tool-call, voordat die werkelijkheid wordt.
+
+Probeer de stap goed te keuren - zonder motivering lukt het niet:
+
+<DemoApproval />
+
+<Callout type="danger">
+Een goedkeuringsknop die in het systeem niets in gang zet, traint precies het rubber-stamping dat hij moet voorkomen. Als "Approve" zonder gevolgen blijft, leert de mens dat klikken genoeg is - en wordt het panel een façade voor een automaat die allang zelf beslist.
+</Callout>
+
+In de UX-discussie tekenen zich daarvoor concrete patronen af. Een "intent preview" laat je zien wat de agent van plan is en geeft je meer dan een binair ja - bijvoorbeeld: doorgaan, plan aanpassen of zelf overnemen. De "autonomy dial" uit UX-handleidingen uit 2026 - onder meer beschreven door Smashing Magazine - maakt de mate van zelfstandigheid zelf tot een instelbare grootheid, in plaats van die vast te bedraden. De vuistregel erachter: nudge, don't nag. Vraag waar het telt, niet bij elke stap - anders stompt de aandacht af en ben je terug bij doorklikken.
+
+Is de goedkeuring gegeven, dan begint het werk. Meerdere tool-calls draaien, toestanden veranderen, er wordt iets geschreven, verwijderd, verstuurd. Het panel heeft je laten zien wat er *zou moeten* gebeuren. Maar hoe weet ik wat er werkelijk gebeurd is - in welke volgorde, met welk resultaat, op welke plek het vastliep? De chatgeschiedenis geeft het op z'n best als navertelling weer.
+
+## De timeline: trace in plaats van chatgeschiedenis
+
+Na de goedkeuring draait er iets - en hier wordt het verschil tussen twee soorten registratie zichtbaar. Een chatgeschiedenis vertelt wat er gezegd is. Een audit-log of een trace laat zien wat er werkelijk gebeurd is. Dat is niet hetzelfde, en de kloof daartussen is precies de plek waar false success woont: de agent zegt "terugbetaling is eruit", de scrollback leest als een opgelost ticket - en in de trace staat dat de beslissende tool-call nooit is doorgelopen.
+
+Een timeline is meer dan de chatgeschiedenis in een mooi jasje: het is de trace-waterfall - de hiërarchische opeenvolging van wat het systeem gedaan heeft, met duur, nesting en resultaat per stap.
+
+Wat zo'n weergave laat zien, kennen we al uit de observability-post: tool-execution-spans met argumenten en resultaat, approval-events als pauze in het verloop, timestamps, duur. In de kern zijn het LLM-calls voor de interacties met het model, tool-executions voor elke tool-call en de agent-orchestration als root-span die alles bij elkaar houdt. In een goede timeline kan ik filteren (alleen tool-calls, alleen fouten), inzoomen en direct naar een stap springen - in plaats van door honderden chatballonnen te scrollen.
+
+Dat is het punt dat de discussie over agent-UX steeds weer maakt: in een lange, deels autonome sessie ontstaan al snel honderden events. De vraag "Wat gebeurde er tussen minuut 30 en 45?" is in een lineaire chat praktisch niet te beantwoorden - je scrolt, zoekt, raakt de draad kwijt. In een filterbare timeline is het een bereikselectie.
+
+<DemoTimeline />
+
+Laten we het wel in perspectief houden. Bij een eenmalige plangeneratie - single-shot, één model-call, één resultaat - levert een timeline nog weinig op. Er valt nauwelijks iets te nesten, de "trace" is één regel. De waarde stijgt op het moment dat het plan *toegepast* wordt: meerdere tool-calls achter elkaar, meerdere geschreven sub-issues, een goedkeuring halverwege, misschien een retry na een fout. Dan is de timeline het verschil tussen "Ik geloof dat het gelukt is" en "Ik zie wat er draaide - en waar het vastliep".
+
+Dat is ook de reden waarom deze weergave en observability niet twee onderwerpen zijn, maar één. De timeline is de frontend van dezelfde trace die je in de backend toch al nodig hebt om incidents te debuggen. Wie netjes instrumenteert, krijgt de interface voor herleidbaarheid bijna cadeau.
+
+<LinkCard url="/nl/blog/observability-ai-features"/>
+
+Daarmee hebben we vier weergaven gezien die in veel gevallen beter werken dan een chatvenster: editor, diff, approval-panel, timeline. Blijft de chat zelf over.
+
+## Wanneer chat toch werkt
+
+Heeft chat afgedaan? Nee - maar alleen voor een bepaald soort taak. Het onderscheid waar het hier om draait, is niet "chat vs. UI", maar divergent vs. convergent.
+
+Divergent werk opent de zoekruimte. De doeltoestand staat nog niet vast, die ontstaat pas onderweg. Je tast je naar het doel toe, gooit dingen weg, probeert een andere richting. Daarvoor is een gesprek gebouwd: elke turn mag vaag zijn, elke volgende stap corrigeert de vorige. Convergent werk is het tegenovergestelde. Er is een toetsbare eindtoestand - een goedkeuring, een vergelijking, een toegepast resultaat - en de vraag is alleen nog of die toestand klopt. Hier wordt chat zwak, omdat hij het toetsen in een tekstspoor dwingt dat je zelf moet reconstrueren.
+
+Een voorbeeld dat beide laat zien: je verfijnt een UI-mockup. "Voeg een zoekveld toe boven de tabel." "Maak de tabel compacter." "Haal de tweede kolom er weer uit." Elke zin verkleint de zoekruimte een stukje, en het doel - de goede lay-out - bestaat aan het begin nog helemaal niet als specificatie. Het kristalliseert zich uit in de dialoog. Dat is precies het tegenovergestelde van een plan dat je vooraf goedkeurt. Niemand zou dit proces in een approval-formulier willen persen, omdat er niets af is om goed te keuren. Het gesprek *is* hier het gereedschap.
+
+Technisch hoeft "chat" daarbij allang geen kale tekst meer te zijn. Moderne frameworks maken generative UI mogelijk: de agent rendert tijdens runtime echte componenten, in plaats van alleen te schrijven. Een tool levert dan een formulier, een tabel of een rij metric-cards in plaats van alleen tekst - in de Vercel AI SDK bijvoorbeeld via tool-invocations die de frontend vertaalt naar components. Een eerlijke kanttekening daarbij: de route via React Server Components is in de AI SDK momenteel gepauzeerd; aanbevolen wordt de client-side variant met `useChat` plus de tool-invocations. Het resultaat blijft een chatinterface - maar wel een met gestructureerde, interactieve bouwstenen erin.
+
+En dat is geen breuk met de stelling van deze post, maar de bevestiging ervan. We kiezen de weergave op basis van de taak. Als de taak divergent verkennen is, wint chat - en zodra er binnen die verkenning een convergent moment opduikt, schuif je gewoon een gestructureerde bouwsteen de stream in. Zelfs "chat" is dan vaak chat-plus-structuur, niet de rauwe vorm waarmee het allemaal begon.
+
+<Callout type="tip">
+Vuistregel: divergent en verkennend, zonder vaste doeltoestand → chat. Convergent, toetsend, handelend, met een duidelijke eindtoestand → gestructureerde weergave (editor, diff, approval, timeline).
+</Callout>
+
+<Accordion title="Wanneer chat wint - en wanneer hij verliest">
+**Chat wint:**
+- open brainstormen, waarbij de richting nog openligt
+- mockups en ontwerpen stap voor stap verfijnen
+- vragen aan een kennisbank
+- vroege verkenning, waarin er nog geen gedefinieerde doeltoestand is
+
+**Chat verliest:**
+- het goedkeuren van een riskante actie
+- het vergelijken van twee toestanden naast elkaar
+- het nagaan van een lang verloop met meerdere stappen
+- het precies bewerken van een gestructureerd artefact
+</Accordion>
+
+Daarmee hebben we de eerlijke versie van de stelling: chat is één weergave naast andere, en die heeft een duidelijk toepassingsgebied. Als we het consequent op basis van de taak kiezen - wat betekent dat dan voor het bouwen van agent-systemen?
+
+## De controle-interface is de moat
+
+Blake Crosley heeft het in 2026 kernachtig samengevat, en dat blijft hangen: of agents productief inzetbaar zijn, beslist niet het model en niet de grootte van het contextvenster, maar de interface die hun werk zichtbaar, toetsbaar en goedkeurbaar maakt. Het concurrentievoordeel zit een verdieping boven de reasoning, in de weergave die die bedienbaar maakt. De control surface is de eigenlijke moat - wat je van het werk van de agent ziet en in geval van twijfel kunt stoppen.
+
+Dat bundelt de hele post. Een agent kan een net contract vervullen, elke eval halen en een sluitende trace schrijven - en de gebruiker merkt er niets van zolang geen UI het laat zien. Governance die alleen in de backend bestaat, blijft onzichtbaar voor de mens aan de andere kant. De editor laat het contract zien voordat het wordt uitgevoerd. De diff laat het effect zien in voor en na. Het approval-panel maakt van de goedkeuring een bewuste beslissing. De timeline legt het verloop vast, opvraagbaar in plaats van uit het geheugen gereconstrueerd. Een chat kan over dit alles vertellen. De gestructureerde weergaven maken het toetsbaar.
+
+Daarmee is de cirkel over de serie rond. Elke weergave uit deze post heeft haar wortels in een eerder engineeringprobleem:
+
+- **Autonomieregelaar in plaats van vrije loop** - wie beslispunten definieert, heeft een interface nodig die op die punten de controle teruggeeft.
+- **Intent vs. execution** - de diff bestaat omdat een geslaagde tool-call nog geen correct effect is; false success wordt pas zichtbaar in voor en na.
+- **Approval als kwaliteitsborging** - het approval-panel is de UI-vorm van human-in-the-loop, de goedkeuring als bewuste stap en niet als reflex.
+- **Trace in plaats van speculatie** - de timeline is observability voor de gebruiker, het verloop als bewijs in plaats van als vermoeden.
+
+<LinkCard url="/nl/blog/agent-loops-entscheidungspunkte"/>
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/nl/blog/human-in-the-loop"/>
+<LinkCard url="/nl/blog/observability-ai-features"/>
+
+Eén weergave ontbreekt nog in dit rijtje, en die zit aan het begin in plaats van aan het eind: de gestructureerde invoer zelf - het formulier met assistentie, waarbij de agent de velden invult in plaats van ernaar te vragen. Dat is het volgende stuk.
+
+> De beste interface voor een agent maakt zijn werk toetsbaar - een chat maakt het alleen navertelbaar.

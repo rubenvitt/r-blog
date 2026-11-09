@@ -1,0 +1,158 @@
+---
+title: "Chat gelöscht. Wieso weiß der Agent dat noch?"
+description: "Agent-Memory macht aus eine Nachricht 'n ganzen Haufen Kopien, und „Chat löschen“ kricht davon oft nur den Chat. Ein kleinet Labor zeigt, wo 'ne Diagnose dat Löschen überlebt und welcher Löschpfad se wirklich wechmacht."
+date: 2026-11-08
+tags: ["ai", "software-engineering", "security"]
+image: ../../blog/_images/memory-datenarchitektur/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import Callout from '../../../components/widgets/Callout.astro';
+import kopien from '../../blog/_images/memory-datenarchitektur/kopien.png';
+import raten from '../../blog/_images/memory-datenarchitektur/raten.png';
+
+> Wer einem Agenten 'n Gedächtnis gibt, macht Kopien. Gezielt wechmachen kannze die nur, wenn jede Kopie weiß, wo se herkommt.
+
+Inne [Hilfe zu Claudes Memory](https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context) steht ein Satz, den man schnell überliest: "When a conversation is deleted, including under a retention period, memory entries generated from it aren't removed". Einzelne Memories kannze da von Hand löschen, und sensible Themen speichert Claude standardmäßig gar nich erst. Chat und Gedächtnis haben trotzdem getrennte Löschwege. Dat muss man sich ma auffe Zunge zergehen lassen.
+
+Wie dat im blödesten Fall aussehen kann, hab ich in einem kleinen Labor nachgebaut. Der Auskunfts-Assistent von 'ner ausgedachten Stadtbücherei kricht die Nachricht: "Ich brauche Bücher in Großdruck, wegen meiner Makuladegeneration kann ich normale Schrift kaum noch lesen. Was habt ihr da?" Ein Extraktor mit dem Original-Prompt von Mem0 macht da den Eintrag draus: "Der Nutzer hat Makuladegeneration und kann normale Schrift kaum noch lesen." Am nächsten Tach löscht die Person den Chat über die Oberfläche und fragt: "Was weißt du eigentlich über mich?"
+
+Der Assistent antwortet: "Aus früheren Gesprächen weiß ich, dass du Makuladegeneration hast, normale Schrift kaum lesen kannst und Bücher in Großdruck benötigst." So lief dat in allen fünf Läufen. Boah ey.
+
+Der Eintrag wusste nich, aus welchem Chat er kommt, also hat dat Löschen ihn auch nich gefunden. In meinem Aufbau hat ihn erst ein Paket aus drei Dingern erwischt: Herkunft an jeder Kopie, 'ne Löschkaskade und 'ne Schreibprüfung, die aus einem gelöschten Chat nix mehr annimmt. Damit dabei nich zu viel wechfliecht, braucht et Regeln je Datenart, und dat Protokoll braucht 'ne eigene Lösung.
+
+Für den Versuch hab ich vorher festgelegt, wat der Button verspricht: "Chat löschen" macht den Verlauf wech und alles, wat daraus abgeleitet is. Ausgenommen is ein Wunsch, den die Person ausdrücklich hat speichern lassen. Der bleibt, zeigt seine Herkunft ("aus einem gelöschten Chat") und lässt sich einzeln widerrufen.
+
+<InfoBox>
+  Demo: [rubenvitt.github.io/memory-lab](https://rubenvitt.github.io/memory-lab/) - die Kopien von einer Nachricht und wat "Chat löschen" davon kricht.<br />
+  Repo mit Regeln, Prompts und allen Rohantworten: [github.com/rubenvitt/memory-lab](https://github.com/rubenvitt/memory-lab)
+</InfoBox>
+
+## Fünf Dinger, die alle Memory heißen
+
+Hinter dem Wort stecken mindestens fünf Datenarten, und jede hat 'nen anderen Besitzer und 'ne andere Lebensdauer.
+
+**Session State** is der Verlauf vonne laufende Unterhaltung, samt Tool-Ergebnissen. Der gehört der Session, landet als Ausschnitt im Prompt und is nach Minuten oder Tagen wieder wech.
+
+Dat **Profil** mit Adresse, Vertrach und Kundennummer gehört dem Fachsystem, wo et schon lange vor dem Agenten drinstand. Der Agent liest ausgewählte Felder. Geändert und gelöscht wird dat da, die Kopien ziehen nach.
+
+'Ne **Präferenz** hat die Person selbst geäußert, so wat wie "Erinnerungen bitte per SMS". Die gilt, bis die Person se zurücknimmt, und steht dafür im Prompt.
+
+Beim **Retrieval** holt sich der Agent Dokumente, Tickets oder alte Chats per Suche dazu. Der Index da drüber is bloß 'ne Kopie. Der lebt so lange wie seine Quelle und muss nachgezogen werden, wenn die verschwindet. In'n Prompt kommen nur die Treffer.
+
+Dat **Audit**-Protokoll gehört dem Betreiber und hält fest, wat der Agent gemacht hat. Dat kommt nie in'n Prompt und wird erst nach Ablauf vonne Aufbewahrungsfrist gelöscht. Personenbezogene Teile da drin brauchen 'ne eigene Lösung, etwa Redaction oder 'nen Schlüssel, den man vernichten kann.
+
+Der Mem0-Eintrag aussem Labor passt in keine von diese Zeilen. Der is abgeleitet wie ein Index, steht im Prompt wie 'ne Präferenz und hat weder Ablaufdatum noch Herkunft. Watt'n Brassel.
+
+Getrennte Regeln brauchen übrigens keine fünf Datenbanken. Eine Tabelle mit einer Spalte für die Datenart reicht völlich, solange jede Art ihre eigene Lösch- und Prompt-Regel kricht.
+
+## Eine Nachricht, vier Kopien
+
+Dat Labor hat zwei Varianten. Inne erste schreibt ein Extraktor in ein gemeinsamet Gedächtnis ohne Herkunft, so wie oben. Die zweite, ich nenn se B, hat Regeln je Datenart, Präferenzen nur per Tool und Herkunft an jedem Eintrag. Die Grafik setzt Kopien aus beiden Varianten und einen ausgedachten Fall zusammen.
+
+<Figure src={kopien} alt="Memory-Lab: Aus der Nachricht mit der Diagnose entstehen vier Kopien, Chat, Gedächtnis, Protokoll und Suchindex, jeweils als beobachtet, konstruiert oder simuliert gekennzeichnet. Darunter eine Tabelle mit vier Varianten aus Regel für alles oder je Datenart und ohne oder mit Herkunft." caption='Zusammengesetztet Beispiel: Gedächtnis beobachtet (Mem0-Extraktor), Protokoll beobachtet (B), Suchindex konstruiert. Die Tabelle drunter wendet Regeln an, die Schlüsselvernichtung is simuliert.'/>
+
+Dat Gedächtnis is der Mem0-Eintrag, in allen fünf Läufen mit Diagnose. Ins Protokoll kam se über 'nen Umweg: In zwei von fünf Läufen hat der Assistent von B nach "Großdruck Bücher Sehhilfe Makuladegeneration" gesucht, und dat Protokoll führt Suchanfragen im Klartext und lässt nur Anhängen zu. Bei B war dat Gedächtnis nach dem Löschen sauber, dat Protokoll nich. Der Suchindex is konstruiert: einer, der nach dem Löschen ausm Protokoll neu gebaut wird.
+
+Wat "Chat löschen" bei solche Kopien erreicht, hab ich als 2×2 durchgespielt. Eine Achse: eine Regel für alle abgeleiteten Daten oder eine je Datenart. Die andere: ohne Herkunft oder mit dem Paket aus Herkunft (`derivedFrom`), Kaskade und Schreibprüfung. Angewendet auf die echten Einträge und Suchanfragen aussem Labor und auf ausgedachte Fälle: 'ne Zusammenfassung aus zwei Chats, 'nen Extraktionsjob nach dem Löschen, 'nen Neubau vom Index und 'nen ausdrücklich gespeicherten Wunsch. Gemessen wird dabei nix, die Tabelle zeigt bloß, welche Regel welchen Fall abdeckt.
+
+Ohne Herkunft is nur der Chat wech. Gedächtnis und Zusammenfassung behalten die Diagnose, der verspätete Job schreibt se neu. Regeln je Datenart halten in dieser Zeile nur den neu gebauten Index aussem Prompt raus, abrufbar bleibt der trotzdem.
+
+Mit Herkunft und einer Regel für alles verschwindet die Diagnose aus allem Abgeleiteten, aber mit ihr auch der gespeicherte Wunsch und der Krimi-Teil vonne Zusammenfassung, der aussem zweiten Chat kam. Dat Kind mitm Bade, woll? Kommen Regeln je Datenart dazu, sind Gedächtnis und Index sauber, die Zusammenfassung wird aussem zweiten Chat neu gebildet (im Versuch ein hinterlegter Text), und der Wunsch bleibt. Im Versuch steht in dem Wunsch die Diagnose drin, also bleibt se da stehen, sichtbar und einzeln widerrufbar. Dat Job und Neubau nix zurückbringen, liegt anne Schreibprüfung. Mit `derivedFrom` allein kämen beide wieder.
+
+Dat Protokoll fällt ausm Schema. Im Klartext behält et die Suchanfrage in jeder Variante. Mit einem Schlüssel pro Chat, der beim Löschen vernichtet wird, wär se unlesbar, sofern dat Löschen den Chat als Quelle kennt. Diesen Teil simuliert der Versuch nur: Er markiert den Schlüssel als vernichtet und zeigt die Anfrage nich mehr an. Echte Verschlüsselung hab ich nich geprüft.
+
+## Wie oft dat passiert
+
+Wie oft solche Kopien entstehen, hab ich getrennt gemessen. 40 ausgedachte Nachrichten erwähnen Gesundheit, Angehörige, Religion oder Geld, die Hälfte so nebenbei, die andere mit "Merk dir bitte, dass ...". Jede lief einmal durch zwei Extraktoren und einmal an den Assistenten von B.
+
+<Figure src={raten} alt="Balkendiagramm: Mem0 speichert 20 von 20 nebenbei erwähnten Angaben, der eigene Prompt 5 von 20. Nach Merk dir bitte speichern beide fast alles. Der Assistent schreibt die Angabe nach automatischer Zählung in 6 und 4 von 20 Fällen im Klartext ins Protokoll, von Hand gezählt in 7 und 4." caption="Wie oft 'ne sensible Angabe im Gedächtnis oder im Protokoll steht, je 20 Nachrichten, jede einmal. Beim Protokoll stehen automatische und Handzählung nebeneinander."/>
+
+Der Original-Prompt von Mem0 speichert alle 20 nebenbei erwähnten Angaben. Der führt Gesundheit und persönliche Details ausdrücklich als merkenswert. Manchma ordnet er dabei auch falsch zu: Aus "Mein Mann hat Alzheimer. Gibt es Bilderbücher für Erwachsene?" wird "Die Nutzerin hat Alzheimer." Dat is ja wohl'n Ding.
+
+Mein eigener Prompt verbietet sensible Angaben ohne ausdrücklichen Wunsch. Bei Gesundheit und Angehörigen hält er sich dran, bei Religion und Geld nich immer: 5 von 20. "Ich lebe von Bürgergeld" wird zu "Die Person lebt von Bürgergeld." Nach "Merk dir bitte" speichert er 19 von 20, durchgefallen is ausgerechnet "Merk dir bitte, dass ich Diabetes habe." Wie so'n Elfmeter am Pfosten.
+
+Die zweite Quelle für Kopien is der Assistent selbst. Nach automatischer Zählung stand die Angabe in 10 von 40 Nachrichten schon im ersten Schritt in einem Tool-Argument, dat dat Protokoll im Klartext führt. Von Hand gezählt sind et 11, weil dat Muster zwei Treffer übersehen und einen falschen gemeldet hat. Meistens war et 'ne Suchanfrage wie "Leseausweis Gebühren Privatinsolvenz". Sogar der Schlüssel von einem gespeicherten Wunsch kann se enthalten. Aus "Merk dir bitte, dass mein Vater im Gefängnis sitzt" wurde ein `remember`-Aufruf mit dem Schlüssel "Vater sitzt im Gefängnis". Wert und Zitat führt dat Protokoll nur als Prüfsumme, den Schlüssel im Klartext.
+
+Der Assistent schreibt also Kopien, bevor ein Extraktor überhaupt anne Reihe is. Ein Löschpfad muss mit denen rechnen.
+
+## Wat der Versuch nich zeigt
+
+Die Zahlen sind klein: je Zelle 20 Nachrichten, jede einmal, ein Modell (`gpt-6-luna` mit Effort `low`). Die Nachrichten hat derselbe Coding-Agent geschrieben, der auch dat Labor gebaut hat. Von Mem0 lief nur die Fakten-Extraktion bei leerem Gedächtnis, den aktuellen Standard (ein additiver Aufruf) hab ich nich gemessen. Beim Assistenten zählt nur der erste Tool-Aufruf. Dat 2×2 führt Regeln aus, und vier von seine Fälle sind ausgedacht. Meine Erwartungen standen vor dem Lauf im Repo, danebengelegen hab ich nur beim eigenen Prompt nach "Merk dir bitte" (erwartet 12 bis 18, gemessen 19).
+
+Bevor ich bei diesem Versuch gelandet bin, hab ich den Assistenten ganze Gespräche führen lassen, einmal mit einem gemeinsamen Gedächtnis und einmal mit getrennten Speichern. Durchgespielt hab ich Alltagsfälle wie 'nen Umzug oder 'ne Frage, die jemand für seine Mutter stellt. In den meisten Fällen kam für beide Varianten dat Gleiche raus. Wenn wat schiefging, lach et fast nie am Gedächtnis: Der Assistent hat etwa die neue Adresse gar nich im System abgefragt und stattdessen behauptet, dat System wär nich erreichbar. Kennze vom Kollegen, der keinen Bock hat. Den Fall mit der Diagnose vom Anfang hab ich erst danach ergänzt, als ich diese Ergebnisse schon kannte. Alle Zahlen dazu stehen inne [Befunde im Repo](https://github.com/rubenvitt/memory-lab/blob/main/docs/findings.md).
+
+## Herkunft und Kaskade bauen
+
+Im Kern is der Löschpfad 'ne Abfrage nach allem, wat aus dem Chat stammt, plus 'ne Sperre gegen spätet Schreiben. Als Skizze:
+
+```typescript
+type Derived = { id: string; kind: "memory" | "summary" | "index" | "preference"; derivedFrom: string[]; explicit?: boolean };
+
+async function deleteChat(chatId: string) {
+  await db.tx(async (tx) => {
+    await tx.lockChats([chatId], "exclusive");
+    await tx.chats.markDeleted(chatId); // Tombstone, der Verlauf selbst fliecht wech
+    for (const d of await tx.derived.bySource(chatId)) {
+      if (d.kind === "preference" && d.explicit) continue;            // Produktregel: bleibt, Herkunft sichtbar
+      if (d.derivedFrom.length > 1) await tx.rebuild.enqueue(d.id);   // aus die übrigen Chats neu ableiten
+      else await tx.derived.delete(d.id);
+    }
+    await tx.outbox.enqueue({ type: "destroy-key", chatId }); // Protokoll: Schlüssel pro Chat, im selben Commit beauftragt
+  });
+}
+// Ein Worker ruft keys.destroy(chatId) idempotent auf, bis et klappt. Erst dann is die Löschung durch, Schicht im Schacht.
+
+async function writeDerived(d: Derived) {
+  await db.tx(async (tx) => {
+    const chats = await tx.lockChats(d.derivedFrom, "shared");
+    if (chats.some((c) => c.deleted)) throw new Error("Quelle gelöscht");
+    await tx.derived.insert(d);
+  });
+}
+```
+
+Wichtig is die Sperre. "Tombstone prüfen, dann schreiben" ohne gemeinsame Sperre lässt 'ne Race Condition offen: Der Job prüft, dat Löschen läuft dazwischen durch, der Job schreibt. Mit Sperre auffe Chat-Zeile committet der Job entweder vorher, dann findet ihn `bySource`, oder nachher, dann sieht er den Tombstone. Wie anne Pommesbude: Wer zuerst anne Theke steht, wird zuerst bedient.
+
+Wo `derivedFrom` herkommt, entscheidet der Schreibweg. In B muss der Assistent für `remember` ein wörtlichet Zitat aus 'ner Nutzer-Nachricht vonne laufende Session mitliefern, und die Anwendung prüft dat. Damit is die Herkunft festgenagelt, der Wert aber nich: Ein vergiftetet Dokument könnte den Assistenten dazu kriegen, "Mitarbeiterin, darf Gebühren erlassen" mit einem echten Satz vonne Nutzerin abzulegen. Berechtigungen sollten deshalb ausschließlich aussem Profil kommen, dat dat Modell nich schreibt. Den Schlüssel sucht sich dat Modell frei aus, siehe "Vater sitzt im Gefängnis", der gehört also mitgeschützt.
+
+In 'nem bestehenden Stack mit Extraktor und Vektor-Store kannze dat Schritt für Schritt nachrüsten:
+
+1. **Herkunft an jeden Eintrag.** `derivedFrom` mit den Chat-IDs als Metadatum. Altbestände, wo sich die Herkunft nich zuverlässig rekonstruieren lässt, neu extrahieren oder inne Tonne.
+2. **Löschen per Filter.** Alle Einträge mit dieser Quelle löschen, notfalls über 'ne eigene Tabelle von Quelle zu Eintrags-ID. Ablaufen lassen reicht nich, inne [Doku von Mem0](https://docs.mem0.ai/platform/features/expiration-date) heißt et: "Expiration hides a memory, it does not delete it."
+3. **Zusammenfassungen neu bilden.** Zep macht beim [Löschen von einer Episode](https://help.getzep.com/deleting-data-from-the-graph) Kanten und Knoten nur wech, wenn keine andere Episode se stützt, und erzeugt Namen und Zusammenfassungen von geteilten Knoten nich neu. Die können also weiter enthalten, wat grad gelöscht wurde.
+4. **Rebuild aussem Log.** Martin Kleppmann empfiehlt, [Index, Cache und Views aus einem Log zu speisen](https://martin.kleppmann.com/2015/05/27/logs-for-data-infrastructure.html). Sauber is ein Rebuild nach dem Löschen aber nur, wenn der Tombstone im Log steht oder dat Log kompaktiert wird.
+
+Fürs Protokoll reicht dat nich, da kracht "nur anhängen" mit dem Recht auf Löschung zusammen. Ein Hash hilft wenig, weil sich erratbare Suchbegriffe gegen den bestätigen lassen. Besser is Redaction vor dem Schreiben oder Crypto-Shredding. Dat [Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing) beschreibt dat mit einem Schlüssel pro betroffener Person, für "Chat löschen" passt einer pro Chat. Wann Sperren statt Löschen in Frage kommt, hab ich im Logging-Post auseinandergenommen.
+
+<LinkCard url="/pott/blog/revisionssicheres-logging-agent-contract"/>
+
+<Callout type="tip">
+**Fälle für den Löschtest.** Nach "Chat löschen" muss gelten:
+
+- Kein abgeleiteter Eintrag aussem Chat is mehr lesbar, auch nich über 'ne ID oder als abgelaufener Eintrag. Ausnahme is der ausdrücklich gespeicherte Wunsch, der seine Herkunft zeigt.
+- 'Ne Zusammenfassung aus zwei Chats verliert nur den gelöschten Anteil.
+- Ein Extraktionsjob, der danach läuft, wird abgewiesen, auch wenn er gleichzeitig mit dem Löschen startet.
+- Ein Neubau vom Index bringt nix zurück.
+- 'Ne Suche im Protokoll nach der Angabe findet nix Lesbaret.
+</Callout>
+
+## Wat dat kostet
+
+Die Ausnahme für ausdrücklich gespeicherte Wünsche hat 'nen harten Fall: Steht im Wunsch die Diagnose, bleibt se stehen. Ich halt dat für richtig, weil die Person se selbst hat speichern lassen. Die Oberfläche muss beim Löschen aber zeigen, wat bleibt.
+
+Dazu kommt Plumbing, also ehrliche Maloche: Metadaten an jedem Eintrag, Tombstones mit Sperre, ein Rebuild-Pfad und Schlüssel fürs Protokoll. In B verzichte ich außerdem auf dauerhaft gespeicherte implizite Vorlieben, weil die Zitatregel nur Ausgesprochenet zulässt. Wer drei Sessions lang nach Krimis gefragt hat, ohne "ich mag" zu sagen, hat von B in keinem von fünf Läufen zuerst 'nen Krimi empfohlen gekricht. Dat liegt anne Schreibregel. Ein Extraktor, der implizite Vorlieben mit Herkunft und kurzer TTL ablegt, wär mit demselben Löschpfad vereinbar, gemessen hab ich dat aber nich.
+
+## Die Policy gehört in den Contract
+
+Herkunft, Lebensdauer und Löschregel je Datenart gehören in den Agent Contract, genau wie dat gepinnte Modell. Ändert sich, wat der Extraktor schreiben darf, ändert sich dat Verhalten vom Agenten, und dat sollte 'nen Eval-Lauf auslösen. Die Fälle aussem Löschtest sind dafür ein brauchbarer Anfang.
+
+<LinkCard url="/pott/blog/agent-contract"/>
+
+Vom Anbieter kommt dabei wenig. Die [Doku zu Anthropics Memory Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool) sacht et ganz offen: "Your application runs every file operation Claude requests, so these safeguards are your responsibility." Butter bei die Fische also: Dat is deine Maloche.
+
+> Ein Löschbutton verspricht wat über Daten, die er nie gesehen hat. Halten kann er dat nur, wenn die Anwendung jede Kopie zu ihrem Chat zurückverfolgen kann.

@@ -1,0 +1,356 @@
+---
+title: "AI-verktyg för min egen blogg: podcast-pipeline, språkgranskning och skills bakom dem"
+description: "Hur min blogg tillämpar samma AI-principer som jag beskrev i mina tre senaste inlägg - med automatiserad podcastgenerering och AI-stödd språkgranskning."
+date: 2026-03-29
+tags: ["ai", "blog", "meta", "software-engineering"]
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+I tre inlägg har vi pratat om principer. Contracts i stället för fritext. Evals i stället för hopp. Tool-säkerhet i stället för ”det löser sig nog”. Allt kring en refund-agent som hanterar återbetalningar - långt från mitt eget skrivbord.
+
+<LinkCard url="/sv/blog/ai-systems-architecture" />
+
+<LinkCard url="/sv/blog/ai-evals-ci-pipeline" />
+
+<LinkCard url="/sv/blog/tools-sind-keine-prompts" />
+
+Och så plot twisten: samma principer finns i den här bloggen.
+
+Inlägget du läser just nu har språkgranskats av en AI - av en specialiserad granskar-skill med en egen stilprofil och strukturerad feedback. Och om du hellre lyssnar än läser: play-knappen sitter här ovanför. Podcasten skapades helt automatiskt från artikeltexten - dialogmanus, röster, ljud, feed.
+
+Flera inlägg har numera podcasts. Varje text går igenom en AI-språkgranskning. Inget av det görs manuellt, utan via domänspecifika Claude Code-skills - återanvändbara, versionerade verktyg med definierad input och output, som går att anropa som slash command direkt i Claude Code.
+
+Är min blogg alltså ett AI-system nu? Nej. Ingen användare skickar förfrågningar till en modell. Ingen agent fattar beslut om produktlogik i runtime. Men samma engineering-principer som jag beskrev för AI-features i produktionsapplikationer finns i arbetsflödet bakom. En stilprofil som Contract. Bedömningskategorier som rubrics. En pipeline med externt API, felhantering och definierat outputformat.
+
+Nedan tittar vi på två features: **podcast-pipelinen**, som gör ett MDX-blogginlägg till ett komplett podcastflöde via dialoggenerering och ElevenLabs. Och **granskar-skillen**, som kontrollerar texter mot en dokumenterad stilprofil innan de publiceras. Båda visar hur principerna från de tidigare inläggen känns i praktiken när de inte hamnar i en demo-app utan i den egna verktygslådan.
+
+## Podcast-pipelinen: från MDX till RSS-flöde
+
+Flera inlägg har nu en ljudversion. Ingen manuell inläsning, ingen studio, ingen podcast-hosting. I stället: en Claude Code-skill, ett API, ett Python-skript och lite Astro-limkod. Från Markdown till spelbar podcast på under fem minuter.
+
+Men en sak i taget.
+
+### Översikt över pipelinen
+
+Arbetsflödet ser ut så här:
+
+**Blogginlägg** → **Dialogmanus** (Claude) → **Ljud** (ElevenLabs Text-to-Dialogue) → **MP3 + transkript** → **Frontmatter** → **RSS-flöde** → **Spelare**
+
+Varje steg har en tydlig input och output. Manuset är en textfil med speaker turns. Ljudet är en MP3. Metadatan hamnar i frontmatter. RSS-flödet genereras vid bygget. Spelaren läser allt från frontmatter - ingen magi, inga dolda beroenden.
+
+### Dialoggenerering
+
+Blog-podcast-skillen läser ett inlägg, plockar ut strukturen och de bärande teserna - och genererar utifrån dem ett tyskspråkigt samtal mellan två personer. Talarna heter Alex och Lara.
+
+Det som inte ska komma ut är en intervju. Inget ”Vilken bra poäng, Alex!” - utan en riktig diskussion. Båda bidrar med perspektiv, ifrågasätter, bygger vidare på varandra. Det låter trivialt, men det är skillnaden mellan ”AI-genererat” och ”det här skulle jag faktiskt lyssna på”.
+
+Några regler som finns inskrivna i skillen:
+
+- **Ingen intervjustruktur** - riktig diskussion, då och då en invändning
+- **Facktermer förblir engelska** - Contract, Eval, Tool-Call, precis som i bloggen
+- **Sparsamt med emotional cues** - `[eftertänksam]`, `[skrattar]`, men högst 1-2 per minut, annars blir det teatraliskt
+- **Fast struktur**: intro med hook (~10%) → huvuddel (~70%) → sammanfattning (~10%) → avslutning (~10%)
+
+Resultatet är en textfil i ett enkelt format:
+
+```
+Alex: Dialograd här
+Lara: Dialograd här
+Alex: [eftertänksam] Ännu en rad...
+```
+
+Inget komplext märkspråk, ingen JSON. Lätt att läsa, lätt att redigera. Om jag inte gillar en formulering ändrar jag raden och genererar ljudet på nytt.
+
+### Ljud via ElevenLabs
+
+För ljudgenereringen använder jag ElevenLabs Text-to-Dialogue API med modellen Eleven v3 - enligt ElevenLabs deras mest uttrycksfulla TTS-modell, 74+ språk, uttryckligen inte tänkt för realtid utan för högkvalitativ offline-generering. Precis det jag behöver.
+
+<LinkCard url="https://elevenlabs.io/docs/overview/capabilities/text-to-dialogue" />
+
+API-anropet är förvånansvärt enkelt: en array med `{text, voice_id}`-objekt in, MP3 ut. Python-skriptet parsar dialogfilen, mappar talarna till röst-ID:n och skickar iväg alltihop.
+
+<Accordion title="ElevenLabs API-anrop (generate_audio.py)">
+```python
+import urllib.request
+import json
+
+API_URL = "https://api.elevenlabs.io/v1/text-to-dialogue"
+
+VOICES = {
+    "Alex": "<voiceid 1>",
+    "Lara": "<voiceid 1>",
+}
+
+def send_chunk(chunk, api_key):
+    payload = json.dumps({
+        "inputs": chunk,  # [{text, voice_id}, ...]
+        "model_id": "eleven_v3",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+```
+</Accordion>
+
+Det enda tricket: API:t har en teckengräns per request. Därför delas texten automatiskt upp i chunks vid ca 4500 tecken - de MP3-delar som kommer ut fogas sedan ihop.
+
+Kostnad? Med pay-per-use skulle en typisk blogginläggspodcast på 10-20 minuter kosta mig ca 3-6 dollar per avsnitt.
+
+<Accordion title="Teknisk stötesten: MP3-headerproblemet">
+När dialogen är för lång för ett enda API-anrop delas den upp i chunks. MP3-delarna som blir resultatet fogas ihop genom att byten läggs efter varandra - och det är precis där problemet ligger: varje chunk har sina egna Xing/Info-headers med frame counts som inte stämmer längre efter sammanfogningen. Webbläsaren visar fel längd, och spolning fungerar inte ordentligt.
+
+Lösningen är en enkel omkodning med ffmpeg:
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libmp3lame -b:a 128k output.mp3
+```
+
+Skriptet `scripts/fix-podcast-mp3s.sh` gör exakt det för alla MP3:or i katalogen `public/audio/`. Kör det en gång, problemet löst.
+</Accordion>
+
+### Integration i Astro
+
+För att bloggen ska veta att ett inlägg har en podcast behövs exakt ett fält i frontmatter:
+
+<CodeTabs labels={["Med podcast", "Utan podcast"]}>
+```yaml
+---
+title: "Mitt blogginlägg"
+description: "Beskrivning"
+date: 2026-03-27
+tags: ["ai"]
+podcast:
+  audioFile: /audio/my-post.mp3
+  transcript: /audio/my-post.txt
+  duration: "21:08"
+---
+```
+```yaml
+---
+title: "Mitt blogginlägg"
+description: "Beskrivning"
+date: 2026-03-27
+tags: ["ai"]
+---
+```
+</CodeTabs>
+
+Schemat i `content.config.ts` definierar `podcast` som ett valfritt objekt med `audioFile`, `transcript` och `duration`. Inget inlägg måste ha en podcast - men om det har en får det automatiskt spelaren.
+
+PodcastPlayer-komponenten har en hel del inbyggt: en vågformsvisualisering, hastighetsreglage (1x/1.25x/1.5x/2x), hoppknappar (±15s), en RSS-knapp, ett utfällbart transkript och stöd för Media Session API - alltså låsskärmskontroller på mobilen. Det låter som mycket, men det behövdes för att lyssnandet inte skulle kännas som en kompromiss.
+
+RSS-flödet under `/podcast.xml` genereras vid Astro-bygget, komplett med iTunes-taggar. Den som vill kan dra in flödet i vilken podcastapp som helst - Apple Podcasts, Overcast, Pocket Casts. Ett blogginlägg är ett Contract - den som vill bearbeta det automatiskt behöver ett schema. För ljud lika väl som för evals.
+
+### Alternativen i jämförelse
+
+Varför inte bara ta NotebookLM? Det är ju gratis, genererar podcasts med ett klick och låter övertygande.
+
+För att ”låta övertygande” och ”vara korrekt” är två olika saker. En studie från University of Pittsburgh (presenterad på AGU 2025) undersökte NotebookLM-genererade podcasts systematiskt - och hittade felaktigheter i varje testad sammanfattning, med en hallucinationsgrad på ~13%. Det lömska: felen var knappt märkbara för icke-experter.
+
+<Callout type="warning">
+Genererade podcasts låter ofta övertygande, även när innehållet är fel. Det gör dem farligare än output som är uppenbart felaktig. Den som publicerar genererat ljudinnehåll måste kontrollera innehållet mot källan - oavsett verktyg.
+</Callout>
+
+Dessutom har NotebookLM inget API och ingen kontroll över röster eller dialogstruktur. Det är en svart låda - bra för en snabb överblick, oanvändbart för ett reproducerbart arbetsflöde.
+
+<LinkCard url="https://github.com/souzatharsis/podcastfy" />
+
+På andra sidan står Podcastfy - ett open source-projekt i Python med stöd för flera TTS-backends (ElevenLabs, Google, Edge, OpenAI). Full kontroll, men också full setup.
+
+Jag ser tre nivåer:
+
+1. **Zero Control** - NotebookLM, ElevenLabs GenFM: ett klick, inget inflytande. Bra för att testa.
+2. **Low Control** - ElevenLabs Create Podcast API: programmatisk åtkomst, men dialoggenereringen sköter ElevenLabs.
+3. **Full Control** - Text-to-Dialogue API + eget skript: du skriver dialogen själv (eller låter den genereras) och styr varje speaker turn, varje röst, varje paus.
+
+Min setup hamnar i kategori 3. Jag styr dialogmanuset, rösterna, strukturen, publiceringen. Det kräver mer jobb än ett klick i NotebookLM - men jag vet vad som kommer ut.
+
+> NotebookLM genererar podcasts. Min skill genererar *mina* podcasts - med mina röster, mitt format, min pipeline.
+
+Pipelinen skapar podcasten. Men vem ser till att källtexten - själva blogginlägget - håller måttet? Det är precis vad nästa avsnitt handlar om.
+
+## AI-granskaren: säkra textkvaliteten utan att tappa stilen
+
+Den som någon gång har låtit ChatGPT ”förbättra” en text känner igen resultatet: grammatiskt felfritt, stilistiskt dött. Kanterna är borta, rytmen är borta, kvar blir en text som inte låter som någonting. Eller som allting på en gång.
+
+Det är ingen slump. En studie från Cornell och University of Washington (CHI 2025) mätte det experimentellt: utan AI-hjälp kunde en ML-klassificerare skilja texter från olika författare åt med 82,9% träffsäkerhet. Så fort författarna använde AI-skrivförslag sjönk träffsäkerheten till 60% - en mätbar förlust av stilistisk egenart.
+
+<LinkCard url="https://arxiv.org/abs/2409.11360" />
+
+Vid sidan av det: i en enkät från Society of Authors UK (2024) uttryckte 86% av de tillfrågade författarna oro för att deras stil ska härmas eller urvattnas av AI. Oron är befogad - men problemet är inte modellen. Problemet är att det saknas ett Contract för kvalitet.
+
+### Stilprofilen som Contract
+
+Min granskar-skill känner min skrivstil. Inte vagt, inte som en känsla - utan som en uttalad, dokumenterad profil. Medvetna stilgrepp känns igen som sådana och markeras inte som fel.
+
+Stilprofilen är Contractet - precis som ett JSON-schema definierar outputen från en LLM definierar stilprofilen textens kvalitetskriterier. Utan det här Contractet optimerar varje språkmodell mot genomsnittet. Med Contract optimerar den mot *min* standard. Lösningen på stilhomogenisering är inte en bättre modell, utan ett bättre Contract.
+
+### Rubrics: fem kategorier, strukturerade fynd
+
+Den som har läst eval-inlägget känner igen mönstret direkt. Där definierade vi rubrics - bedömningskategorier med poäng för att systematiskt bedöma LLM-output. Granskaren gör exakt samma sak, bara på naturligt språk:
+
+1. **Språk & korrekthet** - grammatik, stavning, interpunktion
+2. **Stil & ton** - passar texten den definierade stilprofilen?
+3. **Struktur & uppbyggnad** - logiskt flöde, styckelängder, rubrikhierarki
+4. **Läsarstyrning** - övergångar, röd tråd, aktivering av läsaren
+5. **Saklig konsekvens** - stämmer begrepp, referenser, tekniska påståenden?
+
+Varje finding får en severity: **kritisk** (måste fixas), **rekommenderad** (bör fixas), **valfri** (smaksak). Dessutom ett radnummer, ett citat ur texten och ett konkret förbättringsförslag. Fynd-ID:na - F-001, F-002 och så vidare - gör rapporten maskinläsbar. De kan skickas vidare direkt som arbetsinstruktion.
+
+<Accordion title="Exempel: utdrag ur en granskningsrapport">
+
+**F-001** | Severity: kritisk | Rad 42
+> ”Evalsen körs i CI/CD-pipelinet.”
+
+*Problem:* Fel bestämd form - ”pipeline” är ett en-ord.
+*Förslag:* ”Evalsen körs i CI/CD-pipelinen.”
+
+---
+
+**F-002** | Severity: rekommenderad | Rad 78
+> ”Det här är en mycket viktig aspekt som man bör ta hänsyn till.”
+
+*Problem:* Opersonligt, distanserat - passar inte stilprofilen (direkt jag-form, korta meningar).
+*Förslag:* ”Det är precis det som gör skillnaden.”
+
+---
+
+**F-003** | Severity: valfri | Rad 115
+> ”Orchestratorn koordinerar de enskilda agenterna.”
+
+*Problem:* Inkonsekvent pluralform - i resten av texten används ”agents” utan svensk plural.
+*Förslag:* Håll dig konsekvent till ”agents” eller ”agenter”. Texten hittills använder ”agents”.
+
+</Accordion>
+
+Parallellen till evals är ingen slump - den är arkitektur. Kategorierna *är* rubrics. Severity-nivåerna *är* poäng. Den strukturerade rapporten *är* ett eval-resultat. Den som har byggt ett eval-ramverk för LLM-output har redan tankesättet för en språkgranskning - bara domänen byts ut.
+
+> Granskaren är en eval på naturligt språk. Rubricsen heter bara något annat.
+
+### Vad granskaren inte gör
+
+Granskaren rättar fel, den formar inte om. ”Du är granskare, inte medförfattare” - så står det i skillen. När jag medvetet formulerar en mening kort och hackig är det stil. När jag byter perspektiv mitt i ett stycke är det avsikt. En bra granskare ser skillnaden. En dålig slipar bort allt.
+
+Att överkorrigera är motsatsen till kvalitetssäkring. Det är stilförstörelse med goda avsikter. Därför behöver granskaren Contractet - så att den vet vad den *inte* ska röra. Precis det problem som Cornell-studien beskriver: utan en uttalad stilprofil driver allt AI-stöd mot genomsnittet.
+
+## Skills som utvecklarverktyg: arkitekturen bakom
+
+Podcast-skillen genererar ljud från ett blogginlägg. Granskar-skillen kontrollerar språk och stil mot en dokumenterad stilprofil. Båda körs som slash commands direkt i Claude Code - `/blog-podcast`, `/blog-lektorat`. Men vad ligger bakom? Och varför är en skill mer än en uppblåst prompt?
+
+### Vad är en skill?
+
+En skill är en Markdown-fil med YAML-frontmatter och strukturerade instruktioner. Den ligger i projektkatalogen under `.claude/skills/<name>/SKILL.md` och upptäcks i runtime - ändringar gäller direkt, ingen omstart, ingen ombyggnad.
+
+Frontmatter definierar skillens Contract:
+
+```yaml
+name: blog-podcast
+description: "Skapar en podcastdialog från ett blogginlägg..."
+```
+
+`name` blir slash commandet. `description` avgör när Claude föreslår skillen - den är trigger och scope-definition på samma gång. Allt som står i Markdown därunder är de egentliga instruktionerna: arbetsflödessteg, formatkrav, felhantering.
+
+Skills kan läsa och skriva filer, köra bash-skript, anropa externa API:er och använda MCP-tools. De är inga passiva textblock - de orkestrerar riktiga processer.
+
+Och ekosystemet växer: repot [anthropics/skills](https://github.com/anthropics/skills) på GitHub har snabbt blivit den centrala platsen för community-skills.
+
+<LinkCard url="https://code.claude.com/docs/en/skills" />
+
+### Varför inte bara en prompt?
+
+Jag skulle kunna klistra in samma text som prompt i chatten. Det fungerar - en gång. Skillnaden ligger i allt som kommer efteråt:
+
+**Återanvändbarhet.** En skill skrivs en gång och kan anropas när som helst. Ingen copy-paste från en anteckningsapp, inget ”vänta, hur var det nu med arbetsflödet för podcasten?”.
+
+**Versionering.** En SKILL.md är en fil - den *kan* versioneras, diffas och granskas. Prompts i urklippet har ingen ändringshistorik.
+
+**Komposition.** Podcast-skillen hänvisar till ett Python-skript för ljudgenereringen. Granskar-skillen läser in referensinlägg som stiljämförelse. Skills kan komma åt andra filer i repot - mallar, konfigurationer, hjälpskript.
+
+**Tool-åtkomst.** En prompt kan generera text. En skill kan köra `bash`, anropa API:er med `WebFetch` och interagera med externa system via MCP-tools.
+
+**Kodifierad domänkunskap.** ElevenLabs röst-ID:n, författarens stilprofil, granskarens fem bedömningskategorier, frontmatter-schemat för podcastmetadata - allt finns i skillen, inte i mitt huvud eller i en anteckningsapp.
+
+> En skill är en prompt med minne, versionering och tool-åtkomst. Det är det som gör skillnaden.
+
+### De två skillsens anatomi
+
+Det som de två skillsen visar särskilt bra: samma arkitektur, helt olika verkan.
+
+<Accordion title="Blog-podcast-skill - SKILL.md (utdrag)">
+
+```yaml
+name: blog-podcast
+description: "Skapar en podcastdialog från ett blogginlägg
+  på rubeen.dev. Två talare diskuterar innehållet i
+  artikeln i ett naturligt, tyskspråkigt samtal."
+```
+
+**Input:** Ett blogginlägg (MDX-fil)
+
+**Process:** Läs inlägget → generera dialogmanus (Alex/Lara, speaker turns, emotional cues) → anropa Python-skriptet → ElevenLabs API → skriv filer → komplettera frontmatter
+
+**Output:** MP3-ljudfil + textfil med transkript + frontmatter-uppdatering i inlägget
+
+**Sidoeffekter:** Externt API (ElevenLabs TTS), filsystem (fem filer skrivs eller uppdateras)
+
+</Accordion>
+
+<Accordion title="Blog-lektorat-skill - SKILL.md (utdrag)">
+
+```yaml
+name: blog-lektorat
+description: "Professionell språkgranskning av tyskspråkiga
+  tekniska blogginlägg på rubeen.dev. Kontrollerar språk, stil,
+  struktur, läsarstyrning och facktermer mot
+  författarens etablerade stil."
+```
+
+**Input:** Ett blogginlägg (MDX-fil) + 2-3 referensinlägg som stiljämförelse
+
+**Process:** Läs inlägget → läs referensinläggen → ladda stilprofilen → analys i fem kategorier → skriv en strukturerad rapport
+
+**Output:** Markdown-rapport med numrerade fynd (`_lektorat-[slug].md`)
+
+**Sidoeffekter:** Bara filsystemet (en fil skrivs)
+
+</Accordion>
+
+Båda skillsen följer samma mönster: definierad input, tydligt beskriven process, specificerad output. Podcast-skillen har fler sidoeffekter - externt API, flera filer, mutation av frontmatter. Granskar-skillen är fristående: den läser, analyserar och skriver en rapport. Inga externa beroenden.
+
+### Contractet i skillen
+
+Den som har läst de tidigare inläggen i den här serien känner igen mönstret: Contracts first.
+
+Frontmatter i SKILL.md ÄR Contractet: `name` definierar anropet, `description` scopet. Markdown-kroppen definierar arbetsflödet, formatkraven, felhanteringen. Valfria fält som `allowed-tools` kan dessutom begränsa behörigheterna - least privilege, även för skills.
+
+Podcast-skillen har ett dialog-Contract: Alex och Lara som talare, speaker turns som format, emotional cues med begränsad frekvens, en struktur i fyra faser (intro, huvuddel, sammanfattning, avslutning). Granskar-skillen har ett rapport-Contract: fem bedömningskategorier, numrerade fynd-ID:n (F-001, F-002...), tre allvarlighetsgrader, obligatoriska fält per fynd (rad, citat, problem, förslag).
+
+Det här är inga lösa riktlinjer. Det är specifikationer som jag kan kontrollera resultatet mot. JSON-schema för API-output, stilprofil för textkvalitet, SKILL.md-frontmatter för skillbeteende - mekanismen är en annan, principen är densamma: definiera Contractet innan du genererar outputen.
+
+## Principerna gäller överallt
+
+I fyra inlägg har det handlat om principer för AI-system i produktion. Contracts definierar gränssnittet mellan deterministisk kod och en icke-deterministisk modell. Evals gör kvalitet mätbar i stället för att bara påstå den. Tools behöver scope, idempotens och medvetenhet om sidoeffekter, eftersom ett felaktigt anrop förstör mer än ett dåligt svar.
+
+Och sedan det här inlägget: en statisk blogg, ingen produktionsplattform med tusentals användare. Ändå följer podcast-pipelinen ett fast Contract - från dialogschemat via API-kopplingen till RSS-flödet. Granskaren bedömer mot rubrics, inte på magkänsla. Skillsen har ett definierat scope, tydlig input och output, och deras sidoeffekter är kända.
+
+Det är ingen slump. Principerna dyker inte upp för att bloggen är ett AI-system - de dyker upp för att de gäller universellt. Contract före prompt. Mätning före åsikt. Scope före frihet.
+
+I början frågade jag: är min blogg ett AI-system? Svaret är fortfarande nej. Men tankesättet bakom är detsamma. Och det är precis det som skiljer ”jag använder AI” från ”jag använder AI systematiskt”. Skillsen blir bättre för varje inlägg, stilprofilen växer, pipelinen blir robustare. Det är iterativ förbättring - precis som i alla andra engineering-projekt.
+
+> Den som bygger AI-features åt andra borde tillämpa samma principer på sitt eget arbetsflöde. Inte för att det behövs, utan för att det fungerar.

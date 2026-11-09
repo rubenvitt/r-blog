@@ -1,0 +1,654 @@
+---
+title: "Tools Aren't Prompts: Why Agent Actions Need Idempotency, Auth, and Audit"
+description: "A tool call can move money and change accounts. Why idempotency, auth, and audit in agent architectures aren't a nice extra but a hard requirement."
+date: 2026-03-27
+tags: ["ai", "software-engineering", "security"]
+image: ../../blog/_images/tools-sind-keine-prompts/hero.png
+draft: false
+ai: generated
+---
+
+import verifyCustomerTool from '../../blog/_images/tools-sind-keine-prompts/verify_customer-tool.png'
+import authChatExample from '../../blog/_images/tools-sind-keine-prompts/auth-chat-example.png'
+import approvalFlow from '../../blog/_images/tools-sind-keine-prompts/approval-flow.png'
+import refundSuccess from '../../blog/_images/tools-sind-keine-prompts/refund-success.png'
+import traceView from '../../blog/_images/tools-sind-keine-prompts/trace-view.png'
+import Accordion from '../../../components/widgets/Accordion.astro'
+import LinkCard from '../../../components/widgets/LinkCard.astro'
+import Figure from '../../../components/widgets/Figure.astro'
+import ProjectCard from '../../../components/widgets/ProjectCard.astro'
+import OpenAiImage from '../../blog/_images/tools-openai-apps.png'
+
+> The agent confirms the refund. The money never arrives.
+
+A tool call can move money, change accounts, write data, or trigger actions. That shifts the responsibility from "good wording" to "safe execution".
+Tools are contracts. And I wrote about what that means for CI in a previous post.
+
+<LinkCard url="/en/blog/ai-systems-architecture"/>
+
+Building on an example I already introduced, a multi-agent system for support cases, this post is about securing agent tools.
+
+## Tools aren't prompts
+
+Once a novelty, now an everyday thing: I can bring tools into my LLM chat window that get things done on my behalf.
+OpenAI, for example, offers a catalog of apps I can plug into my chat - have it build playlists based on my interests, or other things.
+
+<Figure src={OpenAiImage} alt="Apps in OpenAI"/>
+
+So as soon as tools perform actions - and don't just gather information - we have to ask:
+Who is responsible for making sure nothing happens on the user's behalf that the user didn't want? The app vendors who provide these integrations have a duty here.
+And the LLM providers protect users too, by requiring that a request to such a tool is approved at least the first time.
+
+But this post isn't about how to plug such an integration into an LLM provider's chat. No, this is about bringing tools into your own agent solutions.
+Chat interfaces are one possible view - a far more interesting one is AI feature UIs that are integrated much more deeply.
+To stay close to concepts I've already introduced - and because the example fits so well - we'll stick with a chat-based application in this post: the `refund-agent`.
+
+<LinkCard url="/en/blog/ai-evals-ci-pipeline"/>
+
+<Accordion title="A quick description of the refund agent" defaultOpen={true}>
+  The refund agent is part of a multi-agent support team, orchestrated by an orchestrator - and it handles returns and status checks on them.
+  Among other things, the support agent has tools to kick off a return.
+
+  <ProjectCard
+    title="Refund-Agent"
+    description="Multi-agent support system with policy gate, tool safety, and audit trail"
+    appUrl="https://refund-agent.pages.dev"
+    githubUrl="https://github.com/rubenvitt/refund-agent"
+  />
+</Accordion>
+
+> A tool call isn't a smarter answer. It's the start of a state transition.
+
+As soon as tool calls perform actions and change data, the user's state changes - in your own system or in a third-party one.
+
+The prompts express the intent; the API behind the tools guarantees correct behavior. From this point on, prompt quality is no longer enough as a security boundary. The model may propose what should happen - but it must not decide what actually happens.
+Evals check whether the LLM behaves correctly - but not whether the tools work correctly.
+
+If you treat tools like prompts anyway, you're confusing the language surface with system responsibility.
+
+The MCP specification explicitly defines tools as operations with side effects:
+
+<LinkCard url="https://modelcontextprotocol.io/specification/2025-11-25/server/tools"/>
+
+## The most expensive bug is called false success
+A false success happens when the system reports success even though none occurred.
+A red stack trace is rarely your worst problem. Worse is a green chat log on top of a broken backend state.
+
+One example I hinted at in the previous post: the refund agent confirms to the user, politely, precisely, and empathetically,
+that the refund has been initiated. Except it wasn't - the model misread the tool response. The user is disappointed, maybe even saved the chat log,
+and takes it up with the company.
+
+This scenario is a simple example of what "false success" means - and it's certainly one of the most expensive bugs you can end up with.
+Nothing throws in the backend, there's no timeout to speak of, no retry. Just a "done". ChatGPT used to tell me things like this all the time:
+"Sure, I'll prepare your 200-page write-up in the style of a master's thesis and get back to you when I'm done." I'm still waiting for that answer.
+
+Possible causes of a false success include:
+- The tool was never called
+- The tool was called but didn't complete successfully
+- The tool only returned "accepted" or "queued", but the agent says "completed"
+- The response got lost and the system state is unclear
+
+There are obvious ways to address these points: traces with request IDs, domain-level statuses for return values that are clearly communicated to the model,
+and, as with every AI feature in production, evals.
+
+> The real risk isn't that the model says something stupid. The risk is that the system treats that nonsense as truth.
+
+As soon as retries, timeouts, and network errors become relevant failures (that is, once the application is in production), there's one property you can't get around anymore: idempotency.
+
+
+## Idempotency: retries must not cause double effects
+
+Retries happen - especially in production, you should always plan for state-changing actions being executed more than once if users can trigger them directly.
+Between two systems that are designed to work together, there should at least be a conversation about what happens on a retry.
+In this context, AI should be treated as a user - never as a coordinated partner system. In a non-deterministic system, you simply can't control what gets called when.
+
+> Idempotency is the property that turns unreliable transport into reliable effects. If you build side effects without idempotency, you haven't taken the network seriously.
+
+**Reasons for repeated requests in deterministic systems**
+- SDKs retry (e.g. react-query)
+- Spotty mobile reception
+- The user double-clicks
+
+**Reasons for repeated requests in non-deterministic AI systems**
+- The agent gets an unclear or incomplete tool result back & calls the same tool again to be sure
+- Retry logic in the orchestrator on timeouts
+- Context window drift - the agent "forgets" that a tool was already called
+- The agent considers previous tool calls insufficient
+- Circular reasoning loops that call tools multiple times
+- Multi-agent systems where different agents independently call the same tool with the same intent
+
+With non-deterministic systems in particular, a retry often can't be identical to the initial call - so the same endpoint gets called with slightly different parameters.
+That makes idempotency harder to check.
+
+So what matters is not just detecting the duplicate, but returning the semantically equivalent response when the request was repeated.
+
+**Tools & mechanisms for mitigation in deterministic systems**
+- Idempotency keys
+- Deduplication via request hash
+- Debouncing
+- `HTTP 409` Conflict on duplicates
+
+<LinkCard url="https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_prevent_interaction_failure_idempotent.html"/>
+
+So deterministic systems use well-known techniques - but for non-deterministic systems we have a set of options as well:
+
+**Tools & mechanisms for mitigation in non-deterministic systems**
+- **Tool call ledger**: Every call is logged with parameters & timestamp - before each new call, check whether an equivalent call already exists. Not just exact matches, but also similar parameters with a threshold. Tool responses can be cached for the duration of the agent run, so identical calls are served directly
+- **Max call budgets & circuit breakers**: Define upper limits for tool calls in the orchestrator, temporarily block the tool after n calls in m seconds. Don't leave it to the model to decide when enough is enough
+- **Tool result injection**: Keep previous tool results more prominent in the context so the model doesn't miss them - optionally as a scratchpad pattern where the model explicitly writes down which calls it has already made & their results
+- **Structured output for tool decisions**: A schema enforces a justification for every tool call: `{"action": "call" | "reuse_previous", "reason": "..."}`
+- **Shared state for multi-agent systems**: Manage shared tool calls centrally; a coordinator agent approves calls and detects duplicates before the tools are executed
+
+The most striking difference from the world we know is that idempotency no longer applies only to exact duplicates, but to semantic ones - the model can express the same intent with slightly varying parameters.
+
+Idempotency isn't an optimization. It's the bare minimum for safe mutations.
+
+Idempotency makes sure repetitions do no harm. But who is allowed to trigger the call in the first place?
+
+## Auth: the model must not grant permissions
+
+Let's go back to the example from the beginning: the question isn't whether the agent found the triggered refund plausible.
+The question has to be: may this specific subject `[User]` perform this specific action `[Refund]` on this specific object `[ordered item X]`?
+
+That call is not the agent's to make. It has to be defined on the deterministic side and secured by authentication, authorization, and business verification rules.
+
+### Identity checks in chat aren't authentication
+
+<Figure
+    src={verifyCustomerTool}
+    alt="Verify a customer's identity by checking their customer ID and email address. Must be called before processing sensitive operations for unverified customers."
+    caption="System prompt of the verify_customer tool"
+/>
+
+The `verify_customer` tool exists to introduce the user to the agent: name, customer number, email.
+But it never replaces real authentication of the user against the system. It's context enrichment for the model - not a login.
+The user has to authenticate against the system at least once before the agent gets access to personal data or mutating actions.
+
+If you treat the `verify_customer` result as authorization, you've just declared natural-language input to be your security boundary.
+
+<Figure
+    src={authChatExample}
+    alt="The refund agent correctly refuses access to someone else's order and refuses to reset someone else's password - authorization happens in the backend, not in the chat."
+    caption="Authorization in the backend: the agent can only do what the system allows - not what the user demands."
+/>
+
+### Classic API risks hit agent systems harder
+The OWASP API Security Top 10 (2023) was written for classic APIs - but three risks hit agent architectures especially hard, because natural-language interfaces obscure the attack vectors.
+
+<LinkCard url="https://owasp.org/API-Security/editions/2023/en/0x00-header/"/>
+
+#### BOLA - Broken Object Level Authorization (API1:2023)
+The user passes an `order_id` in the chat, and the model sends it to `refund_order`. Without a server-side check that this order belongs to the authenticated user, you get a textbook BOLA case - except the attacker doesn't tamper with an ID in a URL, they pass it in natural language.
+
+The agent has legitimate access to the `refund_order` tool. The only question is whether it may apply it to *this* object.
+
+#### BFLA - Broken Function Level Authorization (API5:2023)
+A support agent responsible for returns must not suddenly be able to call admin or finance functions - not even when a user is logged in.
+If the orchestrator gives the agent a broad toolset, the question has to be: which tools may *this* agent call for *this*  user?
+
+#### Unrestricted Access to Sensitive Business Flows (API6:2023)
+An agent *is* automation - it can fire off dozens of tool calls in seconds without a human checking each one. A `refund_order` tool without rate limiting, without an approval threshold, and without a business rule check on the API side is exactly the weakness OWASP describes here - except that this time the automation isn't a script, it's an LLM.
+
+### MCP security best practices: what the spec requires
+If you connect MCP servers, you should know the security best practices in the specification - several principles apply directly to agent tool architectures.
+
+<LinkCard url="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices"/>
+
+#### No token passthrough
+Token passthrough is an anti-pattern where an MCP server accepts tokens from the client without validating that they were properly issued for the MCP server, and forwards them to the downstream API.
+
+An MCP server can't identify individual clients when tools are called with tokens issued for an upstream service. Logs on the downstream server show requests that seem to come from a different source with a different identity.
+For audit and incident response, that's fatal. That's why MCP servers must not accept tokens that weren't explicitly issued for the MCP server.
+
+Applied to the refund agent, this means: the agent starts with read-only access. Only when a mutating action like `refund_order` is called does a step-up happen - with a narrow scope, short TTL, and a clear audit binding.
+
+Common mistakes according to the MCP specification: using wildcard scopes like `*`, `all`, `full-access`, and bundling unrelated privileges to avoid future permission requests.
+
+#### SSRF risks in OAuth discovery
+This point concerns the client side more, but it matters for homegrown orchestrators: a malicious MCP server can fill OAuth metadata fields with URLs pointing to internal resources - cloud metadata endpoints, local services, or internal network addresses. If you run an MCP client that connects to servers dynamically, you have to validate these URLs before resolving them.
+
+---
+
+Authorization in agent systems isn't a prompt problem - it's a policy and API problem. That leads to concrete responsibilities:
+
+- **Audience binding**: Tokens must be clearly bound to the agent service. No passing user tokens through to downstream APIs.
+- **Principle of least privilege**: Agents only get the tools and scopes they need for their defined area of responsibility. Deny by default, explicit grants per role.
+- **Object-level authorization**: Every mutating action has to check server-side whether the authenticated user is allowed to access the specific object - regardless of what the agent claims.
+- **Function-level authorization**: Not every agent gets to do everything. Tool isolation has to enforce that a support agent can't access admin tools.
+- **Step-up / approval**: For high-risk actions (money, deletions, permissions), a regular token isn't enough; an additional approval step (automated or manual) has to be anchored in the flow.
+
+> An identity check in the chat doesn't replace authorization in the backend; the more critical the business flow, the harder the authorization behind the agent has to be.
+
+Many classic API risks show up in agent systems too. But natural-language interfaces make them easier to overlook - and that's exactly why they need explicit safeguards.
+
+## Audit: without a chain of evidence, automation is just a claim
+As soon as money, accounts, or permissions are involved, having logs somewhere isn't enough: if you let an agent act in production, you need a chain of evidence - not just a conversation.
+
+### Tracing isn't auditing
+The two terms often get mixed up, but they serve fundamentally different needs. Tracing is for debugging:
+where was the bottleneck, why was there a timeout, which service took how long?
+Audit logging, on the other hand, is about accountability: who did what, when, and where, with what result?
+
+In an agent system like the one in the example, this distinction is even more critical, because two truths exist side by side:
+- what the model claimed and
+- what actually happened.
+Tracing can debug why a tool call took 800ms, but only an audit log can prove that the refund was actually triggered - by which user, through which agent, and with which approval.
+
+> A chat transcript explains what was said; an audit log explains what really happened.
+
+### Why chat transcripts don't replace audit logs
+A chat log is the model's view of the world. It contains the agent's wording, not the actual system state. When the agent says "Your refund has been initiated", that's in the transcript - regardless of whether the API actually returned a `200 OK` with status `approved`, or whether the call timed out and the agent interpreted the missing error message as success.
+
+The customer claims the agent promised a refund; the (human) support team sees the promise in the chat history, but no solid chain of approval, tool execution, and commit. This is exactly where an audit log comes in.
+
+With agents in particular, it's important to separate the model's claims from the confirmed domain event. For me, at least two levels belong in the log path: first, the attempted action; second, the committed business effect.
+
+**Useful parts of an audit entry:**
+- Internal RequestID
+- IdempotencyKey
+- `actor` (user, agent, human reviewer, service, ...)
+- Subject (whose record was worked on)
+- ToolName (which tool was the trigger)
+- Arguments (redacted for sensitive data if needed)
+- ApprovalId, if available
+- `outcome` (requested, approved, completed, rejected, ...)
+- `timestamps` (start & end)
+- ModelVersion
+- PromptVersion
+- ToolDefinitionVersion
+
+I don't just want to know that a tool was called, but by whom, on whose behalf, with which approval context, and with what result.
+
+<Figure
+    src={traceView}
+    alt="Trace view of the refund agent: a chronological list of all entries, from user message through route decision and tool calls with gate allow, to the final agent response."
+    caption="Trace of a refund request: every step - from routing through tool calls with gate decisions to the response - can be traced."
+/>
+
+<Accordion title="Full request trace as JSON">
+```json
+{
+  "id": "req_177464138774458839119",
+  "requestId": "req_177464138774458839119",
+  "startedAt": "2026-03-27T19:56:27.744Z",
+  "completedAt": "2026-03-27T19:56:33.339Z",
+  "userMessage": "max@example.com C001",
+  "route": "refund",
+  "entries": [
+    {
+      "id": "1bf8df49-27d3-491a-897d-046888900bcf",
+      "timestamp": "2026-03-27T19:56:27.744Z",
+      "type": "user_message",
+      "data": { "message": "max@example.com C001" }
+    },
+    {
+      "id": "86ab3b56-ef2d-45bc-9673-563349b9539a",
+      "timestamp": "2026-03-27T19:56:27.744Z",
+      "type": "model_call",
+      "data": { "purpose": "orchestrator_routing", "model": "gpt-5.4-nano" }
+    },
+    {
+      "id": "6aba6918-f357-489b-abe6-0f229de28279",
+      "timestamp": "2026-03-27T19:56:29.143Z",
+      "type": "route_decision",
+      "data": {
+        "route": "refund",
+        "reasoning": "The customer wants a refund for an order (originally 4715, then corrected to 4711) and has provided customer details for it."
+      }
+    },
+    {
+      "id": "b042743c-3607-4949-b00f-3271439fab29",
+      "timestamp": "2026-03-27T19:56:29.143Z",
+      "type": "model_call",
+      "data": {
+        "purpose": "refund_agent",
+        "model": "gpt-5.4-nano",
+        "tools": ["lookup_order", "verify_customer", "refund_order", "faq_search"]
+      }
+    },
+    {
+      "id": "ee8ffbc3-3111-4bf0-bb64-3260e2e8fdf0",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_call",
+      "data": {
+        "toolCallId": "tc_17746413904252f85e7ca",
+        "toolName": "lookup_order",
+        "arguments": { "orderId": "4711" }
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "8a0663fb-56b8-479b-8487-5a81e32780d0",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "gate_allow",
+      "data": {
+        "toolCallId": "tc_17746413904252f85e7ca",
+        "toolName": "lookup_order",
+        "decision": "allow"
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "ba0ec84c-d97b-4402-9885-fe349d22d586",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_result",
+      "data": {
+        "toolCallId": "tc_17746413904252f85e7ca",
+        "toolName": "lookup_order",
+        "result": {
+          "found": true,
+          "order": {
+            "id": "4711",
+            "customerId": "C001",
+            "customerName": "Max Mustermann",
+            "items": [{ "productId": "P001", "name": "USB-C charging cable", "quantity": 1, "price": 12.99 }],
+            "total": 12.99,
+            "status": "delivered",
+            "orderDate": "2025-12-01",
+            "deliveryDate": "2025-12-05",
+            "returnDeadline": "2026-06-05",
+            "isRefundable": true,
+            "refundedAt": null
+          }
+        },
+        "sideEffects": []
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "29ae5e1f-0191-480d-861e-858dcbe0bc87",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_call",
+      "data": {
+        "toolCallId": "tc_17746413904254d917aca",
+        "toolName": "verify_customer",
+        "arguments": { "customerId": "C001", "email": "max@example.com" }
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "4c82e285-8fcb-42c3-a407-13dbffd0d22b",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "gate_allow",
+      "data": {
+        "toolCallId": "tc_17746413904254d917aca",
+        "toolName": "verify_customer",
+        "decision": "allow"
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "032cf2c0-c82f-4e94-8e93-5d002d91c839",
+      "timestamp": "2026-03-27T19:56:30.425Z",
+      "type": "tool_result",
+      "data": {
+        "toolCallId": "tc_17746413904254d917aca",
+        "toolName": "verify_customer",
+        "result": {
+          "verified": true,
+          "message": "Customer Max Mustermann verified successfully.",
+          "customer": { "id": "C001", "name": "Max Mustermann", "email": "max@example.com" }
+        },
+        "sideEffects": []
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "3c41df5a-6de6-4657-97c8-1265db9585f9",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "tool_call",
+      "data": {
+        "toolCallId": "tc_1774641391560e185f156",
+        "toolName": "refund_order",
+        "arguments": { "orderId": "4711", "reason": "Customer request: refund of order 4711" }
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "987c4d51-fb88-419e-b9d5-4334f30fd6bc",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "gate_allow",
+      "data": {
+        "toolCallId": "tc_1774641391560e185f156",
+        "toolName": "refund_order",
+        "decision": "require_approval"
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "3617944e-9aa0-4e72-9e14-5843debf2753",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "approval_response",
+      "data": { "toolCallId": "tc_1774641391560e185f156", "approved": true }
+    },
+    {
+      "id": "be7d0276-0f3e-4e92-9c5f-236a1569c2e8",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "tool_result",
+      "data": {
+        "toolCallId": "tc_1774641391560e185f156",
+        "toolName": "refund_order",
+        "result": {
+          "success": true,
+          "message": "Order 4711 has been refunded. Amount: $12.99. Refund ID: fffc4a8c-b5a0-415a-b45d-9710d0e4879f.",
+          "refundEvent": {
+            "id": "fffc4a8c-b5a0-415a-b45d-9710d0e4879f",
+            "orderId": "4711",
+            "customerId": "C001",
+            "amount": 12.99,
+            "reason": "Customer request: refund of order 4711",
+            "timestamp": "2026-03-27T19:56:31.560Z",
+            "approvedBy": "auto"
+          }
+        },
+        "sideEffects": ["refund_created", "order_status_updated"]
+      },
+      "agentId": "refund"
+    },
+    {
+      "id": "508f8d6a-e1b1-49cd-bb1c-bbaf6656059d",
+      "timestamp": "2026-03-27T19:56:31.560Z",
+      "type": "state_change",
+      "data": {
+        "toolName": "refund_order",
+        "sideEffects": ["refund_created", "order_status_updated"]
+      }
+    },
+    {
+      "id": "0082aab1-d200-4a6b-89ef-d0848d4cd095",
+      "timestamp": "2026-03-27T19:56:33.339Z",
+      "type": "agent_response",
+      "data": {
+        "answer": "Refund for **order 4711** was processed successfully. ✅ ...",
+        "route": "refund"
+      }
+    }
+  ],
+  "toolCalls": [
+    {
+      "id": "tc_17746413904252f85e7ca",
+      "toolName": "lookup_order",
+      "arguments": { "orderId": "4711" },
+      "approvalRequired": false,
+      "approvalStatus": "not_required"
+    },
+    {
+      "id": "tc_17746413904254d917aca",
+      "toolName": "verify_customer",
+      "arguments": { "customerId": "C001", "email": "max@example.com" },
+      "approvalRequired": false,
+      "approvalStatus": "not_required"
+    },
+    {
+      "id": "tc_1774641391560e185f156",
+      "toolName": "refund_order",
+      "arguments": { "orderId": "4711", "reason": "Customer request: refund of order 4711" },
+      "approvalRequired": true,
+      "approvalStatus": "approved",
+      "auditEntryId": "ae_1774641391560625d552e"
+    }
+  ],
+  "stateChanges": [
+    { "field": "orders.4711.status", "before": "delivered", "after": "refunded" },
+    { "field": "orders.4711.refundedAt", "before": null, "after": "2026-03-27T19:56:31.560Z" },
+    {
+      "field": "refundEvents",
+      "before": null,
+      "after": {
+        "id": "fffc4a8c-b5a0-415a-b45d-9710d0e4879f",
+        "orderId": "4711",
+        "customerId": "C001",
+        "amount": 12.99,
+        "reason": "Customer request: refund of order 4711",
+        "timestamp": "2026-03-27T19:56:31.560Z",
+        "approvedBy": "auto"
+      }
+    }
+  ],
+  "auditEntryIds": ["ae_1774641391560625d552e"]
+}
+```
+</Accordion>
+
+Versioning the model, the prompts, and the tool catalog isn't a nice-to-have here. If a model update causes a tool to be called more aggressively (or not at all anymore), you need to be able to trace that - and that only works if the versions are in the audit entry.
+
+### RequestIDs: not optional, but the foundation
+Every tool call in production needs a request ID that uniquely identifies it. That's not a new concept, but it's often forgotten in agent systems - because the calls happen in the orchestrator's shadow.
+OpenAI also recommends logging RequestIDs in production environments to make troubleshooting efficient.
+
+> Every mutating action should generate a request ID that is returned both in your own system and in the response to the agent.
+
+### OpenTelemetry: GenAI and MCP semantics for observability
+Observability for AI systems is becoming more and more standardized. OpenTelemetry now defines semantic conventions for generative AI systems - with specific semantics for spans, events, and metrics.
+
+<LinkCard url="https://opentelemetry.io/docs/specs/semconv/gen-ai/"/>
+
+For agent operations, the conventions define span types like `create_agent` and `invoke_agent`, each with standardized attributes for provider, model name, and operation type.
+MCP has its own semantic conventions that provide domain-specific context that generic RPC conventions don't cover.
+
+<LinkCard url="https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/"/>
+
+### Audit logs need protection too
+An audit log that anyone can read or tamper with is worthless. IAM permissions and roles should determine who can view audit log data, and ensure that admin logs are written immutably.
+
+The same principles apply to agent systems:
+
+- **Least privilege**: Only those who need to read the entries get read access. Write access is limited to the service itself. The model has no access to the logs.
+- **Redaction**: Sensitive data has to be masked or hashed.
+- **Retention**: Regulatory or internal retention periods apply to agentic audit logs too.
+- **Queryability**: Audit logs that nobody can search are useless when it counts. Structure in the data matters.
+
+Without an audit trail, agent automation is just a claims machine. The refund agent can tell the user whatever it wants - it only becomes reliable once there's a tamper-proof chain: from the user's request through the approval and the tool call to the business commit.
+
+Audit is the point where *the system seems to work* turns into solid accountability.
+
+## The real contract lives below the model
+The model expresses an intent; the platform checks whether it can be executed. Safety doesn't come from forbidding the model to do something wrong.
+Safety comes from the system not allowing wrong executions in the first place.
+
+### Intent vs. execution
+```
+User Input -> Orchestrator / Agent -> Tool Intent -> Policy Gate -> Domain API -> Audit / Trace / Eval
+```
+Looking at the lifecycle of a tool call, you get the layering shown above.
+Each layer has its own responsibility. From the user input and the context, the model produces a tool intent - the proposal to call a specific tool with specific parameters.
+But the proposal isn't the execution yet. In between sits a policy gate: a deterministic layer that decides whether this particular call is allowed & correct from a business perspective.
+
+The refund agent doesn't get the "power" to trigger a refund directly - it gets the ability to **propose** a refund attempt that can be checked against business rules.
+
+> The LLM doesn't execute, the system does - so the system carries the responsibility.
+
+### What the policy gate checks
+The policy gate isn't a single `if` statement; it's a layer of checks that covers several aspects:
+- **Schema validation**: The tool call's parameters must match the defined schema exactly (structured outputs). If the schema is violated, the call is rejected before any business logic runs.
+- **Allowed tool**: Not every agent may see or use every tool (pass `allowed_tools` via the API). Because only a subset of tools is passed along, tool isolation happens at the API level here.
+- **Approval for allowed actions**: Tool calls can run without approval by default - or request approval from the user.
+- **Object & function permissions**: as described in the auth section: does the user have the right to perform this action on this object?
+- **Idempotency**: Has the call already been executed with these (or similar) parameters?
+- **Domain invariants**: Business rules the model can't know - refund windows, the item must be delivered, thresholds for refunds, ...
+
+<Figure
+    src={approvalFlow}
+    alt="The refund agent goes through an identity check, a permission check, and an approval dialog before the refund is triggered."
+    caption="Policy gate in action: identity check, object permission, and approval dialog - before the tool call is executed."
+/>
+
+<Figure
+    src={refundSuccess}
+    alt="Successful refund with refund ID, amount, and reason."
+    caption="Only after approval: the refund is confirmed with a unique refund ID, amount, and reason."
+/>
+
+### Read-only & write tools should be separated
+Read-only tools can usually run with lower approval levels, since they don't change state - and a faulty call has only limited impact.
+
+Mutating tools, on the other hand, need higher approval levels: narrower scopes, approval flows, idempotency keys & audit entries.
+Especially with unknown MCP servers, if they get wired into the system, you should always assume mutating tools and explicitly ask the user; tool descriptions can contain any text, and what really happens is hidden in the code behind them.
+
+That brings us to another important point: tool descriptions aren't a security model. While deterministic function calls like `getWeather("NYC")` (see the linked article from Anthropic) always behave the same, a non-deterministic system can take different paths for equivalent requests.
+A tool's description steers when the model proposes it, but it doesn't control whether execution is allowed. Rules in tool descriptions are helpful context, but not a security boundary.
+If the model ignores or misreads the description, the system still has to block the call.
+
+> Tool access without a policy gate is just direct access with a nice bow on it.
+
+### Tool isolation per agent
+In multi-agent systems, every agent gets a defined role - and with that role, a defined toolset.
+So the refund agent has access to certain tools, but not to the rest, which other agents can use. This isolation has to happen at the platform level, not through prompt instructions.
+
+If you connect the [GitHub MCP server](https://github.com/github/github-mcp-server?tab=readme-ov-file#available-toolsets), for example, the context (without a selected toolset) gets loaded with a huge number of tools that, together with a full-access token, hand the agent a lot of freedom right away (plus a full context) - but that's usually not what you want, and it has to be restricted at another level.
+Any tool the agent can see - even if the prompt says it *shouldn't* call it - can in principle be called.
+
+<LinkCard url="https://www.anthropic.com/engineering/writing-tools-for-agents"/>
+
+The more critical the possible side effects, the smaller the model's responsibility should be. The prompt can improve behavior; the contract underneath prevents the damage.
+
+## Evals for side effects: don't just grade text, secure the effect
+When it's no longer enough to grade answers and state changes need to become testable, evals are the tool of choice. With side effects, the definition of done isn't the model's answer, it's the secured domain effect.
+This part builds on the eval topic from the last post and assumes some understanding of the kinds of evals available, including for tool use.
+
+<LinkCard url="/en/blog/ai-evals-ci-pipeline"/>
+
+The most important regression here is rarely linguistic. It's operational.
+
+Model upgrades make the demo prettier - but suddenly a tool gets proposed earlier or more aggressively.
+That's exactly when you find out whether you tested answers or contracts.
+That's exactly why every eval set should also take the model version as a parameter. If a model upgrade leads the agent to call tools where it used to ask a follow-up question, that has to become visible before it goes to production.
+
+Evals for agent tools belong in the CI pipeline (CE). Not as an occasional manual check, but as a gate before deployment. Every incident where a tool call was executed or communicated incorrectly should become a new regression test. According to OpenAI, there are several eval suites; this approach is a (two-part) regression suite: a collection of already fixed cases and a rolling discovery set of fresh production failures.
+
+<LinkCard url="https://developers.openai.com/cookbook/examples/realtime_eval_guide"/>
+
+From this you can derive a pattern, and over time the suite grows with the product:
+```
+Incident -> Reproduce -> Label -> Eval case -> CE
+```
+
+A tool-using agent only becomes reliable once its side effects are testable. Which brings us back to what good software engineering has always needed: contracts, tests, and data.
+
+
+## Definition of done: when an agent system is production-ready
+In the end, the relevant question isn't whether the AI feature or the agent looks impressive, but whether its tooling is built to hold up.
+For agent actions in production, a good prompt isn't enough; you need a minimum of system guarantees.
+
+> Production readiness isn't decided by the prettiest demo, but by how robust the underlying contract is.
+
+The previous sections can be distilled into a compact DoD. An agent tool is production-ready when it meets the following criteria:
+- Strict tool schema: The tools' parameters are defined via a JSON schema, and validation is enforced - not optional. Invalid inputs are rejected before they ever reach the business logic.
+- Allowed tools per agent: Every agent has an explicitly defined toolset, least privilege. An agent sees its own tools, but not anyone else's - no agent sees everything.
+- Idempotency for mutations: Every mutating tool call carries an idempotency key. Repeated requests don't produce double effects. Semantically equivalent calls are detected and deduplicated as well.
+- Permission checks on function and object: Two checks, not one. May the agent call the function (BFLA), and may the authenticated user access this specific object (BOLA)? Both have to be checked server-side, regardless of what the agent claims.
+- Approval for high-risk actions: Mutations that move money, delete data, or change permissions need additional approval steps. Whether automated through business rules or manual through a human reviewer - the approval has to be anchored in the flow, not in the prompt.
+- Audit trail: Every tool execution leaves a tamper-proof audit entry with actor, subject, tool, arguments (or hash), outcome, timestamps, and version information. The audit trail itself is protected, queryable, and has a defined retention.
+- Request IDs / tracing: Every tool call has a unique request ID that correlates across your own system, the audit log, and ideally the model provider too. OpenTelemetry conventions provide a standardized framework for this.
+- Evals: Code-based evals check the operational guarantees: idempotency, authorization, approval, audit entries, false success detection. LLM judges only come after that - and for communication quality, not for system behavior. The eval suite runs in the CI pipeline and grows with every incident.
+- Clear domain statuses: Tool responses use unambiguous, domain-defined statuses. No free text the model can interpret - and the model has to be able to tell them apart, because the schema enforces it.
+
+This definition of done isn't an isolated checklist. It ties directly into the core topics of the last few posts. **Contracts** define the agreement between the deterministic and the non-deterministic system: the schema defines the interface, the policy gate enforces the rules, the domain API guarantees the effect. Tool descriptions steer; the contract prevents damage. **Evals** make the system reliable, so the production environment isn't secured by manual QA alone, but by automated, repeated tests against operational guarantees. **Observability** keeps the system from turning into a black box in production and creates traceability through traces, audit logs, and request IDs.
+
+All of this sounds like a lot of effort, but none of it is specific to AI. Idempotency, authorization, auditing, schema validation, evals (cf. tests). The only difference: with classic APIs the caller is deterministic; with agent tools it isn't.
+
+The closer an agent gets to risky areas like finance, personal data, or permissions, the less security can live in the prompt.
+
+If you ship agent actions without properly solving idempotency, auth, and audit, you're not shipping automation - you're shipping risk.
+
+Tool use is the moment prompt engineering turns into systems engineering. This is exactly where an AI feature stops being a prompt and starts being software.

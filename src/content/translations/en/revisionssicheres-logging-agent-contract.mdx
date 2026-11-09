@@ -1,0 +1,535 @@
+---
+title: "A Prompt in the Wiki Is Not Evidence: Audit-Proof Logging and the Agent Contract in Regulated Environments"
+description: "The Agent Contract is the intended state, the audit-proof log is the proof of what actually happened. Without the second, the first is just a claim. What DORA, GoBD and the upcoming MaRisk demand right now."
+date: 2026-07-06
+tags: ["ai", "software-engineering", "compliance", "observability", "security"]
+image: ../../blog/_images/revisionssicheres-logging-agent-contract/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> The Agent Contract is the intended state. The audit-proof log is the proof of the actual state. Without the second, the first is just a claim.
+
+Piece by piece, this series has assembled an AI system you can actually take responsibility for: contracts instead of free text, evals instead of hope, auditable tool calls, observability, release discipline. What has been missing so far is the moment someone from the outside demands proof that all of this isn't just written down in the wiki, but actually took effect for every single transaction.
+
+Nowhere does that moment get as sharp as in financial regulation. A bank supervised by BaFin (Germany's financial regulator), a credit score, an insurance rate, and months later the question of which model in which version made that decision, and whether you can prove it. The Digital Operational Resilience Act (DORA) has applied directly since early 2025, the GoBD (Germany's rules for proper electronic bookkeeping and record retention) with their tax-law immutability requirements apply anyway, and the Minimum Requirements for Risk Management (MaRisk) are catching up on models. The postponement of the EU AI Act has just been agreed (it hasn't been published yet), which leads many to the wrong conclusion that there's still time.
+
+This post pulls the series together into one core artifact and pairs it with the log that proves it was followed. Two artifacts, one piece of evidence, and one word in the title that doesn't appear in a single law.
+
+## The auditor asks "why?", and a prompt in the wiki is no answer
+
+Imagine your AI feature assessed an applicant's creditworthiness eight months ago and rejected her application. Or it calculated the premium for a health insurance policy. Today someone is sitting across from you who wants to understand that decision: a BaFin examiner during a special audit, or the affected person herself, who is challenging an automated individual decision under Art. 22 GDPR and wants to know how it came about.
+
+The question is the same no matter who asks it: which model made this decision, in which version, with which prompt, with which tools and on which data, and can you prove it?
+
+This is where the typical answer falls apart. "The prompt is in the wiki." "The model was GPT-something, we updated at the end of last year." "The tools? I'd have to check the code." Each of these statements is a claim about a state that may no longer exist today. The wiki entry has been edited twenty times since then, the model alias has long pointed to a newer version, the tool catalog shifted with the last deploy. What's missing is proof that it actually was that way at the time of the decision.
+
+I already pointed out this gap in the previous post: without a chain of evidence, an agent action is just a claim. Back then it was about refunds and support agents. Here it's about a regulated credit decision, and an auditor forgives claims far less readily than an annoyed customer.
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+
+Which brings us to the thesis that carries this entire post. I call the bundle of model, version, prompt, tools and data boundaries the Agent Contract: the intended state a feature is allowed to run against. That's an engineering framing, not a term from any legal text. The contract describes what should happen. The audit-proof log is the proof of the actual state: the record that at this point in time, for this case, it really did happen that way. Without the second, the first can't be proven.
+
+Why creditworthiness and insurance rates of all things? Because those are the cases legislators look at most critically.
+
+<Callout type="info">
+The running example for this post: an AI feature at a BaFin-regulated bank or insurer that either assesses the **creditworthiness** of a natural person or prices a **life or health insurance** policy. The EU AI Act explicitly lists both as high-risk applications in Annex III: point 5(b) for evaluating the creditworthiness of natural persons, point 5(c) for risk assessment and pricing in life and health insurance. These are exactly the cases with the heaviest burden of proof, which is why they run through every chapter.
+</Callout>
+
+One word in this thesis carries more weight than it admits, though: "audit-proof". I use it because everyone in our industry immediately knows what it means. But as soon as a lawyer is in the room, things get complicated. So before we build a log like that, we should clarify what the word actually means. And whether it's even a word that appears in the law.
+
+## What "audit-proof" really means, and what it doesn't
+
+Let's start with something uncomfortable. The word "audit-proof" (in German, *revisionssicher*), which we've just been throwing around so casually, doesn't appear in a single law. I searched the full texts: GoBD, AO (the German Fiscal Code), HGB (the German Commercial Code), DORA including the relevant technical RTS, the EU AI Act, even the ZPO (the German Code of Civil Procedure). Zero hits. It's a term from the world of archiving and document management systems, a catch-all word from practice that no auditor can hold against you as a legal standard.
+
+What they can hold against you is something else, and it's called immutability: § 146(4) AO for tax, § 239(3) HGB for commercial law. That's the binding obligation. "Audit-proof" is the colloquial packaging around it. If you carry it into a DORA or BaFin context without flagging that, you leave yourself professionally open to attack.
+
+<Callout type="warning">
+Two central terms in this post are not legal terms: "audit-proof" (*revisionssicher*) and "Agent Contract". Neither appears in any of the relevant texts: not in the GoBD, AO, HGB, DORA, the RTS, the EU AI Act, nor in the ZPO. The binding obligation is called immutability (§ 146(4) AO, § 239(3) HGB). Where I write "audit-proof" or "Agent Contract", I mean our engineering framing for that obligation, not a quote from the regulator.
+</Callout>
+
+The difference isn't hair-splitting. It decides what your log has to deliver. "Append-only" is a property of the storage medium: written once, never overwritten. Immutability in the sense of the GoBD is a property of the process. Margin number 110 says so explicitly: it has to be ensured "in terms of hardware ... as well as software ... as well as organizationally". And then comes the sentence that kills the idea that a log file is enough: "Storing data ... in a file system generally does not meet the requirements of immutability unless additional measures are taken."
+
+So an append-only file is a building block, not evidence. And no, you can't buy your way out of this either. There's no such thing as an officially "GoBD-certified" product; margin numbers 180/181 make clear that certificates and attestations from third parties are not binding on the tax authorities. The "audit-proof" sticker on a vendor landing page is a marketing statement. In the end, you're the one who has to prove that your process upholds immutability.
+
+That leaves the second term I make a big deal of in this post: "Agent Contract". It doesn't appear in any legal act either. [Michael Seel](https://michaelseel.com/blog/2026-04-01-ai-systems-architecture-governance) and I introduced it for our work on AI systems; the regulator doesn't know it. DORA calls its contracts "contractual arrangements on the use of ICT services", and that doesn't quite capture an agent's decision. We need a word for the intended state, and "Agent Contract" is ours. The architecture behind it delivers on the binding obligations: immutability, logging, traceability, for a feature like our credit scoring from the last chapter.
+
+I'm putting this honesty up front on purpose. The obvious counter to this entire post is "you're inventing a requirement for yourselves". For the two words, that's actually true. The obligations behind them I didn't invent. They're in the law; I just gave them a usable name.
+
+<Accordion title="Where immutability is written into law">
+- **§ 146(4) AO**: the core of immutability in tax law. An entry or record must not be altered in a way that makes the original content no longer determinable.
+- **§ 239(3) HGB**: the same obligation for commercial law.
+- **GoBD margin no. 107 et seq.**: specifies immutability as a process requirement. **Margin no. 108**: nothing may be "overwritten, deleted, changed or falsified without being marked as such". **Margin no. 110**: in terms of hardware, software and organization; a plain file system "generally does not" suffice. **Margin no. 111**: the change history itself must also not be modifiable after the fact.
+- **GoBD margin no. 180/181**: no product is officially certified; third-party attestations do not bind the tax authorities.
+
+The GoBD is an administrative regulation, not a law. But the tax authorities apply it, and § 146 AO / § 239 HGB behind it are binding.
+</Accordion>
+
+That leaves the question of what such a contract concretely consists of, so that it becomes more than a pretty word.
+
+## The Agent Contract: the intended state as one versioned artifact
+
+The last chapter marked "audit-proof" and "Agent Contract" as my engineering language and boiled the actual legal obligation down to its core: immutability. But that doesn't yet answer what should be immutably recorded. What is the intended state whose fulfillment the log later has to prove?
+
+If you've been following the series, you already know the five building blocks, just scattered across several posts. The output schema is the contract between model and application. Then there's the prompt, the set of tools the agent is allowed to call, and the model including its provider. The fifth building block is the eval set, which decides whether a version is good enough. Together they determine how an AI feature behaves.
+
+<LinkCard url="/en/blog/ai-systems-architecture"/>
+
+<LinkCard url="/en/blog/ai-evals-ci-pipeline"/>
+
+In ai-rollout-canary-shadow I already brought this bundle together once, as a release manifest: all artifacts with hashes and pins on one Git tag, so that a rollback becomes atomic. Here I give the bundle a name and a role. I call it the Agent Contract: our term from engineering practice for the complete intended state of an AI feature in one versioned artifact.
+
+<LinkCard url="/en/blog/ai-rollout-canary-shadow"/>
+
+Why bundle at all? Because each of the five parts changes behavior. A new prompt, an additional tool in the allowed set, a model update at the provider, and the feature decides differently afterwards. So a new contract version means a change in behavior. And a change in behavior in a feature that assesses a person's creditworthiness is not something I want to roll out silently. It gets versioned, it goes through a review, and it runs against the eval set before it sees production.
+
+Engineering supplies the form: schema, pins, hashes, the approval path. The standards come from the business side. The eval set is the domain contract on which credit cases must be decided correctly, which combination of score and justification counts as an error, and above which pass rate a version may be released. Those thresholds are set by the team that ultimately answers for the credit decision, not by the team building the agent. In ai-evals-ci-pipeline I called this the business unit's contract, and in the Agent Contract it's the building block engineering isn't allowed to set on its own.
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="si-title si-desc" class="w-full max-w-full h-auto">
+<title id="si-title">Agent Contract and audit-proof log</title>
+<desc id="si-desc">At the top, the Agent Contract as the intended state, made up of five building blocks: output schema, prompt, allowed tools, model and provider, eval set. An upward arrow connects the lower element to the contract and is labeled "proves compliance with". At the bottom, the audit-proof log as the proof of the actual state: one immutable entry per transaction with resolved model, prompt version, tools and eval baseline.</desc>
+<text x="360" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">THE AGENT CONTRACT · the intended state</text>
+<rect x="12" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="76.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Output schema</text>
+<text x="76.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">JSON contract</text>
+<rect x="154" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="218.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Prompt</text>
+<text x="218.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">versioned</text>
+<rect x="296" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="360.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Allowed tools</text>
+<text x="360.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">Allowlist</text>
+<rect x="438" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="502.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Model/Provider</text>
+<text x="502.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">dated pin</text>
+<rect x="580" y="48" width="128" height="78" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="644.0" y="86" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Eval set</text>
+<text x="644.0" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="10" fill="var(--color-text-secondary)">domain contract</text>
+<line x1="360" y1="204" x2="360" y2="144" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 360 132 L 352 146 L 368 146 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<text x="374" y="172" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text-secondary)">proves compliance with</text>
+<rect x="12" y="210" width="696" height="74" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="360" y="244" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">THE AUDIT-PROOF LOG · proof of the actual state</text>
+<text x="360" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">one immutable entry per transaction: resolved model, prompt version, tools, eval baseline</text>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">The Agent Contract bundles five building blocks into the intended state of an AI feature. The audit-proof log holds the actual state up against it for every single transaction, which makes it the only evidence that the contract was actually followed.</figcaption>
+</figure>
+
+That sounds like an organizing idea for the wiki. But it's long been wired into tools: the common prompt management systems bundle model, parameters, schema and tools as one unit and version them together. Langfuse merges model parameters, the structured output schema and the tool definitions into one config object which, according to the docs, is "versioned together with the prompt". Every generation carries a handle to the prompt version it came from.
+
+Humanloop draws the line more sharply: every change to the template, model, parameters or tools automatically creates a new version. That's the lock against silent contract drift, where a prompt changes and nobody notices. MLflow, for its part, separates the immutable version from the movable alias. The version gets a sequential number and is never overwritten, an alias like champion points to the production version, and the lineage points back to the run that built it.
+
+Versioning alone doesn't prove that the version in production is the one that passed the eval gate. That step comes from signing the bundle. OpenSSF Model Signing packs the artifacts into a signed Sigstore bundle with a DSSE envelope and an in-toto statement in which each artifact appears as a pair of path and digest, secured keyless via the Rekor transparency log with an inclusion proof. Together with a SLSA provenance attestation, you get machine-verifiable evidence: this bundle was built in CI run X from these inputs and gated against eval set version Y. Not "we tested it, honest", but a signature a machine can verify.
+
+Here's what that looks like as an artifact of the intended state: the same pattern as the release manifest, extended with the fields that turn a configuration into evidence. That means a signature, the eval baseline it was gated against, and the approval path.
+
+<CodeTabs labels={["YAML"]}>
+```yaml
+contract: credit-scoring@4.2.0
+output_schema:
+  ref: schemas/credit-score-v4.json
+  sha256: 7c4a9e...
+prompt:
+  version: score-explainer@17
+  sha256: 3a1f7d...
+allowed_tools:
+  manifest: tools.pinned.json          # fetch_schufa_report, compute_dti_ratio, fetch_income_history
+  sha256: 9e8b21...
+model:
+  provider: anthropic
+  id: claude-sonnet-4-6-20260215        # dated snapshot, not -latest
+  pinned_at: 2026-06-15
+eval_baseline:
+  set: evals/credit-eval-2026-02.jsonl
+  version: v7
+  gate: thresholds/credit-score-v3.yaml
+signature: sigstore/credit-scoring-4.2.0.bundle   # DSSE + in-toto, Rekor
+approved_by:
+  gremium: model-risk-committee/2026-06-28
+  owner: head-of-credit-risk
+```
+</CodeTabs>
+
+The effort for this one YAML file is justified by a principle that's older than any LLM. Tax law knows it as program identity: over the entire retention period, you must be able to show that "the process described in the documentation fully corresponds to the process used in practice", as margin number 154 of the GoBD puts it. And the GoBD also says how to achieve that: "if the changes are versioned and a traceable change history is maintained." That's an administrative regulation on tax law, not DORA. The idea still transfers cleanly to the Agent Contract: the documented version must match the running one, and versioning is the proof of that.
+
+But the contract needs more than a version number. It needs someone to approve it. DORA has been directly binding here since January 17, 2025, and Art. 5(2)(a) is unambiguous: "The management body shall bear the ultimate responsibility for managing the financial entity's ICT risk." That responsibility has to land in the artifact, which is why contract.yaml contains an approved_by with a named committee and an owner. "Owner" is my word, not the regulation's; DORA talks about the management body. The consequence stays the same: a contract version that hasn't gone through an approval path is no good as the intended state. It's a draft that accidentally ended up in production.
+
+With that, you can pin down almost everything that defines how the agent behaves. The schema, the prompt, the allowed tools, the eval set: everything gets hashed, signed and bound to an approval. Even the model weights, if you run them yourself, because Model Signing also hashes the weights file and puts it into the same evidence. Almost everything. One building block in contract.yaml carries no sha256, just a version string: the model behind the API.
+
+## Why the contract can't sign the model, and what follows from that
+
+"Almost everything": that was the caveat the last chapter ended on, and now it's all about that "almost". The contract as a versioned bundle pulls the prompt template, output schema, tool definitions, parameters like temperature and max_tokens, and the eval set under one shared hash. Each of these artifacts is a file or a serializable object, and anything that's a file can be hashed and signed.
+
+OpenSSF Model Signing shows how far that goes: a signed Sigstore bundle with a DSSE envelope and an in-toto statement whose subjects are pairs of file path and digest, secured keyless via a Sigstore/Rekor transparency log. With self-hosted weights, the same process applies: the weights artifact is on your disk, you compute the digest, you sign it. Done.
+
+The break comes with the hosted model. If you run the creditworthiness assessment through a provider API, you don't own the weights. They live on someone else's infrastructure, and you never get whatever is actually loaded there at request time as a file you can hold. Model Signing hashes local artifacts; an artifact without local access has no digest you could sign.
+
+This is my conclusion, not a vendor quote: for the hosted model part of the contract, there is no hash. The only pin is the version string, and custody of the weights stays with the provider. They decide which weights sit behind the string, and they can deprecate the snapshot on a deadline.
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 720 296" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="hs-title hs-desc" class="w-full max-w-full h-auto">
+<title id="hs-title">What can be signed in the contract, and what can't</title>
+<desc id="hs-desc">On the left, a box with six artifacts that can be hashed and signed: output schema, prompt template, allowed tools, sampling parameters, eval set and self-hosted weights. On the right, a separate box with the hosted model, which cannot be hashed: only the version string remains, custody of the weights lies with the provider, so the log is the only proof of the actual state.</desc>
+<text x="360" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="14" fill="var(--color-accent)">What the contract can pin down, and the one gap</text>
+<rect x="12" y="46" width="440" height="234" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="32" y="74" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Hashable & signable</text>
+<text x="34" y="110" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="110" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Output schema</text>
+<text x="34" y="137" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="137" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Prompt template</text>
+<text x="34" y="164" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="164" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Allowed tools (allowlist)</text>
+<text x="34" y="191" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="191" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Sampling parameters</text>
+<text x="34" y="218" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="218" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Eval set</text>
+<text x="34" y="245" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">✓</text>
+<text x="56" y="245" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="12" fill="var(--color-text)">Self-hosted weights</text>
+<rect x="470" y="46" width="238" height="234" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="490" y="74" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Not hashable</text>
+<text x="492" y="116" text-anchor="start" font-family="system-ui, sans-serif" font-weight="700" font-size="14" fill="var(--color-accent)">✗</text>
+<text x="514" y="116" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="var(--color-text)">Hosted model</text>
+<text x="490" y="150" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">Only the version string.</text>
+<text x="490" y="170" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">Custody of the weights</text>
+<text x="490" y="186" text-anchor="start" font-family="system-ui, sans-serif" font-weight="400" font-size="11" fill="var(--color-text-secondary)">stays with the provider.</text>
+<text x="490" y="222" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">The log is the only</text>
+<text x="490" y="238" text-anchor="start" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="var(--color-accent)">proof of the actual state.</text>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Prompt, schema, tools, parameters, eval set and self-hosted weights can be hashed and signed. The hosted model can't: all that's left is the version string, and the weights sit with the provider. The log fills this gap.</figcaption>
+</figure>
+
+If the string is the only thing you can pin down, you'd better at least set it correctly. Never the floating alias, always the dated snapshot. I've touched elsewhere on why models need to be pinned at all: a silent provider update would otherwise shift behavior overnight.
+
+<LinkCard url="/en/blog/die-beste-antwort-ist-keine-zielgroesse"/>
+
+Anthropic puts it unambiguously: "Every Claude model ID is a pinned snapshot", a fixed snapshot and not an evergreen pointer. The more important half-sentence is right next to it: "weights are fixed for a given ID, but the serving infrastructure ... can change." The weights are fixed for an ID, the serving infrastructure isn't. A pin guarantees you fixed weights, but not bit-identical behavior.
+
+At OpenAI, the same separation runs under different names: dated snapshots versus the floating `-latest`. If you write `-latest` into the contract, you've pinned an alias and nailed down nothing. At least you get reaction time: for GA models, OpenAI announces a deprecation at least 6 months in advance.
+
+Azure OpenAI is the real trap, because here the default works against you. A deployment with the policy "Upgrade once new default version becomes available" will, in the docs' own words, "automatically update to use the new default version". The documented example: gpt-4o moves from 2024-08-06 to 2024-11-20, announced at least two weeks ahead. Two weeks. If you leave this policy in place, you're not pinning anything; you're running a model that swaps itself out underneath the running contract. In the worst case, the model version pricing the life insurance policy on Monday isn't the one your eval set was still green against on Friday.
+
+That's why declaring the snapshot in the contract isn't enough. For every call, you have to log the model string the provider actually returns in the response. The contract records which model should have served the request. Whether it actually was that model, you only know from the log.
+
+<Callout type="tip">
+Model pinning in one sentence: never pin the alias (`-latest`, `champion`, the Azure default), always pin the dated snapshot. And because even the snapshot is only a declaration in the contract, also log the model string the provider actually returns for each call.
+</Callout>
+
+This is where the intended state and the actual state part ways. The contract can pin down prompt, schema, tools and eval set, just not the model that actually computes the assessment in the end. No signature bundle covers this gap, because the artifact that could be signed is missing. What's left is the evidence in the log: which model served which request, and what else has to go into it so that this evidence holds up.
+
+## The audit-proof log: proof of the actual state
+
+The last chapter laid bare the uncomfortable part: the model portion of the contract can't be signed. Nobody can hash hosted weights; if you call an API, you don't own them, and the only anchor left is the version string. Which leaves one question open: if I can't cryptographically bind the intended state to the model that was actually served, how do I prove what really ran?
+
+The contract, as I call it here (an engineering framing, not a legal term), describes the intended state: which model, which prompt, which tools, which approval against which eval baseline. The log is the proof of the actual state. If the contract says model X and the log says model Y, the log is what counts in front of the auditor. And a log that's supposed to carry this proof is more than a trace for debugging.
+
+### Conformance is a log question
+
+Whether a run conformed to the contract breaks down into a series of yes/no questions put to the log. Did the runtime satisfy the agreed output schema? Did it call only the two approved tools and not a third one? Did the request run against the dated model snapshot specified in the contract, or against a different one? Was this contract version even approved against the current eval baseline?
+
+A trace can't answer that. A trace shows why a tool call took 800 ms; it's optimized for debugging, not accountability. I drew this distinction in more detail in "Tools Aren't Prompts": tracing is not auditing.
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+
+That post already laid out the building blocks of an audit entry: internal RequestID, IdempotencyKey, `actor`, ToolName, ApprovalId, `outcome`. For proving conformance, that's not enough. What's missing are the fields that name the intended state in the first place: the `contract_version` and, more importantly, the resolved model and the resolved prompt version. Not the label "production", but the value "production" pointed to in this one call.
+
+### One log entry, line by line
+
+Let's take the running example: an agent that assesses an applicant's creditworthiness, a high-risk system under EU AI Act Annex III point 5(b). A single conformance entry could look like this:
+
+```json
+{
+  "request_id": "req_9f3a7c21b0e84d55",
+  "idempotency_key": "score-APP-000883-2026-07-14",
+  "timestamp": "2026-07-14T09:41:07.204Z",
+  "actor": "agent:bonitaets-scorer",
+  "subject": "application:APP-000883",
+  "contract_version": "credit-scoring@4.2.0",
+  "resolved_model": "claude-sonnet-4-6-20260520",
+  "resolved_prompt_version": "score-explainer@17#sha256:7b9c…e1",
+  "tools_called": ["fetch_schufa_report", "compute_dti_ratio"],
+  "tools_allowed": ["fetch_schufa_report", "compute_dti_ratio", "fetch_income_history"],
+  "schema_valid": true,
+  "eval_baseline": "credit-eval@2026-02 / claude-sonnet-4-6-20260215 (214/214 passed)",
+  "approval_id": null,
+  "outcome": "completed"
+}
+```
+
+Most of the fields are bookkeeping: who (`actor`), on whose record (`subject`), with what result (`outcome`). The fact that `tools_called` is a subset of `tools_allowed` already answers one of the conformance questions. Another line is where it gets interesting. `resolved_model` reads `claude-sonnet-4-6-20260520`, a dated snapshot from May. The `eval_baseline` names the snapshot that 4.2.0 was approved against: `claude-sonnet-4-6-20260215`, February. The model that passed the baseline is a different one from the model that answered.
+
+That's the silently switched model string. The model ID is a pinned snapshot, but the alias on top of it (a "production" pointer, an Azure default) is movable and can shift underneath you. Had the log stored only "production", the drift would be invisible. Because it records the resolved, dated value per call, the break between intended and actual state shows up. This is what I call the caching staleness trap: a label is convenient and doesn't lie, it just tells you nothing about what it pointed to yesterday.
+
+For the prompt side, the same pattern exists as an off-the-shelf tool. Langfuse attaches a `langfuse_prompt` handle to every generation which, in the docs' words, "links this generation to the prompt version". That means the specific, immutable version, not a movable name. `resolved_prompt_version` in the log is the same back-pointer, written out as version number plus hash.
+
+### Why a sample isn't enough
+
+This is where debug logging and the conformance log part ways. An audit-proof log must not be a sampled subset. "We log 1% for debugging" is a perfectly legitimate sentence for traces; for proof of the actual state, it's fatal. A sample proves nothing about the one credit application that later lands on the auditors' desk.
+
+The principle isn't new; it has been in tax law for years. In margin number 36, the GoBD require individual recording: business transactions are to be recorded "completely and without gaps". I'm deliberately carrying this principle over into the conformance context as an engineering stance. Whether a credit assessment counts as a business transaction for tax purposes isn't the point. The point is: evidence that only knows every hundredth run isn't evidence.
+
+This doesn't contradict the break-glass and sampling logic from "Observability for AI features". That was about content volume; full prompts and completions have no business being in every trace and belong behind a controlled lane. What counts here isn't the volume of content, but the completeness of the conformance metadata. Every run produces its entry. What goes into the entry is a separate question.
+
+### The binding framework
+
+Up to here, it's engineering. The binding part comes from DORA, more precisely from the regulatory technical standards. Art. 12 of the RTS on ICT risk management (Commission Delegated Regulation (EU) 2024/1774, "Logging") demands two things that aim directly at this log. First, measures to protect logging records "against tampering, deletion and unauthorised access", for data at rest, in transit and in use. Second, the "synchronisation of the clocks of each of the ICT systems … upon a documented reliable reference time source". So the `timestamp` above isn't a decorative field; the time source behind it has to be documented and reliable. DORA applies directly, without national implementation.
+
+What Art. 12 doesn't say: anything at all about models, model versions or inference. The RTS text is technology-neutral. Turning it into "log the model version" is interpretation. BaFin makes that interpretation in its guidance document when it suggests "complete logging of AI decisions, model versions and training data". And it only suggests; it doesn't require anything: the guidance describes itself as "non-binding assistance" and "not a binding interpretation of DORA". So the fields above operationalize a binding protection and timekeeping requirement; they're not a quote from the law.
+
+Art. 12 deliberately doesn't name a fixed retention period. The financial entity sets the retention period itself and justifies it based on risk and purpose. What that means for durability in court is coming up shortly.
+
+### What doesn't belong in the log
+
+Completeness of the conformance metadata doesn't mean everything goes in, though. The SCHUFA report (from Germany's main credit bureau), the income, the applicant's name: that's the data that has no business in the trace. In "Observability for AI features" I described what doesn't belong in the trace; the same boundary applies here. The conformance proof needs the `contract_version` and the resolved model, not the plain text of the credit file. We'll resolve this tension between the duty to provide evidence and data protection (GDPR) later, once the map of regulatory regimes is in place.
+
+<LinkCard url="/en/blog/observability-ai-features"/>
+
+A complete, correctly linked, cleanly timestamped log is the proof of the actual state, provided it's still accurate. But a log that can be edited after the fact proves nothing at all.
+
+## From append-only to a log that holds up in court
+
+The last chapter ended on an uncomfortable sentence: a log that can be edited proves nothing. It records what happened, but it doesn't hold up. Not in front of an auditor who wants to know three years later why this credit application was rejected by a machine, and certainly not in front of a court where the rejected person is suing and claiming the entry was doctored after the fact.
+
+"Append-only" in application code is, for now, just a claim. A flag in the database, a trigger that forbids `UPDATE` and `DELETE`, an ORM without an update method. All well-intentioned, all inside the same trust boundary that also holds the person with DB admin rights. To turn the claim into evidence, several layers have to come together, and none replaces another: a storage medium that doesn't delete; a structure that makes every silent change to the order visible; and a witnessed point in time.
+
+### WORM: the medium that doesn't delete
+
+The bottom layer is storage that only allows writes in one direction: in, never out again. WORM stands for write once, read many. On S3 it's implemented as Object Lock, and the mode that matters is Compliance Mode. AWS describes it unambiguously: an object "can't be overwritten or deleted by any user, including the root user", and the only way to get rid of it before the retention period expires is "to delete the associated AWS account". That's the hard version. Even the account owner with all permissions can't touch the entry.
+
+Next to it is Governance Mode: technically almost the same, but with a back door. Anyone with the `s3:BypassGovernanceRetention` permission can override the lock. For a log that's supposed to prove a credit rejection for years, that's the wrong choice. A special permission that exists will get used at some point.
+
+Legal Hold, on the other hand, has no expiry. It holds an object indefinitely until someone actively lifts it, which is useful when a specific legal dispute is ongoing and the regular retention period would long since have run out. The other hyperscalers have the same mechanism under different names. Azure's immutable blob storage distinguishes between locked and unlocked; a locked container can only be extended, "not even by users with account administrative privileges". Google Cloud's Bucket Lock is even more uncompromising: "Locking a bucket's retention policy is an irreversible action." Once locked, there's no going back, not even for you.
+
+Many vendor pages aren't honest here: S3 Object Lock and Azure immutable blob storage carry attestations that sound like something they're not. The assessments come from Cohasset Associates, a private assessor commissioned by the vendor, and they check compliance with US securities law: SEC Rule 17a-4, FINRA, CFTC. That's a real standard. But it isn't GoBD compliance, it isn't DORA compliance, and it certainly isn't the German *revisionssicher*, a term that comes from commercial and tax practice anyway and doesn't appear as a legal standard in any of the statutes. An SEC 17a-4 attestation proves that a medium is fit for US broker records. It says nothing about the requirements of § 146 AO or the RTS RMF. Selling one as the other is selling a facade.
+
+### Tamper-evident: proof that nobody got in between
+
+WORM prevents anyone from deleting an entry. But it doesn't deliver proof that I can carry out of the system and hand to a third party, and it assumes I trust the storage provider itself. The second layer flips the problem around: instead of preventing tampering, it makes tampering provable. That's the difference between tamper-proof and tamper-evident. My take on it: for an evidence log, the second property is the more important one, because prevention only holds as long as the controls hold, while detection also makes it visible when the controls are bypassed.
+
+The established design for this is a Merkle log, and the best-known example in production is Certificate Transparency. RFC 6962 describes such a log as "a single, ever-growing, append-only Merkle Tree". Every new entry gets hashed, the hashes are chained in pairs into a tree structure until a single value is left at the top: the Merkle root. Change one bit anywhere down below, and the root changes. Two cryptographic proofs turn this into an audit tool. The inclusion proof shows that a specific entry is contained in a tree with a given root. The consistency proof shows that a later tree fully contains the earlier one, and with that proves the append-only property itself. Anyone who rewrites or inserts an entry after the fact destroys this proof.
+
+You don't have to build this yourself. Trillian is the reference implementation behind Certificate Transparency; immudb packages the same idea as a database with a "cryptographic commit log with parallel Merkle Tree". One detail for the sake of honesty, since immudb often shows up as the open-source alternative: the license is the Business Source License 1.1, so source-available, not open source in the classic OSI sense. What also matters in practice is where the timestamp goes: on the Merkle root of an entire batch, one stamp per batch instead of per log line. That keeps the cost of the timestamping service reasonable and is still enough, because the root cryptographically binds the entire batch.
+
+<Callout type="danger">
+A cautionary tale about not tying your evidence semantics to a closed-source managed service: Amazon QLDB. The database had this cryptographic verifiability built in, and AWS ended support on July 31, 2025. The recommended migration path leads to Aurora PostgreSQL, which loses that property. AWS's own guidance (Dan Blaner) is clear: Aurora PostgreSQL "does not keep a permanent, immutable record", and the audit evidence "must be generated as audit data and stored outside of the database". Anyone who had built their integrity proof into a proprietary product was left without it after the deprecation. Verifiability belongs in an open layer you can rebuild, not in a product whose roadmap you don't own.
+</Callout>
+
+The binding framework above both layers is called neither WORM nor Merkle tree. It's called RTS RMF (Delegated Regulation 2024/1774) Art. 12 "Logging": directly applicable Level 2 law under DORA. Art. 12(2)(d) requires "measures to protect logging systems and information against tampering, deletion and unauthorised access". The text doesn't prescribe what those measures look like; it's technology-neutral and names no WORM, no Merkle tree, no model. WORM and tamper evidence are my answer to this requirement, not a passage from the regulation.
+
+### The legal keystone: the witnessed point in time
+
+Merkle root and WORM secure the what and the whether. The when is still open. A log whose root I generate today, after the fact, can be cryptographically flawless and still backdated. This is where a second requirement from the same article comes in: RTS RMF Art. 12(2)(f) requires the "synchronisation of the clocks of each of the ICT systems ... upon a documented reliable reference time source". A qualified timestamping service is such a reference time source. The regulation doesn't say it has to be this service; that's my operationalization, not a quote.
+
+The mechanism behind it is RFC 3161. Only the hash, the message imprint, goes to the timestamping service. The document itself never leaves the building. The service signs the hash together with the current time and sends back a token. For our credit log, that specifically means: the Merkle root of a batch goes to the timestamping authority, the content of the entries stays inside. eIDAS is what makes it legally interesting. Article 41(2) of Regulation (EU) No 910/2014 attaches a legal presumption to qualified timestamps: the "presumption of the accuracy of the date and the time" and of the "integrity of the data to which the date and time are bound".
+
+The phrase in this chapter's title promises more than the technology delivers. The eIDAS presumption is rebuttable. It shifts the burden of proof: I don't have to prove the authenticity of the log; the other side has to undermine it. In court, that's an enormous advantage, but it's not irrefutable full proof.
+
+The same pattern shows up in the German Code of Civil Procedure. § 371a(1) ZPO grants electronic documents with a qualified signature prima facie evidence of authenticity. That too is an easing of the burden of proof, explicitly not full proof. What we're building here is the strongest evidentiary position you can create technically. It can be attacked, and in an individual case it can also fall. Still, it's a very different starting point from an editable log file, whose authenticity I'd have to establish from scratch in court.
+
+Two footnotes that matter over the years. First, a timestamp isn't valid forever. Signature algorithms age, certificates expire. RFC 4998 (Evidence Record Syntax) describes how to preserve evidentiary value over long retention periods: by renewing timestamps in time, before the old method becomes cryptographically weak. With 10 years of retention, that turns into an ongoing process someone has to actively run. Second, Germany has a documented state of the art for this: BSI TR-03125 (TR-ESOR), from Germany's Federal Office for Information Security, describes the architecture for long-term storage that preserves evidentiary value. If you follow it, you don't have to argue on your own that your retention matches the current state of the art.
+
+<Accordion title="Retention periods and the BaFin carve-out">
+§ 257(4) HGB staggers the retention period: commercial books, inventories and balance sheets 10 years, accounting vouchers 8 years, received commercial letters 6 years. Sentence 2 contains the carve-out that's decisive for us: for institutions within the meaning of § 1(1b) KWG (Banking Act), § 1(1) VAG (Insurance Supervision Act) and § 2(1) WpIG (Investment Firm Act), accounting vouchers stay at 10 years. So if you're building for a BaFin-regulated bank or insurer, you plan with 10 years instead of 8.
+
+And the period is open-ended. § 147(3) sentence 5 AO provides for a suspension of expiry: as long as the records are relevant for an assessment period that hasn't yet expired, for example during an ongoing tax audit, the retention period doesn't run out. A log I keep for a credit score from 2026 can stay with me well beyond 10 years. Which makes RFC 4998 anything but an academic detail.
+</Accordion>
+
+<figure class="not-prose my-8">
+<svg viewBox="0 0 560 466" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="st-title st-desc" class="w-full max-w-full h-auto">
+<title id="st-title">The log integrity stack</title>
+<desc id="st-desc">A vertical stack of six levels, from top to bottom: complete log entry per transaction, append-only Merkle log, Merkle root per batch, RFC 3161 timestamp with eIDAS presumption, WORM storage in Compliance Mode and finally prima facie evidence of authenticity under § 371a ZPO. Each level builds on the one above.</desc>
+<rect x="90" y="18" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Log entry: one transaction, complete</text>
+<rect x="90" y="94" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Append-only Merkle log</text>
+<line x1="280" y1="68" x2="280" y2="82" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 92 L 273 80 L 287 80 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="170" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">Merkle root: one batch</text>
+<line x1="280" y1="144" x2="280" y2="158" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 168 L 273 156 L 287 156 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="246" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="276" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">RFC 3161 timestamp · eIDAS presumption</text>
+<line x1="280" y1="220" x2="280" y2="234" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 244 L 273 232 L 287 232 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="322" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+<text x="280" y="352" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="var(--color-text)">WORM storage · Compliance Mode</text>
+<line x1="280" y1="296" x2="280" y2="310" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 320 L 273 308 L 287 308 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+<rect x="90" y="398" width="380" height="50" rx="8" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+<text x="280" y="428" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="var(--color-accent)">§ 371a ZPO · prima facie proof of authenticity</text>
+<line x1="280" y1="372" x2="280" y2="386" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.8"/>
+<path d="M 280 396 L 273 384 L 287 384 Z" fill="var(--color-text-muted)" opacity="0.8"/>
+</svg>
+<figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">From log entry to evidence that holds up in court: the timestamp sits on the Merkle root of an entire batch, not on every single line. eIDAS and § 371a ZPO turn technical immutability into a rebuttable presumption of authenticity. Not full proof, but the strongest evidentiary position available.</figcaption>
+</figure>
+
+With that, the stack is in place: append-only, Merkle root, qualified timestamp, WORM underneath. Technically, this is the most robust way to keep a credit log provable for a decade. Which leaves the question this chapter deliberately left open: who actually requires a bank to keep something like this, and why now of all times? What of it is binding today, what is merely a recommendation, and what is currently shifting on the calendar?
+
+## The regulatory map for BaFin-supervised firms, and why now
+
+The immutable log is in place. It withstands changes after the fact, it carries its timestamp, it can be matched to a contract snapshot. Which leaves the question the last chapter left open: who actually demands this, and how binding is it?
+
+For our running example, an AI feature at a BaFin-regulated bank or insurer that assesses a person's creditworthiness or prices a life or health insurance rate, the answer is uncomfortable: several regimes at once, with different binding force and different deadlines. Let's sort them out.
+
+| Regime | What it requires | Applies since/from | Artifact that satisfies it |
+|---|---|---|---|
+| DORA + RTS RMF (Del. Reg. 2024/1774) | Logging protected against tampering/deletion (RTS Art. 12), provider in the register of information (Art. 28), audit rights/data locations/exit in the contract (Art. 30), incident reporting chain (Art. 19) | binding since Jan 17, 2025, directly | Immutable log plus versioned contract with provider metadata |
+| EU AI Act, high-risk (Annex III 5(b)/5(c)) | Automatic event logging (Art. 12), logs ≥ 6 months (Art. 19), technical documentation 10 years (Art. 18) | Classification binding; obligations formally from Aug 2, 2026 (postponement agreed, see below) | Log as event recording, contract as part of the technical documentation |
+| GoBD / § 257 HGB / § 147 AO | Immutability (§ 146(4) AO), retention (accounting vouchers at institutions: 10 years), machine readability for analysis | binding, insofar as relevant for bookkeeping | Append-only log with retention and hold logic |
+| MaRisk AT 4.3.4 "Use of models" | Traceable assumptions (para. 2), validation (para. 5), explainability (para. 6), rules for overrides (para. 4) | Consultation draft, not in force (currently circular 06/2024) | Contract documents assumptions and overrides, log proves validation |
+| BaFin guidance (Dec 18, 2025) | "complete logging of AI decisions, model versions and training data" (recommendation) | non-binding | gives shape to log and contract, but doesn't bind |
+
+
+### DORA is the anchor, not VAIT
+
+DORA has applied since January 17, 2025, directly in every member state, without national implementation (Art. 64). That's the ground everything else stands on for financial entities. The regulation doesn't require logging where we'd look first, though: the anchor sits one level down, in the regulatory technical standard Delegated Regulation 2024/1774 (RTS RMF). Its Art. 12 "Logging" requires protection against tampering, deletion and unauthorized access, for data at rest, in transit and in use: the protection profile our log already meets technically.
+
+Two details are central for our case. The first is the clock: Art. 12 requires synchronizing all system clocks against a documented, reliable reference time source, so the timestamp in the log is no optional extra. The second is retention: DORA doesn't prescribe a fixed period; the financial entity sets the "retention period" itself, based on risk and purpose, and justifies it. If you choose 6 months, you have to be able to justify that; if you choose 10 years, likewise.
+
+In this architecture, the LLM provider is an ICT third-party service provider within the meaning of DORA, with everything that comes with that. The responsibility stays with us: the financial entity "shall at all times remain fully responsible for compliance" (Art. 28(1)). You can outsource the function; the accountability stays. The contract with the provider belongs in the register of information (Art. 28(3)), which the supervisor can inspect on request. And Art. 30 dictates the mandatory content: audit rights (para. 3(e)), defined data locations with advance notice of changes (para. 2(b)), an exit strategy with a transition period (para. 3(f)) and rules on sub-outsourcing (para. 2(a)), which covers the chain from the LLM provider down to the hyperscaler.
+
+And when something goes wrong, a clock starts running. DORA Art. 19 governs the reporting chain for major ICT-related incidents; the specific deadlines are in Delegated Regulation 2025/301. This clock is ticking today, not just from 2027.
+
+<Callout type="warning">
+If you're still citing VAIT, BAIT, KAIT or ZAIT in 2026, you're working with an outdated map. VAIT, BAIT, KAIT and ZAIT were dropped when DORA started to apply. The anchor for ICT and outsourcing requirements is now DORA together with its RTS. For the model level, MaRisk comes on top, although its AI module is still in consultation.
+</Callout>
+
+<Accordion title="The relevant DORA articles in detail">
+
+- **Art. 5(2)(a) DORA**: ultimate responsibility. "The management body shall bear the ultimate responsibility for managing the financial entity's ICT risk." The responsibility lies with the management body, not with an "owner".
+- **Art. 12 RTS RMF (Del. Reg. 2024/1774), logging:** protection against tampering, deletion and unauthorized access (para. 2(d)); clock synchronization against a documented reference time source (para. 2(f)); retention period to be set based on risk and purpose.
+- **Art. 17 RTS RMF, ICT change management.** No mention of models in the text. Reading "archive model versions" into it is the interpretation of the BaFin guidance, not the wording of the RTS.
+- **Art. 28-30 DORA, third-party risk:** accountability can't be outsourced (Art. 28(1)), register of information (Art. 28(3)), mandatory contract content on audit rights, data locations, exit and sub-outsourcing (Art. 30).
+- **Deadlines (Del. Reg. 2025/301 Art. 5):** initial notification 4 h after classification as major (backstop 24 h from becoming aware), intermediate report 72 h after the initial notification, final report 1 month after the intermediate report.
+
+</Accordion>
+
+The most concrete interpretation of these DORA obligations comes from BaFin's guidance "ICT risks in the use of AI" from December 18, 2025. It recommends providing, on a risk basis, "complete logging of AI decisions, model versions and training data", and reads the "systematic archiving of all model versions and parameters" into Art. 17 RTS RMF. The catch: this guidance describes itself as "non-binding assistance" that is "not a binding interpretation of DORA". It's the map of how BaFin reads the requirements, not the legal norm itself. The norm is DORA; the guidance spells out how a log and a contract could satisfy it.
+
+### When the feature becomes a high-risk system
+
+The second big block is the EU AI Act, and here our example turns into a textbook case. Annex III point 5(b) names AI systems intended to evaluate "the creditworthiness of natural persons", point 5(c) those for "risk assessment and pricing … in the case of life and health insurance". Credit scoring and insurance pricing, our two cases, are therefore high-risk systems. Concrete recording obligations follow from that: automatic event logging over the lifetime of the system (Art. 12), retention of logs for at least 6 months (Art. 19), technical documentation for 10 years (Art. 18).
+
+For financial institutions, this is where the most valuable finding of this chapter comes in. The AI Act doesn't force a second governance apparatus next to financial supervision. Art. 17(4) deems the quality management system fulfilled to the extent an institution already covers the corresponding obligations through its financial supervisory governance, with three explicit exceptions (points g, h, i) that remain separate. The same authority supervises both: Art. 74(6) makes the national financial supervisor the market surveillance authority for high-risk AI at financial institutions, so in Germany that's BaFin. The versioned contract and the log thus pay into both regimes at the same time. Only what falls under the three exceptions needs a second set of books.
+
+<Accordion title="EU AI Act: shared vs. additional evidence">
+
+Art. 17(4) declares the quality management system for financial institutions fulfilled "with the exception of paragraph 1, points (g), (h) and (i)" when the financial supervisory governance applies. What still has to be fulfilled separately:
+
+- **Point g → Art. 9**: the risk management system for the high-risk AI system.
+- **Point h → Art. 72**: post-market monitoring.
+- **Point i → Art. 73**: reporting of serious incidents.
+
+By analogy, Art. 18(3) and Art. 19(2) treat the technical documentation and the logs as part of the financial supervisory documentation. One artifact, two recipients. The threat of fines behind it: up to €15 million or 3% of annual turnover for deployer obligations (Art. 99).
+
+</Accordion>
+
+<Callout type="warning">
+**As of July 2026, the regulatory picture is in flux.** The Digital Omnibus postpones the high-risk obligations for standalone Annex III systems (including 5(b) and 5(c)) from Aug 2, 2026 to Dec 2, 2027. The Council gave its final approval on June 29, 2026, but publication in the Official Journal is still pending, so formally Aug 2, 2026 still applies. The postponement doesn't change the high-risk classification. And the MaRisk amendment with AT 4.3.4 is a consultation draft (comment deadline May 8, 2026), not applicable law: what's in force is MaRisk in the version of circular 06/2024, which doesn't contain AT 4.3.4 yet.
+</Callout>
+
+### MaRisk is catching up on models
+
+What DORA is for the ICT level, MaRisk will be for the model level. The 9th amendment, with the module AT 4.3.4 "Use of models", explicitly introduces AI for the first time: para. 1 clarifies that the requirements apply "also to automated models, technology-driven innovation and artificial intelligence". What the draft requires reads like a description of the contract: assumptions with a traceable justification (para. 2), regular validation (para. 5), explainability, defined as being able to show "the relationships between input and output variables" (para. 6), and rules for overrides, meaning "values deviating from the model through direct intervention" (para. 4). It's still a draft, but the direction is unmistakable.
+
+The last point is where contract and log meet the human. Who overrides a model result, when, and with what justification belongs in the log; otherwise the override is invisible. I covered this design question in more detail earlier.
+
+<LinkCard url="/en/blog/human-in-the-loop"/>
+
+### Why now, and not in 2027
+
+It's easy to draw the wrong conclusion from the Omnibus postponement: AI Act not until 2027, so there's still time. For a BaFin-regulated firm, that conclusion is expensive. The sharpest lever right now isn't the AI Act, but DORA and retention under commercial and tax law. Both apply today, directly, with no transition period. The incident reporting chain from DORA Art. 19 is already running, with its four-hour window from classification. MaRisk is catching up on models. If you wait until the AI Act bites in 2027, you've overlooked the regimes that already apply.
+
+### Retain versus delete
+
+One conflict remains. The retention obligations from § 257 HGB and § 147 AO say: keep it. The GDPR says, for personal data (and a credit score is highly personal): delete it as soon as the purpose no longer applies. But you can't selectively delete anything from an immutable, append-only log without destroying the immutability itself.
+
+<Callout type="info">
+The resolution is restricting instead of deleting. Art. 18 GDPR provides for the "restriction of processing" as an alternative to erasure: the record remains, but is blocked from regular use. In the log, that translates into a hold flag instead of an automatic calendar-based deletion. On the tax side, this is backed by the suspension of expiry in § 147(3) sentence 5 AO: the retention period doesn't run out as long as the transaction is relevant for tax purposes.
+</Callout>
+
+Some honesty about scope belongs here too. § 257 HGB and § 147 AO only apply insofar as a transaction is relevant for bookkeeping. Not every agent log is therefore subject to retention under commercial or tax law; the bulk of our records falls under DORA, MaRisk and the AI Act, not the HGB. Keeping these regimes cleanly apart is itself part of due diligence.
+
+That's a lot of regulation for a single feature: many artifacts, several deadlines, several supervisors looking at the same logs. Is all this effort even worth it? That's the most obvious counter-question, and it deserves an honest answer.
+
+## Common objections
+
+The cost question from the last chapter rarely comes alone. As soon as I put contract and audit-proof log on the table as mandatory, the objections reliably follow. A few of them come up in almost every discussion. They're good enough to take seriously.
+
+### "Audit-proofing is a pure compliance facade."
+
+The suspicion is justified: a lot of what runs under "compliance" is a binder nobody ever opens. It just doesn't apply here. The log is the only surface the contract can be diffed against at all: the only mechanism that lets you notice a silent model swap, drifting prompts, an out-of-scope tool call or a broken schema promise in the first place. I've already taken apart the same objection for the eval loop, and the answer is the same: the substance comes from running the system, the evidence falls out as a by-product.
+
+<LinkCard url="/en/blog/incident-zu-regressionstest"/>
+
+### "LLMs are non-deterministic, so they can't be audited."
+
+That's a category error. An audit records what happened; it doesn't reproduce what would happen again. Non-determinism is precisely the reason we log in the first place. Even the hard version of the objection is shaky: in 2025, Thinking Machines Lab showed that non-determinism can be eliminated. With batch-invariant kernels, Qwen3-235B produced the same completion in 1000 out of 1000 runs. The often-quoted 1.6x to 2.1x overhead comes from a separate timing with a smaller model (Qwen-3-8B) and doesn't belong in the same sentence. For an audit, though, you don't need this determinism at all. That's my conclusion; the authors only show that determinism is achievable.
+
+### "Too expensive, too much overhead for one feature."
+
+The asymmetry runs the other way. The reporting deadlines of DORA incident reporting are simply impossible to meet without contract and log: the initial notification four hours after classification as major, the intermediate report 72 hours after that, the final report one month after the intermediate one (Art. 19 DORA, specified in Delegated Regulation 2025/301). The artifact itself is cheap: a Git-versioned YAML file plus an append-only event stream. The tokens are generated anyway; you're just writing them down. That costs days, not a platform, and pays off across features.
+
+### "Prompt plus model is enough documentation."
+
+That describes the intended state, not the actual one. Take the creditworthiness feature from the previous chapters: prompt and model name don't tell you which tools were actually called, against which exact model version, with which sampling parameters, with which RAG context, whether the schema validation of the score object passed, and against which version of the eval set the answer was accepted. A prompt in the wiki isn't versioned, isn't reviewed, isn't eval-gated, and quietly drifts along until nobody knows which version rejected an application back in September.
+
+### "Our SIEM already does that."
+
+Different layer. A SIEM collects infrastructure and security events, usually mutable, rotating, with short retention. The contract conformance log sits at the application and semantic level, is tamper-evident and lives on WORM storage. In an earlier post I called this "tracing is not auditing"; here it becomes "a SIEM is not a conformance log". I read the fact that GenAI telemetry now has its own OpenTelemetry conventions as the same signal: two needs, two layers.
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+
+### "The provider changes the model silently, I can't pin anything."
+
+Partly wrong. At Anthropic, every model ID is a pinned snapshot; at OpenAI, the dated snapshots count as a stable reference. The risk sits in the floating alias or in the Azure default that automatically upgrades itself with the next release. If you point at `-latest`, you built the problem yourself. Pinning works, and the ID that was actually served belongs in the log, because a pin doesn't last forever. The fact that a snapshot eventually gets retired is an argument for the log, not against pinning.
+
+## Conclusion: an intended state without proof of the actual one is a claim
+
+The toughest objections are behind us, and none of them toppled the core. Two artifacts carry this entire post, and they only carry it together.
+
+The Agent Contract is the intended state: which model in which version, with which prompt, which tools, which parameters and which allowed output space. The audit-proof log is the proof of the actual state: what of that actually ran at the time of the decision, recorded immutably. Without the log, the contract is a claim. A document in the wiki that describes how the system should behave, without a single piece of evidence that it did. Without the contract, the log is noise without a yardstick: millions of lines nobody can check against, because the intended state was never defined. Only together do they add up to evidence.
+
+Both terms are our framing, not legal text. "Audit-proof" doesn't appear in any of the legal acts, and "Agent Contract" certainly doesn't. What regulation demands carries more sober names: immutability, traceability, logging. The substance behind them is the same.
+
+Take the score that decides on a person's creditworthiness, or the model that prices a health or life insurance policy: under the EU AI Act, the high-risk cases from Annex III. If this person objects half a year later and asks why, "our contract specified model X in version Y" is no answer. The answer is the log entry that shows model X in version Y made the decision and that nobody has touched it since. The fact that you bought the model from a provider doesn't get you off the hook: under Art. 28 DORA, you remain fully responsible.
+
+DORA has applied directly since January 17, 2025, and Art. 12 of the RTS RMF, the technical standard on ICT risk management, requires protecting logging records against tampering, deletion and unauthorized access; you set the retention period yourself based on risk, there's no fixed number in there. The GoBD require immutability for the tax-relevant trail, and a file system alone explicitly isn't enough for that. The 9th MaRisk amendment, still a consultation draft and not in force, would pull the use of models into this framework with AT 4.3.4: justify assumptions traceably, validate regularly, keep things explainable. Whether you like the word "audit-proof" or not doesn't change this set of obligations.
+
+Very little of all this is newly invented. This post names an artifact the series has long been circling, and gives it its regulatory framework. Each previous post built a piece of it:
+
+- **Contracts** draw the boundaries between model, tools and code; that's where the term comes from.
+- **Evals** turn the eval set into the domain contract that checks before deploy whether the intended state holds.
+- **Tool audit** clarifies what a single call is allowed to do, and cleanly separates tracing from auditing.
+- **Observability** decides what belongs in the log and what doesn't: PII, break-glass, the red lines.
+- **Rollout manifest** provides the template the contract grows out of in the first place.
+
+<LinkCard url="/en/blog/ai-systems-architecture"/>
+<LinkCard url="/en/blog/ai-evals-ci-pipeline"/>
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/en/blog/observability-ai-features"/>
+<LinkCard url="/en/blog/ai-rollout-canary-shadow"/>
+
+This post folds the five into one named core artifact. And that brings me to the point I never tire of repeating in this series: this isn't extra work regulation saddles you with. The contract is engineering hygiene; you want to know which model is running in production, regulated or not. And you'll build the immutable log yourself by the first incident at the latest, because that's when you need to know what really happened, not just what should have happened. If you build both anyway because it's good engineering, you'll find the required evidence is already in your hands. Governance falls out of discipline; it doesn't sit on top as a facade.
+
+Two threads from earlier posts remain open, and both hang on this log. The [blast-radius eval](/en/blog/nicht-das-modell-ist-das-risiko) needs the log data to measure how far a model change actually reaches. [FinOps for AI](/en/blog/die-beste-antwort-ist-keine-zielgroesse) reads cost and latency from the same lines. The log is the data source for both. But that's another post.
+
+> The contract is the intended state, the log is the proof of the actual state. Apart, neither proves anything. Only together are they the evidence.
+
+<InfoBox>
+  **Primary sources (selection, as of July 2026, regulation in flux):**<br />
+  DORA, Regulation (EU) 2022/2554: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)<br />
+  RTS on ICT risk management, Delegated Regulation (EU) 2024/1774: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)<br />
+  RTS on incident reporting deadlines, Delegated Regulation (EU) 2025/301: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg_del/2025/301/oj)<br />
+  EU AI Act, Regulation (EU) 2024/1689: [eur-lex.europa.eu](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)<br />
+  eIDAS, Regulation (EU) 910/2014 (Art. 41 et seq.): [eur-lex.europa.eu](https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:02014R0910-20241018) (in German)<br />
+  §§ 146, 147 AO / § 257 HGB / § 371a ZPO: [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__146.html) (in German)<br />
+  BaFin, guidance "ICT risks in the use of AI" (Dec 18, 2025, non-binding): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2025/meldung_2025_12_18_orientierungshilfe_ikt_risiken.html) (in German)<br />
+  BaFin, 9th MaRisk amendment, consultation 02/2026 (draft): [bafin.de](https://www.bafin.de/SharedDocs/Veroeffentlichungen/DE/Meldung/2026/meldung_2026_04_01_konsultation_02_2026_marisk-novelle.html) (in German)
+</InfoBox>

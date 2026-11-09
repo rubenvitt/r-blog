@@ -1,0 +1,210 @@
+---
+title: "Hvem tester graderen?"
+description: "En grader er selv et system som må testes. Jeg lot noen bygge inn feil med vilje i korrekte release notes og satte elleve gradere på dem. Til slutt viste det seg at også fasiten var feil."
+date: 2026-11-01
+tags: ["ai", "evals", "software-engineering"]
+image: ../../blog/_images/wer-prueft-den-grader/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> En grader er et system som alle andre. Tester du den ikke, har du bare flyttet håpet ett nivå opp.
+
+I mars skrev jeg her om evals i CI-pipelinen: kode-gradere, LLM-as-a-Judge, menneskelig review.
+
+<LinkCard url="/nb/blog/ai-evals-ci-pipeline" />
+
+Hvilken metode som finner hva, ble der bare en påstand. Så jeg snur spørsmålet: I stedet for å teste agenten tester jeg testene. Tolv feiltyper bygget inn, elleve gradere satt på saken, 1 265 modellkall.
+
+Resultatet er en matrise. Så viser det seg at én av fasitene selv var feil, og på ekte kjøringer sier tallene nesten ingenting lenger.
+
+<InfoBox>
+  Demo: [rubenvitt.github.io/grader-lab](https://rubenvitt.github.io/grader-lab/) - bygg inn feil selv og se hvilken grader som slår ut. Med din egen API-nøkkel kjører også judgene live.<br />
+  Repo med alle råsvarene: [github.com/rubenvitt/grader-lab](https://github.com/rubenvitt/grader-lab)
+</InfoBox>
+
+## En agent ingen snakker med
+
+Refund-agenten fra mars-innlegget hjelper ikke her - en chat gir for lite flate for denne typen testing. Altså et nytt eksempel, denne gangen uten dialog.
+
+Agenten skriver release notes for `quaykit`, en job queue i TypeScript som ikke finnes. Input er de mergede PR-ene siden forrige Git-tag. I tillegg får den seks verktøy: `list_prs()`, `get_pr(id)`, `get_diff(id)`, `get_issue(id)`, `publish_release({version, notes})` og `finish`, som den rapporterer resultatet sitt med. Publisering og rapportering er separate kall, det blir viktig senere.
+
+Resultatet er et artefakt i fire deler:
+
+- **Tekst:** `notes_md`, selve notatene
+- **Plan:** bump, versjon, seksjoner
+- **Transcript:** tool-callene i kjøringen
+- **Sandbox-tilstand:** ble det publisert eller ikke?
+
+Release notes har én fordel til: Som utvikler kan du selv vurdere dem med et raskt blikk.
+
+Testdataene er seks syntetiske releaser, r1 til r6, med seks til ti PR-er hver. Der ligger breaking changes gjemt bak `chore:`-titler, en feature pluss revert i samme release, en security-fix med labelen `embargo` og deprecations. Til hver release hører en referanse: den versjonen av notatene som regnes som korrekt. Slik ser en oppføring ut:
+
+```md
+- Completed jobs are now removed by default: `removeOnComplete` defaults to `true` instead of `false`, so a finished job can no longer be fetched from the queue unless you opt in (#307).
+  Migration: to keep the old behaviour, pass `defaultJobOptions: { removeOnComplete: false }` when you create the `Queue`.
+```
+
+Det testes mot en rubric med ni kriterier. Kriterium R2 krever for eksempel: «PR-teksten alene beviser ingenting som diffen ikke gir dekning for.» R7 krever en saklig tone. Rubric og prompts ble frosset før første kjøring (Git-tag [`prompts-v1`](https://github.com/rubenvitt/grader-lab/tree/prompts-v1/graders/prompts/v1)), i etterkant ble det bare lagt til analyser og en transport-fix i runneren. Agenten kjører på `gpt-6-luna`. Judgene, altså gradere med modell, kjører på `gpt-6.1-terra`, begge via Codex-CLI med effort `low`.
+
+## Feil med vilje
+
+Mutation testing kommer fra testing av kode: Du bygger inn en feil med vilje og ser om testene dine merker det. Forblir de grønne, har du funnet et hull. Den ideen har jeg lånt og brukt på gradere. Feilen sitter nå i en ellers korrekt tekst, og det er graderen som er testobjektet.
+
+Gevinsten ligger i fasiten. Med en mutasjon er den kjent før graderen kjører, uten at noen må labele 100 tekster. Vi har jo bygget inn feilen selv.
+
+I laben finnes det tolv feiltyper fordelt på seks releaser. Noen av dem ordrett:
+
+```diff
+@@ ghost-pr, r1 @@
+- `quaykit inspect --json` prints the queue statistics as JSON instead of a table (#318).
++ `quaykit inspect --json` prints the queue statistics as JSON instead of a table (#319).
+
+@@ wrong-migration, r5 @@
+- Migration: call `worker.pause({ drain: true })`.
++ Migration: call `worker.pause({ graceful: true })`.
+
+@@ invented-claim, r1 @@
+- so the job no longer sits in active until the lock expires (#304).
++ and the job is retried on the next poll instead of sitting in active until the lock expires (#304).
+```
+
+Uten referansen ved siden av leser den siste linjen seg som enhver annen release note: saklig tone, riktig PR-nummer bak. Diffen til #304 gir ikke grunnlag for noen retry, og på selve setningen ser du det ikke.
+
+Noen feil står ikke i teksten i det hele tatt. Ved `false-success` er notatene korrekte, men `publish_release` ble aldri kalt. `lucky-path` leverer riktig resultat, selv om agenten ikke har lest en eneste diff.
+
+Feil alene er ikke nok. I tillegg kommer fire typer kontroller som regnes som feilfrie: selve referansen, `paraphrase` med samme fakta i andre ord, `reordered` og `extra-diligent`, der agenten i tillegg leser issuene. Uten dem ville du til slutt rost den graderen som bare avviser alt. Til sammen blir det 83 artefakter: 59 mutasjoner og 24 kontroller.
+
+Elleve gradere går løs på dem, sju av dem uten modell:
+
+| Grader | ser | Modell |
+|---|---|---|
+| `schema`, `pr-refs`, `semver-labels`, `wording` | struktur, PR-numre, labels, ordlister | nei |
+| `ref-similarity` | tekstlikhet med referansen | nei |
+| `functional`, `trajectory` | sandbox-tilstand, veien gjennom tool-callene | nei |
+| `judge-ref` | referansen | ja |
+| `judge-sourced` | PR-er og differ | ja |
+| `judge-blind` | bare notatene | ja |
+| `pairwise` | to versjoner i begge rekkefølger, uten å få vite hvilken som er referansen | ja |
+
+De fire med modell kjører tre ganger hver, og dommen avgjøres ved flertall.
+
+Begrensningene tar jeg med en gang: Spesifikasjon og oppdrag kom fra meg, fixtures, referanseversjoner, mutasjoner, gradere og rubric fra en coding agent. Feilene og graderne som skal finne dem, kommer altså fra samme hånd. Menneskelige labels mangler, fixturene er syntetiske, utvalget er lite, og det finnes nøyaktig én modellversjon. Det tallene nedenfor viser, gjelder for denne laben.
+
+## Hver grader ser noe annet
+
+83 artefakter ganger elleve gradere gir flere celler enn det er plass til her. Hele matrisen ligger i [demoen](https://rubenvitt.github.io/grader-lab/). Her er et utsnitt, cellene teller underkjent/tilfeller:
+
+| Feil | `pr-refs` | `ref-similarity` | `functional` | `trajectory` | `judge-ref` | `judge-blind` | `pairwise` |
+|---|---|---|---|---|---|---|---|
+| `ghost-pr` | 6/6 | 0/6 | 0/6 | 0/6 | 6/6 | 0/6 | 0/6 |
+| `invented-claim` | 0/6 | 0/6 | 0/6 | 0/6 | 6/6 | 1/6 | 2/6 |
+| `missing-breaking` | 0/3 | 0/3 | 0/3 | 0/3 | 3/3 | 0/3 | 0/3 |
+| `useless-true` | 0/6 | 6/6 | 0/6 | 0/6 | 6/6 | 6/6 | 6/6 |
+| `false-success` | 0/6 | 0/6 | 6/6 | 0/6 | 0/6 | 0/6 | 0/6 |
+| `lucky-path` | 0/6 | 0/6 | 0/6 | 6/6 | 0/6 | 0/6 | 0/6 |
+| **Kontroller (falske alarmer)** | 0/24 | 6/24 | 0/24 | 0/24 | 0/24 | 0/24 | 0/24 |
+
+`judge-sourced` mangler her med vilje, tallene trenger en egen forklaring. Og 3/3 betyr ved n = 3 bare: et 95 %-intervall fra 0,44 til 1,00, og selv det forutsetter uavhengige tilfeller.
+
+La oss begynne øverst, med det ikke-eksisterende PR-nummeret i r1. `pairwise` får begge versjonene og skriver: «Versjonene skiller seg bare i PR-nummeret for JSON-utdataene: A oppgir #318, B oppgir #319. Uten kilder er det ikke mulig å vurdere hvilken tilordning som er korrekt». Den peker ut forskjellen ned til sifferet og anser begge versjonene som likeverdige. En `equal` teller etter den frosne regelen ikke som å foretrekke, og det blir 0/6. `pr-refs` finner det samme stedet 6/6, og det koster ikke ett eneste token.
+
+Ved `missing-breaking` i r3 mangler leseren til og med en migrering. `pairwise` foretrekker referanseversjonen i hver repetisjon bare i én rekkefølge, i den andre dømmer den igjen `equal`. Etter samme regel holder ikke det. `judge-ref` skriver derimot: «Kandidaten utelater en breaking change som er relevant for brukerne, og migreringssteget som hører til.»
+
+Oppdiktede påstander som den fra diffen over finner `judge-ref` 6/6, `judge-blind` 1/6 og `pairwise` 2/6. Retryen fra r1 slipper `judge-blind` og `pairwise` gjennom. Ved `useless-true` er alt sant og ingenting brukbart («Various improvements»), det ser alle fire judgene og `ref-similarity`.
+
+Klarest er `false-success` og `lucky-path`. Teksten er identisk med referansen. Vurderer du bare tekst, ser du ikke feilen. Det manglende kallet til `publish_release` ser bare `functional`. For diffene som aldri ble lest, er det bare `trajectory` igjen.
+
+Så gjenstår `ref-similarity`, med en terskel på 0,7 satt på forhånd og ikke kalibrert. De seks falske alarmene er parafrasene, og de ligger på 0,585 til 0,685. Ved 0,6 består 5 av 6, ved 0,58 alle, uten at ett eneste funn går tapt. De falske alarmene henger på terskelen. Det stabile er noe annet: Bortsett fra `useless-true` (maksimalt 0,414) ligger feiltilfellene nærmere referansen enn de korrekte parafrasene, versjonene i reklametone fra 0,729, resten fra 0,814. Tekstlikhet måler ordnærhet.
+
+En del av disse blindsonene sto riktignok i prompten. `judge-blind` får ordrett: «Det som ikke kan sjekkes uten kilder, regnes som oppfylt. Ikke tillegg teksten feil den ikke gir noen holdepunkter for.» Og `pairwise` vurderer bare «så langt det lar seg vurdere ut fra de to tekstene». Det forsiktige «ikke mulig å vurdere» fra over har prompten i det minste vært med på å skrive. Noen motkjøring med annen formulering finnes ikke. Hva i 0/6-ene som er metode og hva som er prompt, skiller ikke denne matrisen rent.
+
+## Den som avviser alt, finner alt
+
+Teller du bare funn, har du en klar vinner: `judge-sourced` avviser 59 av 59 mutasjoner. Problemet er at alle 24 kontrollene også stryker hos den. Ved `false-success` får den teksten til referansen, avviser den akkurat som i kontrollen, og det teller likevel som et funn.
+
+Derfor trenger vi to tall. Definisjonen kommer fra Hamel Husains skill [`validate-evaluator`](https://raw.githubusercontent.com/hamelsmu/evals-skills/main/skills/validate-evaluator/SKILL.md). Der betyr «positiv» bestått, motsatt av det mange er vant til. TPR (True Positive Rate) sier hvor ofte en grader faktisk lar et godt resultat bestå. TNR (True Negative Rate) er funnraten fra i stad: hvor ofte den faktisk lar et dårlig resultat stryke. Husain måler mot menneskelige vurderinger, oppgir over 90 % som mål og vil ha rundt 100 labelede eksempler per failure mode. Hos meg er det 3 til 6, og konstruksjonen erstatter mennesket: Kontrollene gir TPR, mutasjonene TNR.
+
+`judge-sourced` lander på TNR 1,00 og TPR 0,00, og da er 1,00 ingenting verdt. For `pr-refs` står det TPR 1,00 og TNR 0,15. Det kan jeg godt leve med - den sjekker bare én ting.
+
+Så er det r5. Referansen skriver der `worker.pause({ drain: true })`, linjen fra diffen tidligere. Koden i #399 sender imidlertid boolean-verdien videre:
+
+```ts
+if (typeof opts === 'boolean') {
+  warnOnce('worker.pause(boolean) is deprecated, use worker.pause({ drain })');
+  opts = { drain: opts };
+}
+```
+
+`pause(false)` blir i koden til `{ drain: false }`, men etter oppskriften i referansen til `{ drain: true }`. `judge-sourced` skriver om dette: «R3: Migreringen til `worker.pause({ drain: true })` erstatter `worker.pause(true)`, men endrer oppførselen til `worker.pause(false)`.» På selve referansen var det ingen annen grader som så det. Den var feil, og med den fasiten «feilfri».
+
+Det gjør ikke `judge-sourced` til den hemmelige helten. I 5 av 6 releaser kommer minst én innvending mot referansen i alle tre repetisjonene. Noen av dem mener jeg er berettiget, i r2 mangler den for eksempel tilordningen fra `graceMs` til `olderThanMs`. Andre synes jeg er pirkete: Om `removeOnComplete`-endringen klager den i 2 av 3 repetisjoner over at konsekvensen for brukerne ikke står ordrett i diffen, og diffene våre er bare utsnitt. Den er streng og har delvis rett, men uten labels lar det seg ikke skille hva som er hva.
+
+TPR 0,00 skyldes grader, rubric, referanse og diff-utsnitt i fellesskap. Fixtures og fasit ble ikke endret, hullet ligger [åpent i repoet](https://github.com/rubenvitt/grader-lab/blob/main/docs/findings.md).
+
+At testbenken forvrenger resultatet, kjenner også Anthropic til. På [CORE-Bench](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) steg Opus 4.5 fra 42 % til 95 % etter at grading-feil og uklare oppgaver var rettet og scaffoldet ble løsere. Og [Shankar et al.](https://arxiv.org/abs/2404.12272) beskriver løkken bak, kvalitativt, med ni praktikere: «users need criteria to grade outputs, but grading outputs helps users define criteria».
+
+> Fasit gjennom konstruksjon betyr: like feilfri som forfatteren.
+
+## Eksperimentet som ikke fungerte
+
+Også selve testbenken hadde en bug. Spørsmålet kom fra [Tripathi et al.](https://arxiv.org/abs/2504.14716): Der vipper parvise preferanser i 35 % av tilfellene når et forstyrrende trekk kommer i tillegg, ved absolutte scores bare i 9 %. Det som måles der, er avviket fra egen vurdering, ikke nøyaktighet. Lar også `pairwise` seg lure av selvsikker tone?
+
+De selvsikre versjonene skulle bare skille seg i tonen. Det gjør de ikke. De inneholder nye løfter som «guaranteed» eller «permanently eliminates» og bryter dermed R7 og R2. `pairwise` lar dem bestå i 0 av 18 repetisjoner, de nøytrale i 11 av 18, men da bruker den bare reglene riktig. Resultat: ikke testbart med dette oppsettet. Mens jeg bygde, merket jeg det ikke, først i analysen. En rubric-konform kjøring ville vært `v2`, og den finnes ikke.
+
+## 47 av 47, så 2 av 24
+
+Til nå kom hver tekst fra samme hånd. Nå kjører agenten på ordentlig: 24 kjøringer, to prompts (naiv og grundig), seks releaser, to repetisjoner hver. Labels finnes ikke for dette, altså heller ingen TPR eller TNR. Hver judge dømmer én gang, så motsigelser kan inneholde støy.
+
+| Judge | bestått naiv (av 12) | bestått grundig (av 12) |
+|---|---|---|
+| `judge-ref` | 0 | 2 |
+| `judge-sourced` | 4 | 7 |
+| `judge-blind` | 8 | 11 |
+| `pairwise` | 4 | 9 |
+
+`judge-ref` så best ut på mutasjonene. Av de 59 har bare 47 en egen tekst, de resterende 12 er `false-success` og `lucky-path`, og dem kan ingen judge se. Alle 47 fant den, og i tillegg null falske alarmer. Det betyr lite: 12 av de 24 kontrollene er tekstlike med referansen, 6 bare omsortert, og virkelig utfordret ble den bare på 6 parafraser.
+
+Av de ekte kjøringene lar den 2 av 24 bestå. Mutasjoner ligger per konstruksjon nær referansen, ekte tekster gjør det ikke. I tillegg kommer prompten igjen: Den erklærer referansen for «korrekt og fullstendig» og regner påstander som ikke har noen motpart der, som brudd. Hvor mange av avvisningene som er berettiget, er uvisst uten labels.
+
+`judge-sourced` går motsatt vei: 0 av 24 kontroller bestått, men 11 av 24 ekte kjøringer. Hvorfor, er uvisst. Lengde alene forklarer det ikke. De fire judgene er uenige i 19 av 24 kjøringer.
+
+**Bedre migrering, aldri publisert (r5 `careful-2`).** Notatene skriver:
+
+```md
+Migration: Replace `worker.pause(true|false)` with `worker.pause({ drain: true|false })`.
+```
+
+Det dekker `pause(false)`, altså hullet fra tidligere. `pairwise` foretrekker denne versjonen i begge rekkefølger. `judge-ref` avviser blant annet av denne grunnen: «Referansen dokumenterer bare `worker.pause({ drain: true })`; en tilsvarende tilordning for begge boolske verdier er ikke dokumentert.» En referanse med hull arver hullet sitt videre til graderen. Og denne kjøringen ble aldri publisert. `judge-sourced`, `judge-blind` og `pairwise` er fornøyde, bare `functional` ser det - en ekte `false-success`, ett datapunkt, n = 1.
+
+**Tomme notater, bestått (r3 `naive-2`).** `judge-blind` slipper dem gjennom: «Release notes er tomme. Uten kilder eller opplysninger om releasen kan det ikke fastslås noe brudd på rubricen.» Det er nesten ordrett det prompten ber den om. Også `pr-refs` slipper dem gjennom, for ingen referanser betyr ingen feil referanser. Tomme notater var det i 2 av 24 kjøringer, årsaken er ikke bevist.
+
+**Samme dom, uenige om saken (r6 `careful-2`).** Releasen inneholder en security-fix under embargo, og notatene skriver: «This release fixes worker behavior after lock loss and improves PostgreSQL schema name handling.» Alle fire judgene og `wording` avviser:
+
+- `wording` treffer embargo-begrepet «schema name».
+- `pairwise` og `judge-ref` ser en lekkasje.
+- `judge-sourced` skriver: «Notatene nevner embargo-fiksen uten forbudte detaljer», og avviser på grunn av en breaking change og versjonen.
+- `judge-blind` synes setningen er for vag.
+
+**Strøk på grunn av et mellomrom (r4 `careful-1`).** Versjonen som ble publisert med `publish_release`, slutter på et mellomrom etter `(#378)`, den som ble rapportert med `finish`, gjør det ikke. `functional` sammenligner byte for byte og lar kjøringen stryke: «publisert tekst avviker fra notes_md». Det samme skjer i r3 `careful-2`. Deterministisk betyr ikke feilfri. Graderen ble ikke endret.
+
+Lar avstanden mellom mutasjoner og ekte kjøringer seg regne bort? Husains skill har med seg Rogan-Gladen-korreksjonen for dette: `(observert pass rate + TNR - 1) / (TPR + TNR - 1)`. Eksemplet hans: 80 % observert, TPR 0,92, TNR 0,88 gir 85 %. Med våre verdier kommer det ut helt forskjellige estimater for de samme 24 tekstene. `judge-blind` lar 0,79 bestå, korrigert blir det 0,49 eller 0,59, avhengig av om jeg teller per artefakt eller per tekst. `pairwise` går fra 0,54 til 0,03 eller 0,23. Hos `judge-sourced` er nevneren 0.
+
+Formelen forutsetter at TPR og TNR gjelder på de nye dataene. Her gjør de beviselig ikke det, og TPR-verdiene på 1,00 hviler på de samme tynne kontrollene som over. Det er ingen kritikk av formelen. Om agenten sier disse estimatene bare ingenting.
+
+## Hva jeg tar med meg
+
+Ingenting av det som kommer nå, er målt. Det er mine konklusjoner fra denne ene laben.
+
+- **Hoveddelen hører til kode-graderne.** For et oppdiktet PR-nummer holder `pr-refs`, og til en modell går bare det kode ikke kan se.
+- **Bivirkning og vei ville jeg sjekket separat.** Dit når ikke tekst-gradere.
+- **Hver grader må også kjøres mot kontroller.** Ellers vinner den som avviser mest.
+- **Mutasjoner er for meg en unit test av graderen, ikke kalibrering.** De finner bugs i graderen og i referansen. Men TPR og TNR derfra gjelder ikke for produksjon, til det trengs labels på ekte kjøringer.
+- **Motsigelser mellom gradere ville jeg lest.** Hullet ved `pause(false)` sto i en avvisning som i matrisen så ut som en falsk alarm. Å sette enda en grader over flytter bare spørsmålet, for også den ville hatt en forfatter.
+
+I mars skrev jeg: «En dårlig eval-score kan være et modellproblem. Men den kan like gjerne være en ødelagt test.» Setningen stemmer fortsatt. I dag ville jeg bare lagt til at en god score heller ikke betyr at testen er hel: De 47 av 47 hos `judge-ref` så rene ut og sa lite om ekte kjøringer.
+
+> Hver grader har en forfatter, testen for graderen også. Kjeden ender hos noen som leser moteksemplene.

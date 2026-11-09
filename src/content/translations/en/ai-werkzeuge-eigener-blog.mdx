@@ -1,0 +1,356 @@
+---
+title: "AI Tools for My Own Blog: Podcast Pipeline, Copy Editing and the Skills Behind Them"
+description: "How my blog applies the same AI principles I described in my last three posts - with automated podcast generation and AI-assisted copy editing."
+date: 2026-03-29
+tags: ["ai", "blog", "meta", "software-engineering"]
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+For three posts, we've talked about principles. Contracts instead of free text. Evals instead of hope. Tool safety instead of "it'll probably be fine". All of it illustrated with a refund agent that processes refunds - far away from my own desk.
+
+<LinkCard url="/en/blog/ai-systems-architecture" />
+
+<LinkCard url="/en/blog/ai-evals-ci-pipeline" />
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts" />
+
+Now for the plot twist: the same principles are built into this blog.
+
+The post you're reading right now was copy-edited by an AI - by a specialized editor skill with its own style profile and structured feedback. And if you'd rather listen than read: the play button is up top. The podcast was generated fully automatically from the article text - dialog script, voices, audio, feed.
+
+Several posts have podcasts by now. Every text goes through AI copy editing. Neither happens manually; both run through domain-specific Claude Code skills - reusable, versioned tools with defined input and output, callable as slash commands right inside Claude Code.
+
+So is my blog an AI system now? No. No user sends requests to a model. No agent makes runtime decisions about product logic. But the same engineering principles I described for AI features in production applications are built into the workflow behind it. A style profile as a contract. Review categories as rubrics. A pipeline with an external API, error handling and a defined output format.
+
+Below, we'll look at two features: the **podcast pipeline**, which turns an MDX blog post into a complete podcast feed via dialog generation and ElevenLabs. And the **editor skill**, which checks texts against a documented style profile before they're published. Both show what the principles from the previous posts actually feel like when they land in your own toolbox instead of a demo app.
+
+## The podcast pipeline: from MDX to RSS feed
+
+Several posts now have an audio version. No manual voice recording, no studio, no podcast hosting. Instead: a Claude Code skill, an API, a Python script and a bit of Astro glue code. From Markdown to a playable podcast in under five minutes.
+
+But one thing at a time.
+
+### Pipeline overview
+
+The workflow looks like this:
+
+**Blog post** → **Dialog script** (Claude) → **Audio** (ElevenLabs Text to Dialogue) → **MP3 + transcript** → **Frontmatter** → **RSS feed** → **Player**
+
+Every step has a clear input and output. The script is a text file with speaker turns. The audio is an MP3. The metadata ends up in the frontmatter. The RSS feed is generated at build time. The player reads everything from the frontmatter - no magic, no hidden dependencies.
+
+### Dialog generation
+
+The blog podcast skill reads a post, extracts its structure and key arguments - and turns them into a German-language conversation between two people. The speakers are called Alex and Lara.
+
+What it's not supposed to produce: an interview. No "That's a great point, Alex!" - a real discussion instead. Both bring their own perspectives, push back, build on each other. That sounds trivial, but it's the difference between "AI-generated" and "I'd actually listen to that".
+
+A few of the rules baked into the skill:
+
+- **No interview structure** - real discussion, occasional disagreement
+- **Technical terms stay in English** - Contract, Eval, Tool-Call, just like on the blog
+- **Emotional cues used sparingly** - `[thoughtful]`, `[laughs]`, but at most 1-2 per minute, otherwise it tips into theatrics
+- **Fixed structure**: intro with a hook (~10%) → main part (~70%) → summary (~10%) → sign-off (~10%)
+
+The result is a text file with a simple format:
+
+```
+Alex: Dialog line here
+Lara: Dialog line here
+Alex: [thoughtful] Another line...
+```
+
+No complex markup language, no JSON. Easy to read, easy to edit. If I don't like a phrasing, I change the line and regenerate the audio.
+
+### Audio via ElevenLabs
+
+For audio generation, I use the ElevenLabs Text to Dialogue API with the Eleven v3 model - according to ElevenLabs their most expressive TTS model, 74+ languages, explicitly not meant for real time but for high-quality offline generation. Exactly what I need.
+
+<LinkCard url="https://elevenlabs.io/docs/overview/capabilities/text-to-dialogue" />
+
+The API call is surprisingly simple: an array of `{text, voice_id}` objects in, MP3 out. The Python script parses the dialog file, maps the speakers to voice IDs and sends everything off.
+
+<Accordion title="ElevenLabs API call (generate_audio.py)">
+```python
+import urllib.request
+import json
+
+API_URL = "https://api.elevenlabs.io/v1/text-to-dialogue"
+
+VOICES = {
+    "Alex": "<voiceid 1>",
+    "Lara": "<voiceid 1>",
+}
+
+def send_chunk(chunk, api_key):
+    payload = json.dumps({
+        "inputs": chunk,  # [{text, voice_id}, ...]
+        "model_id": "eleven_v3",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+```
+</Accordion>
+
+The only trick: the API has a character limit per request. So the dialog gets chunked automatically at around 4,500 characters, and the resulting MP3 parts are stitched together afterwards.
+
+Cost? On pay-per-use pricing, a typical blog post podcast of 10-20 minutes would come to roughly 3-6 dollars per episode.
+
+<Accordion title="Technical stumbling block: the MP3 header problem">
+When the dialog is too long for a single API call, it gets split into chunks. The resulting MP3 parts are joined by byte concatenation - and that's exactly where the problem lies: every chunk has its own Xing/Info headers with frame counts that no longer match after joining. The browser shows the wrong duration, and seeking doesn't work properly.
+
+The fix is a simple ffmpeg re-encode:
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libmp3lame -b:a 128k output.mp3
+```
+
+The script `scripts/fix-podcast-mp3s.sh` does exactly that for every MP3 in the `public/audio/` directory. Run it once, problem solved.
+</Accordion>
+
+### Astro integration
+
+For the blog to know a post has a podcast, it needs exactly one field in the frontmatter:
+
+<CodeTabs labels={["With podcast", "Without podcast"]}>
+```yaml
+---
+title: "My blog post"
+description: "Description"
+date: 2026-03-27
+tags: ["ai"]
+podcast:
+  audioFile: /audio/my-post.mp3
+  transcript: /audio/my-post.txt
+  duration: "21:08"
+---
+```
+```yaml
+---
+title: "My blog post"
+description: "Description"
+date: 2026-03-27
+tags: ["ai"]
+---
+```
+</CodeTabs>
+
+The schema in `content.config.ts` defines `podcast` as an optional object with `audioFile`, `transcript` and `duration`. No post has to have a podcast - but if it has one, it gets the player automatically.
+
+The PodcastPlayer component comes with quite a bit: a waveform visualization, speed control (1x/1.25x/1.5x/2x), skip buttons (±15s), an RSS button, a collapsible transcript and Media Session API support - meaning lock-screen controls on your phone. That sounds like a lot, but it had to be there so listening doesn't feel like a compromise.
+
+The RSS feed at `/podcast.xml` is generated during the Astro build, complete with iTunes tags. You can drop the feed into any podcast app you like - Apple Podcasts, Overcast, Pocket Casts. A blog post is a contract - if you want to process it automatically, you need a schema. For audio just as much as for evals.
+
+### Comparing the alternatives
+
+Why not just use NotebookLM? It's free, generates podcasts with one click and sounds convincing.
+
+Because "sounding convincing" and "being correct" are two different things. A University of Pittsburgh study (presented at AGU 2025) systematically examined podcasts generated by NotebookLM - and found inaccuracies in every summary it tested, with a hallucination rate of ~13%. The insidious part: the errors were barely noticeable to non-experts.
+
+<Callout type="warning">
+Generated podcasts often sound convincing, even when the content is wrong. That makes them more dangerous than obviously broken outputs. If you publish generated audio content, you have to check the content against the source - regardless of the tool.
+</Callout>
+
+On top of that, NotebookLM offers no API and no control over voices or dialog structure. It's a black box - good for a quick overview, useless for a reproducible workflow.
+
+<LinkCard url="https://github.com/souzatharsis/podcastfy" />
+
+At the other end is Podcastfy - an open-source Python project supporting multiple TTS backends (ElevenLabs, Google, Edge, OpenAI). Full control, but also full setup.
+
+I see three levels:
+
+1. **Zero control** - NotebookLM, ElevenLabs GenFM: one click, no influence. Good for trying things out.
+2. **Low control** - ElevenLabs Create Podcast API: programmatic access, but ElevenLabs handles the dialog generation.
+3. **Full control** - Text to Dialogue API + your own script: you write the dialog yourself (or have it generated) and control every speaker turn, every voice, every pause.
+
+My setup falls into category 3. I control the dialog script, the voices, the structure, the publishing. That takes more effort than one click in NotebookLM - but I know what comes out.
+
+> NotebookLM generates podcasts. My skill generates *my* podcasts - with my voices, my format, my pipeline.
+
+The pipeline produces the podcast. But who makes sure the source text - the blog post itself - is up to standard? That's what the next section is about.
+
+## The AI editor: protecting text quality without losing the style
+
+If you've ever had ChatGPT "improve" a text, you know the result: grammatically flawless, stylistically dead. The rough edges are gone, the rhythm is gone, and what's left is a text that sounds like nothing. Or like everything at once.
+
+That's no accident. A study by Cornell and the University of Washington (CHI 2025) measured it experimentally: without AI help, an ML classifier could tell texts by different authors apart with 82.9% accuracy. As soon as the authors used AI writing suggestions, the accuracy dropped to 60% - a measurable loss of stylistic individuality.
+
+<LinkCard url="https://arxiv.org/abs/2409.11360" />
+
+Separately, in a 2024 survey by the Society of Authors in the UK, 86% of the authors surveyed said they were worried their style would be imitated or watered down by AI. The worry is justified - but the problem isn't the model. The problem is the missing contract for quality.
+
+### The style profile as a contract
+
+My editor skill knows my writing style. Not vaguely, not as a gut feeling - but as an explicit, documented profile. Deliberate stylistic devices are recognized as such, not flagged as errors.
+
+The style profile is the contract - just as a JSON schema defines an LLM's output, the style profile defines the quality criteria for the text. Without that contract, every language model optimizes toward the average. With a contract, it optimizes toward *my* standard. The fix for style homogenization isn't a better model, it's a better contract.
+
+### The rubrics: five categories, structured findings
+
+If you've read the evals post, you'll recognize the pattern right away. There, we defined rubrics - review categories with scores to evaluate LLM output systematically. The editor does exactly the same, just on natural-language content:
+
+1. **Language & correctness** - grammar, spelling, punctuation
+2. **Style & tone** - does the text match the defined style profile?
+3. **Structure & layout** - logical flow, paragraph length, heading hierarchy
+4. **Reader guidance** - transitions, a clear through-line, engaging the reader
+5. **Technical consistency** - are the terms, references and technical claims right?
+
+Every finding gets a severity: **critical** (must be fixed), **recommended** (should be fixed), **optional** (a matter of taste). Plus a line number, a quote from the text and a concrete suggestion for improvement. The finding IDs - F-001, F-002 and so on - make the report machine-readable. They can be handed on directly as work instructions.
+
+<Accordion title="Example: excerpt from an editor report">
+
+**F-001** | Severity: critical | Line 42
+> "The evals is run in the CI/CD pipeline."
+
+*Problem:* Subject-verb agreement - "evals" is plural.
+*Suggestion:* "The evals are run in the CI/CD pipeline."
+
+---
+
+**F-002** | Severity: recommended | Line 78
+> "This is a very important aspect that should be taken into consideration."
+
+*Problem:* Passive, distant - doesn't match the style profile (direct first person, short sentences).
+*Suggestion:* "That's exactly what makes the difference."
+
+---
+
+**F-003** | Severity: optional | Line 115
+> "The orchestrator coordinates the individual sub-agents."
+
+*Problem:* Inconsistent terminology - the rest of the text says "agents", not "sub-agents".
+*Suggestion:* Stick with either "agents" or "sub-agents" throughout. The text so far uses "agents".
+
+</Accordion>
+
+The parallel to evals isn't a coincidence - it's architecture. The categories *are* rubrics. The severity levels *are* scores. The structured report *is* an eval result. If you've built an eval framework for LLM output, you already have the mindset for copy editing - only the domain changes.
+
+> The editor is an eval for natural language. The rubrics just go by a different name.
+
+### What the editor doesn't do
+
+The editor fixes errors; it doesn't reshape. "You are an editor, not a co-author" - that's literally in the skill. If I deliberately write a sentence short and choppy, that's style. If I switch perspective in the middle of a paragraph, that's intentional. A good editor can tell the difference. A bad one sands everything smooth.
+
+Over-correcting is the opposite of quality assurance. It's style destruction with good intentions. That's why the editor needs the contract - so it knows what *not* to touch. Exactly the problem the Cornell study describes: without an explicit style profile, any AI assistance drifts toward the average.
+
+## Skills as developer tools: the architecture behind them
+
+The podcast skill generates audio from a blog post. The editor skill checks language and style against a documented style profile. Both run as slash commands right inside Claude Code - `/blog-podcast`, `/blog-lektorat`. But what's behind them? And why is a skill more than an inflated prompt?
+
+### What is a skill?
+
+A skill is a Markdown file with YAML frontmatter and structured instructions. It lives in the project directory under `.claude/skills/<name>/SKILL.md` and is picked up at runtime - changes take effect immediately, no restart, no rebuild.
+
+The frontmatter defines the skill's contract:
+
+```yaml
+name: blog-podcast
+description: "Creates a podcast dialog from a blog post..."
+```
+
+The `name` becomes the slash command. The `description` determines when Claude suggests the skill - it's the trigger and the scope definition at the same time. Everything in the Markdown below it is the actual instructions: workflow steps, format requirements, error handling.
+
+Skills can read and write files, run Bash scripts, call external APIs and use MCP tools. They're not passive text snippets - they orchestrate real processes.
+
+And the ecosystem is growing: the [anthropics/skills](https://github.com/anthropics/skills) repo on GitHub has quickly become the central place for community skills.
+
+<LinkCard url="https://code.claude.com/docs/en/skills" />
+
+### Why not just a prompt?
+
+I could also paste the same text into the chat as a prompt. Works - once. The difference is in everything that comes after:
+
+**Reusability.** Write a skill once, call it forever. No copy-paste from a notes app, no "wait, how did the podcast workflow go again?".
+
+**Versioning.** A SKILL.md is a file - it *can* be versioned, diffed and reviewed. Prompts in your clipboard have no change history.
+
+**Composition.** The podcast skill references a Python script for audio generation. The editor skill loads reference posts for style comparison. Skills can access other files in the repo - templates, configs, helper scripts.
+
+**Tool access.** A prompt can generate text. A skill can run `bash`, call APIs with `WebFetch`, and interact with external systems via MCP tools.
+
+**Encoded domain knowledge.** The ElevenLabs voice IDs, the author's style profile, the editor's five review categories, the frontmatter schema for podcast metadata - it's all in the skill, not in my head or in a notes app.
+
+> A skill is a prompt with memory, versioning and tool access. That's what makes the difference.
+
+### Anatomy of the two skills
+
+What the two skills show particularly well: same architecture, completely different effect.
+
+<Accordion title="Blog podcast skill - SKILL.md (excerpt)">
+
+```yaml
+name: blog-podcast
+description: "Creates a podcast dialog from a blog post
+  on rubeen.dev. Two speakers discuss the contents of the
+  article in a natural, German-language conversation."
+```
+
+**Input:** A blog post (MDX file)
+
+**Process:** Read post → generate dialog script (Alex/Lara, speaker turns, emotional cues) → call Python script → ElevenLabs API → write files → update frontmatter
+
+**Output:** MP3 audio file + transcript text file + frontmatter update in the post
+
+**Side effects:** External API (ElevenLabs TTS), file system (five files are written or updated)
+
+</Accordion>
+
+<Accordion title="Blog copy-editing skill - SKILL.md (excerpt)">
+
+```yaml
+name: blog-lektorat
+description: "Professional copy editing for German-language
+  tech blog posts on rubeen.dev. Checks language, style,
+  structure, reader guidance and technical terms against
+  the author's established style."
+```
+
+**Input:** A blog post (MDX file) + 2-3 reference posts for style comparison
+
+**Process:** Read post → read reference posts → load style profile → analyze in five categories → write structured report
+
+**Output:** Markdown report with numbered findings (`_lektorat-[slug].md`)
+
+**Side effects:** File system only (one file is written)
+
+</Accordion>
+
+Both skills follow the same pattern: defined input, clearly described process, specified output. The podcast skill has more side effects - external API, multiple files, frontmatter mutation. The editor skill is self-contained: it reads, analyzes and writes a report. No external dependencies.
+
+### The contract in the skill
+
+If you've read the previous posts in this series, you'll recognize the pattern: contracts first.
+
+The SKILL.md frontmatter IS the contract: `name` defines the invocation, `description` the scope. The Markdown body defines the workflow, the format requirements, the error handling. Optionally, additional fields like `allowed-tools` can restrict permissions - least privilege, for skills too.
+
+The podcast skill has a dialog contract: Alex and Lara as speakers, speaker turns as the format, emotional cues with a frequency cap, a four-phase structure (intro, main part, summary, sign-off). The editor skill has a report contract: five review categories, numbered finding IDs (F-001, F-002...), three severity levels, required fields per finding (line, quote, problem, suggestion).
+
+These aren't loose guidelines. They're specifications I can check the result against. JSON schema for API output, style profile for text quality, SKILL.md frontmatter for skill behavior - the mechanism differs, the principle is the same: define the contract before you generate the output.
+
+## The principles apply everywhere
+
+For four posts, this has been about principles for AI systems in production. Contracts define the interface between deterministic code and a non-deterministic model. Evals make quality measurable instead of just claiming it. Tools need scope, idempotency and awareness of side effects, because a wrong call breaks more than a bad answer does.
+
+And then this post: a static blog, not a production platform with thousands of users. Even so, the podcast pipeline follows a fixed contract - from the dialog schema through the API integration all the way to the RSS feed. The editor grades against rubrics, not gut feeling. The skills have a defined scope, clear inputs and outputs, and their side effects are known.
+
+That's no coincidence. The principles don't show up because the blog is an AI system - they show up because they apply universally. Contract before prompt. Measurement before opinion. Scope before freedom.
+
+At the start, I asked: is my blog an AI system? The answer is still no. But the thinking behind it is the same. And that's exactly the difference between "I use AI" and "I use AI systematically". The skills get better with every post, the style profile grows, the pipeline gets more robust. That's iterative improvement - just like any other engineering project.
+
+> If you build AI features for others, you should apply the same principles to your own workflow. Not because you have to, but because it works.

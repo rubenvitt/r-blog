@@ -1,0 +1,457 @@
+---
+title: "Evals in CI: When AI features stop being prompts"
+description: "... and start being software - with all the testing obligations that come with it"
+date: 2026-03-23
+tags: ["ai", "ci", "evals", "software-engineering"]
+image: ../../blog/_images/ai-evals-ci-pipeline/hero.png
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+
+import supportAgentUi from '../../blog/_images/ai-evals-ci-pipeline/support-agent-ui.png';
+import agentTeamChat from '../../blog/_images/ai-evals-ci-pipeline/agent-team-chat.png';
+import ciEvalResults from '../../blog/_images/ai-evals-ci-pipeline/ci-eval-results.png';
+import evalMix from '../../blog/_images/ai-evals-ci-pipeline/eval-mix.png';
+import evalCiRun from '../../blog/_images/ai-evals-ci-pipeline/eval-ci-run.png';
+import evalBetrieb from '../../blog/_images/ai-evals-ci-pipeline/eval-betrieb.png';
+import observabilityTraces from '../../blog/_images/ai-evals-ci-pipeline/observability-traces.png';
+
+> If you ship AI features without evals, you don't have an engineering process. You have a hope model.
+
+Prompting in a chat is perfect for exploring what's possible, but once things go to production, good individual answers aren't enough. If you deploy without evals, you're handing the testing over to real users.
+I touched on this briefly in my previous post, where I quickly used an AI-based evaluation. Here I want to look at exactly that aspect in more detail and describe what matters in production applications.
+
+<ProjectCard
+  title="Refund-Agent"
+  description="Multi-agent support system with evals, observability and contracts"
+  appUrl="https://refund-agent.pages.dev"
+  githubUrl="https://github.com/rubenvitt/refund-agent"
+/>
+
+## Tested in the chat window
+
+... is not tested.
+
+Building AI features often starts in the chat UI or with a few prompts in a developer playground. After a few happy-path questions we have a prompt that looks perfect at first glance and that the feature can be built on right away. Sure, a bit of manual tweaking is probably part of it.
+
+And that's perfect! For exploration, that is: to try out whether the actual idea behind the feature works, and to uncover hidden assumptions and obvious failures. What falls by the wayside, as in plenty of deterministic software projects, is testing. And testing is exactly where reproducible quality assurance begins. Code that only ever gets tested manually before going to production always carries the risk that something was missed, especially regressions - and exactly the same applies to prompts built during exploration.
+
+If a vendor releases a new model in two months and we want to integrate it right away because it looks like a better fit, we're quickly flying blind if we created the prompt through exploration and then just left it sitting in the project without testing it again. And a new model isn't the only trigger. A (potentially invisible) change to the model vendor's system prompt could fundamentally change how our prompts - and our AI features - behave. Without reproducible evaluation, we're flying completely blind here.
+
+> *Works in the demo* and *holds up under change* are two different things. And that's exactly where continuous evaluation (CE) comes in.
+
+## Where prompt engineering ends
+
+As soon as model output becomes part of the product logic, good prompting is no longer enough. From then on, contracts, evals and observability matter at least as much as the prompt itself.
+
+<LinkCard url="/en/blog/ai-systems-architecture" />
+
+If we keep iterating on a prompt, we may hit a wall: the result simply doesn't get better, the evals stay red. It might be time to change the model. Because not every problem is the prompt's fault - other reasons for failure include model choice, architecture, tooling, data or the workflow itself.
+
+Better prompting optimizes the model's answers. Engineering stabilizes the system around them.
+
+<Callout type="info">
+Let's look at an example:
+An online shop orchestrates agents that handle direct customer support. There are several agents the orchestrator can call - each agent gets tools via an MCP server so it can carry out support actions for the user.
+
+A specialized refund agent handles a user's refunds, checks against given criteria whether the product in question can be returned - and then triggers the return process in the background once the user has confirmed that a return may be processed.
+The agent reports that the return was successful, the goods don't need to be sent back and the money will reach the customer next week. The money never arrives. The agent never triggered a return.
+</Callout>
+
+Why was no return triggered in this example? In the eval process the answers were always perfect - and the tool calls always worked too. Look at the example again and one thing stands out: an MCP server? It serves its own tool descriptions - and if something changed there and the prompt no longer matches, the logic can stop working and a case like this one can happen.
+
+## When evals become mandatory
+
+As soon as nondeterminism enters the system, running evals is a good idea. Not necessarily when we just pass the AI output straight to the user - but definitely when the model output influences product logic.
+
+Routing, tool calls, writing or changing data, preparing or preventing user actions, being part of a workflow chain - all of these are reasons to run evals, and for high-quality systems they're mandatory.
+
+The more places nondeterminism has in the system, the greater the need for systematic evals. That ranges from single-turn (one model output controls one thing) to workflows (a chain of prompts, each building on the previous one's output) to single agents (an agent keeps calling tools or working until it "thinks" it's done) all the way to multi-agent systems that talk to each other. By that point at the latest, systematic evals are a must - and they're already recommended for single-turn.
+
+<LinkCard url="https://developers.openai.com/api/docs/guides/evaluation-best-practices" />
+
+For example, a FAQ bot that pulls product knowledge for a question via something like RAG and serves it to the user carries a fairly low risk - while the refund agent described above, with tool calls to `refund` tools, carries a much higher one. Put that agent next to a buying agent that can make purchases on my behalf, have both managed by an orchestrator, and we're looking at extremely high complexity - which makes systematic evals all the more important.
+
+> If you let model output into your product logic, you take on responsibility for testing it.
+
+## What makes an eval useful
+
+You need:
+
+- A concrete dataset
+- a defined success criterion
+- at least one grader or verifier
+- a reproducible run
+- a comparison across changes
+
+Don't just test for desired behavior - also test that certain behavior does **not** happen. Manual verifiers in particular are expensive - that's where a small, real, targeted set of cases pays off more than a perfect benchmark with an enormous number of data points.
+
+Compared to human evals, automated graders (LLM-as-a-judge) are much cheaper.
+Another option is code-based graders - and where possible they should make up the bulk of the evals - but because of the nondeterminism they should never be the only kind of verification.
+
+<LinkCard url="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests" />
+
+To stick with the refund agent example: a good way to start evaluating is a smaller, manageable seed set made up of:
+
+- 4 positive refund cases
+- 4 negative refund cases
+- 4 lookup cases
+- 4 ambiguity cases
+- 4 edge cases that should flag a potential policy case
+
+Based on this test set we can then check whether tool calls did [not] happen, whether the response to the user (or orchestrator) is appropriate, whether follow-up questions are asked correctly, and so on.
+At this point it comes down to creativity within the business rules to come up with meaningful, helpful tests.
+
+According to the two big LLM vendors, this isn't about grading prompts. It's about specifying AI behavior so that it becomes testable, explainable and automatable. Prompt evals aren't a side topic here, they're the transition from "we're trying something out" to "we can visibly safeguard quality".
+
+Ideally you write the definition of success first - and only then work out a prompt - much like test-driven development. Without a definition of success, there's nothing to evaluate against.
+
+When designing evals, you have to consider several dimensions of quality. Anthropic lists, among others, task fidelity, consistency, relevance, privacy, context usage, latency and cost; OpenAI describes comparable dimensions. What matters is phrasing the criteria so they can be checked with suitable methods: first the success criteria that are as deterministic and technically measurable as possible, then criteria that can be judged with nondeterministic methods like LLM-as-a-judge, and finally those that need human judgment.
+
+Since the outputs are nondeterministic, a single run can still be graded as a binary pass or fail. For unstable tasks or agent loops whose course varies a lot, though, a single run is often not enough to meaningfully judge how reliable the system is. In those cases the same scenario should be run several times and the result aggregated with suitable metrics - for example pass@k, if at least one successful attempt counts, or a consistency threshold, if reliable behavior is expected. That way you can specify, say, that a scenario has to pass in at least 9 out of 10 repetitions. For regression suites, on the other hand, the pass rate should be as close to 100% as possible.
+
+<LinkCard url="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents" />
+
+> A bad eval score can be a model problem. It can just as well be a broken test.
+
+---
+
+## Evaluation by example: a support agent with tools
+
+Building on the examples sketched above, we want to work with a support team. In this case a chat interface actually makes the most sense - we won't need much UI around it, but the agent is connected directly to our system and can look up information about the user and do things on the user's behalf - specifically, cancel products, for example.
+
+The UI will mostly contain debug output to improve the agent team. A chat interface is enough there, plus tracing of tool calls and routing, built-in eval tests, editable prompts and a "backend" state to check what exactly happens to the data.
+
+<Figure
+  src={supportAgentUi}
+  alt="Support Agent Reliability Lab - UI with chat, traces and eval runner"
+/>
+
+Claude kindly built me an application that sets up a support agent. After a pretty successful one-shot prompt I adjusted a few small things - and we're ready to go with an orchestrated support agent team.
+
+<Accordion title="One-shot prompt (generated by GPT 5.4 Pro)">
+You are a senior full-stack TypeScript engineer and your job is to build a local demo application.
+
+Goal
+Build a modern, screenshot-ready web app for a blog post about AI evals, tool contracts, orchestration and drift. The app should make this crystal clear:
+
+"A plausible assistant answer is no proof that the right tool call or a real side effect happened."
+
+The product is not a real support platform but a focused reliability workbench built around an orchestrator/refund agent scenario.
+
+Working mode
+Work in this order:
+
+- Very short architecture summary
+- concrete file structure
+- implementation
+- README
+- short list of deliberately deferred items
+
+Don't wait on broad clarifying questions. Make reasonable decisions and keep the scope tight.
+
+Strict scope boundary
+
+- No generic AI playground
+- No real auth system
+- No real database
+- No real MCP server
+- No LangChain
+- No production hardening
+- No SaaS observability
+- No autonomous agent swarm
+
+Instead:
+
+- local demo
+- explicit, easily checkable workflows
+- visible tool trajectories
+- reproducible seed evals
+- editable prompt/tool contracts
+
+Tech stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- lucide-react
+- current stable APIs from ai-sdk.dev
+- AI SDK UI on the client
+- AI SDK Core on the server
+- zod for schemas
+- Vitest for a few targeted tests
+
+Key architecture decision
+At the product level, present the system as "agents", but implement it in a controlled and explicit way:
+
+- Orchestrator
+- Refund Agent
+- Order/Lookup Agent
+- Account/FAQ Agent
+
+Avoid a huge black-box agent system.
+I want explicit, traceable modules/functions with clear contracts and structured traces.
+
+Product idea
+App name: Support Agent Reliability Lab
+
+The app should demonstrate:
+
+- routing through an orchestrator
+- specialized handling by a refund agent
+- clear tool contracts
+- approval for destructive actions
+- the difference between answer text and a real side effect
+- drift caused by changed tool descriptions
+- a small, reproducible eval suite
+
+Local-only rule
+
+- Provider API keys are stored in browser localStorage
+- these keys are sent to the local API routes with each request
+- never log keys
+- mask keys in the UI
+- clear warning in the UI: "Local-only demo. Do not deploy as-is."
+
+Provider support
+
+- OpenAI
+- Anthropic
+
+Settings should allow:
+
+- choosing a provider
+- entering a model ID
+- entering an API key
+- showing key presence
+- deleting all local data
+
+Main product screens
+Build a modern layout with a header + tabs.
+
+Tabs:
+
+- Playground
+- Trace
+- Evals
+- Contracts
+- Backend State
+- Settings
+</Accordion>
+
+The team's prompts are fully customizable. The team itself consists of:
+
+- Orchestrator (routes to the individual agents)
+- Refund Agent (knows the rules and tools for refunds)
+- Lookup Agent (handles order status & tracking requests)
+- Account & FAQ Agent (password resets & policy questions)
+
+The relevant tools are: `lookup_order(order_id)`, `refund_order(order_id, reason)`, `reset_password(account_id)`, `faq_search(query)` and `verifyCustomer(account_id, email)`. In the generated application you can also edit each tool's description, so you can evaluate different prompts there as well and get better results.
+
+<Figure
+  src={agentTeamChat}
+  alt="Chat interface of the support agent team with tool tracing"
+/>
+
+### The system's contract & definition of done
+
+To implement the evals, we need to be clear about the success criteria. In our example, that means answering the following questions:
+
+#### When may a refund be triggered?
+
+When **all** conditions are met:
+
+- Identity verified: `verify_customer` must succeed
+- Order exists: `lookup_order` must succeed
+- `order.isRefundable === true`
+- `order.refundedAt === null`
+- `order.status !== 'refunded'`
+- User approval: the workflow should pause and wait for explicit confirmation
+
+#### When does the agent have to ask after all?
+
+The orchestrator routes to the *clarify* route when the request is ambiguous or key information is missing - so it should know how the tools are called without being able to call them.
+
+#### When may it only answer from the FAQ?
+
+The `faq` route is only chosen for general policy questions that have nothing to do with refunds, order lookups or account management. There's a `faq_search` tool there that can answer questions from the FAQs.
+
+#### When is a password reset allowed?
+
+When the customer's email address is known - the actions are audited and carried out by the `account` agent.
+
+#### Which answers would be wrong from a business or security standpoint?
+
+- Refund without `lookup_order`
+- Refund without identity verification
+- Refund when `isRefundable: false`
+- Duplicate refund
+- "False success" - the agent claims a refund happened, but the tool is never called
+- Tool isolation violated - the FAQ agent calls `refund_order`
+- Password reset without an email
+
+So without knowing the contract, you can't write good evals - and now we know the support team's contract. The last points in particular let us name pretty clear, measurable success criteria - our "definition of done".
+
+## The smallest eval mix that makes sense
+
+### Code-based checks: what can be checked objectively belongs in code
+
+> Anything that can be checked deterministically should be checked deterministically. If you let hard rules go soft, you're building in instability for no reason.
+
+Rules that already exist in the app should also be enforced in the app. And in the context of this application, that's exactly what already happens. We already define the inputSchema for tool inputs in the SDK via a zod schema. Wrong tool calls get caught right there.
+A lookup map defines the allowed tool names per agent, and only those tools are offered to the LLM.
+The eval runners check that the tools that are supposed to be called do get called when a defined LLM request comes in - and also that tools don't get called when they shouldn't.
+Tools that require approval are not executed without user interaction (who the user is in that case - the customer or a human agent - can be decided later).
+
+More generally, this is the place for anything that can be checked objectively, such as:
+
+- Schema correctness
+- Allowed tool names
+- Completeness of required parameters
+- Exact IDs and labels
+- No action before verification
+- No duplicate or disallowed calls
+
+Different eval pipelines come with different grader types for this. In our project we wrote a custom evaluation section with several graders like routeMatch, requiredToolsCalled, forbiddenToolsAvoided & a few more that check different rules.
+
+<Figure
+  src={ciEvalResults}
+  alt="A selection of code graders in the project that run as part of the eval process and grade the prompt"
+  caption="A selection of code graders in the project that run as part of the eval process and grade the prompt"
+/>
+
+#### Model-based grading: scale nuance, don't simulate truth
+
+> LLM-as-a-judge beats gut feeling, but it isn't the same as the truth.
+
+"Does the result fit the prompt? Answer yes/no." - we'll probably get a surprising number of yes votes if we don't define any criteria. How would the LLM know what to pay attention to? So we need several clear rubrics - categories for grading the prompt. They define grading criteria and possible points - plus a minimum score that has to be reached. For example, the following criteria could be used to have the LLM grade the result automatically:
+
+- Correctness: 0-2
+- Completeness: 0-2
+- Grounded in tool results: 0-2
+- Appropriate tone/empathy: 0-2
+- No hallucinations: 0-2
+
+Alternatively, we can define several pass/fail scenarios as rubrics that we grade only as pass or fail. In the following example an LLM-as-a-judge run was carried out - for each case the AI explains what was good or not so good about the answer, and whether the answer passed the test.
+
+<Figure
+  src={evalMix}
+  alt="LLM-as-a-judge results with reasoning per test case"
+/>
+
+So what gets tested here is mainly the quality of the answers in certain areas - and whether things are communicated clearly to the user. Cases that can't be decided deterministically. Of course, humans are even better at deciding whether they understand an answer - but probably not with reasoning as detailed as the LLM's across lots of test cases.
+
+<LinkCard url="https://developers.openai.com/api/docs/guides/evaluation-best-practices" />
+
+#### Human evals as a calibration technique for discovery and for edge cases
+
+Does the wording of what comes out actually work? Am I comfortable with it as a user? Humans are perfect for deciding that. In general, judging as a human works well for calibrating the rest of the LLM grading. A human can also investigate and potentially resolve edge cases that neither the code nor the LLM caught - and that may well produce new code or LLM-as-a-judge graders that end up improving the quality of the system.
+
+<Figure
+  src={evalCiRun}
+  alt="Human judging of a set of results"
+  caption="Human judging of a set of results"
+/>
+
+<Figure
+  src={observabilityTraces}
+  alt="Human judgments shown in the results view"
+  caption="Human judgments shown in the results view"
+/>
+
+Humans can also grade the subjective quality dimensions, the new elements and tricky edge cases mentioned above - or calibrate the cheaper graders.
+
+> Humans are not the scalable replacement for regression tests on every merge.
+
+Precisely because human judging doesn't scale arbitrarily, human review is the part that sharpens the system - not the part that manually signs off on everything every time. Especially while there are only a few meaningful graders, human review is incredibly important for writing exactly those graders, LLM- or code-based.
+
+#### Trace and workflow evals: evaluating agents
+
+> It's not just the result that counts. The path can be expensive, risky or broken too.
+
+So far we've mainly graded the agent's answers (we already built the first workflow evals into the code checks). But this can be extended with more process-dependent checks. And the human feedback can be extended with a process rating as well:
+
+<Figure
+  src={evalBetrieb}
+  alt="Human feedback extended with the option to rate the process (tool usage)"
+  caption="Human feedback extended with the option to rate the process (tool usage)"
+/>
+
+Possible automated checks for agent-based AI features are questions like: Was the right tool used? Are the arguments correct? Were there unnecessary loops? Was something delegated at the wrong time? Were tools called unnecessarily? Was the handoff clean?
+
+What matters at this step isn't output quality but process & workflow quality. Still, be careful not to define the paths too strictly - if you find you need to, that's a sign that a deterministic system might be the right choice after all.
+
+## Evals belong in CI
+
+Continuous integration is where regular regression detection happens. As we all know, it's where test suites get run. And in the end, evals are just test runs too. If the success criteria are drawn too tightly, the test gets flaky - similar to load tests. But if the thresholds are chosen well, the evals should flag that something is wrong exactly when something really is wrong.
+And with this kind of test in particular, it's important to run it only when something has changed. For example, when the prompt was adjusted, the model was changed or something changed in the tools.
+
+But exactly when something changes in the AI features, I want to find out that something is no longer right. So ideally, a small, fast regression suite checks the critical core cases as often as possible whenever one of the variables above changes - and at the very least runs the deterministic checks.
+
+So in CI you should set a lower (but not too low) bar for the test cases, potentially lower than during exploratory analysis.
+According to Anthropic, regression suites should have a pass rate of close to 100%.
+
+> If you merge AI features without an eval gate, you're moving QA into production.
+
+## A realistic operating model instead of an ideal
+
+So far we've covered a lot of concepts that can be used for prompt evals and quality assurance - and in an ideal world should be. But I know from experience: not every project has 100% test coverage from day one (if it ever gets there) - nor is it feature-complete right after release. The ideas in this article should be viewed the same way.
+
+A sensible operating model for quality assurance could look like this:
+
+- On every PR: a small regression suite for the critical spots
+- deterministic checks
+- less stable judge-based core metrics
+- Nightly / regularly: a larger eval suite, broader datasets, multiple attempts for less stable tasks, trend comparisons
+- Weekly / in your review rhythm: human sampling, rubric calibration, analysis of new failure patterns, deciding which cases move into a suite
+- After incidents / support cases: turn production failures into new regression tests
+
+At this point it becomes clear: good eval strategies aren't a one-off. They're an operating model.
+
+## CI isn't enough: observability and production feedback
+
+By the time we're adding new failures to our suite after incidents, it's obvious: some unknowns may only show up in production - and that's where these matter all the more:
+
+- proper tracing, monitoring & sampling of my AI features
+- incident reviews that adjust the prompts, tools and code checks
+
+and along with that, feeding real failures back into the eval set.
+
+> Evals without production feedback go stale - production monitoring without evals stays reactive.
+
+## Common objections - and why they don't hold up
+
+**LLMs aren't deterministic, so tests don't help much**
+That's exactly why we need structured evals, trials & comparison runs with success metrics worked out up front.
+
+**But we do manual checks before every release**
+Manual checks are perfect for uncovering new issues - but really ineffective at catching regressions.
+
+**LLM-as-a-judge is too unreliable**
+Generally true. But for everything? No. For nuances you can put into a rubric, calibrated with human feedback, it's actually pretty useful.
+
+**We don't have a big benchmark yet & we're missing data**
+Synthetic cases are a good start; after that you can add production cases, logs, incidents, historical data and human-curated examples to the set. OpenAI itself recommends a similar mix.
+
+**It's too expensive**
+These tests are more expensive than unit tests - but using real users as your test system will be even more expensive. Evals aren't perfect - but they're systematically better than implicit hope.
+
+## Quality isn't claimed, it's measured
+
+What we can't check reproducibly, we can't improve in a controlled way. That goes for deterministically written code just as much as for nondeterministic AI features, which past a certain point carry the same responsibilities as any other software. Tests matter in both worlds - and in LLM & agent systems, those tests are called **evals**.
+
+And here's the live example:
+
+<ProjectCard
+  title="Refund-Agent"
+  description="Multi-agent support system with evals, observability and contracts"
+  appUrl="https://refund-agent.pages.dev"
+  githubUrl="https://github.com/rubenvitt/refund-agent"
+/>

@@ -1,0 +1,245 @@
+---
+title: "Chat is the interface that came first - not the one that works"
+description: "As soon as an agent does something with consequences, chat is rarely the best interface. A look at the editor, diff, approval panel and timeline - and when a text box is still the right tool."
+date: 2026-06-11
+tags: ["ai", "software-engineering", "ux"]
+image: ../../blog/_images/die-bessere-ui-ist-kein-chat/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import DemoInlineEdit from '../../../components/widgets/DemoInlineEdit.astro';
+import DemoCompare from '../../../components/widgets/DemoCompare.astro';
+import DemoApproval from '../../../components/widgets/DemoApproval.astro';
+import DemoTimeline from '../../../components/widgets/DemoTimeline.astro';
+
+> Chat isn't wrong. Chat as the default is wrong.
+
+For years, almost every new AI feature has gotten the same face: a text box at the bottom, a stream of answers above it. Whether I ask a question, have some text rewritten or let an agent loose on a database, the interface is always the same column of speech bubbles. It's cheap to build and it feels familiar. It just rarely fits what we actually do with the output.
+
+The real problem starts as soon as an agent doesn't just answer but produces something I keep working with: a plan, a migration, a refund. I want to do very different things with a result like that, and hardly any of them is "type another message". For most of them there's a surface that fits better than yet another text box: an editor, a diff, an approval panel, a timeline.
+
+This post walks through those surfaces one by one, using a single running example: a tool that turns a GitHub issue into an implementation plan. It's the interaction layer on top of a series that has so far been about the inner workings of agent systems - contracts, tool safety, approval, observability. The interface is where those inner workings become visible, or stay invisible.
+
+<LinkCard url="/en/blog/agent-loops-entscheidungspunkte"/>
+
+## Issue in, 40-line plan out - LGTM?
+
+You copy the URL of a GitHub issue, paste it into a field, click "Analyze". A few seconds later text starts streaming in: first a summary of what the issue actually wants. Then the affected areas of the code. Then a list of risks, the concrete implementation steps, and at the end a few test ideas. 40 lines, cleanly organized, with headings and bullet points. A plan, not small talk.
+
+In most tools I know, this would be a chat history. One speech bubble after another, top to bottom, and you scroll along. Here it's something else: a document. Structured, readable in one go, with clear sections instead of an endless thread of answers and follow-up questions. The difference looks cosmetic at first. It isn't.
+
+Because now comes the question this whole post hangs on: What do you do next with this plan?
+
+You read it carefully, not skimming, because it's about to become code. You trip over step 3, which puts the migration before the backup, and you want to fix that one line. You want to hold the plan up against the original issue to see whether it really meets the requirement or plans right past it. You want to explicitly approve the two risky steps - the schema migration, the change to auth - before anything happens. And then you want to apply the plan, turn it into actual work.
+
+Five activities on the finished plan. Read, correct, compare, approve, apply. And not a single one of them is called "keep chatting".
+
+This is the moment the chat interface quietly fails. 40 lines of plan. LGTM. Approve. Done. Or... which text box do I type the fix for step 3 into? Do I write "please change step 3, the migration has to run after the backup" and hope the model hits the right line without rewriting the other 39? That's not editing. That's describing an edit and praying.
+
+As soon as an agent produces something you work with, the one conversation falls apart into several different activities. Chat squeezes them all back into the same text box. Why that's the default for everything, even though it fits so rarely, is the real question.
+
+## Six tasks, one text box
+
+Let's look at what happens around the plan from the last section. Input and generation come first - and then the things you do to the finished plan: read and review, edit, approve, apply. Half a dozen activities, each with its own rhythm. Input is a short burst. Review is slow reading that jumps around. Editing is targeted. Approval is a single, deliberate moment. And a chat thread serializes all of that into one column that keeps growing downward.
+
+That's where the friction is. A thread is a bad workflow tracker, because conversation time and workflow time run on different clocks. The conversation wants me to reply to the last message. The workflow wants me to jump back to step three, change two lines there and leave the rest alone. In a thread that means: scroll, search, rebuild the context in my head, type a new message describing what I actually wanted to touch directly. The plan is an object with state - the thread treats it as a sequence of speech acts.
+
+In the 2026 UX discussion around agent interfaces, one point gets made a lot, among others by Adi Leviim in UX Collective: chat is the interface that was fastest to ship. That doesn't make it the one that works best. A text box plus a stream of answers is cheap to build and works for any use case. The cost hasn't gone away, it's just been moved. Six different kinds of tasks, one input field - and the burden of telling the modes apart lands on the user. I have to spell out in prose whether I want to ask, correct or approve right now - even though the UI could make that distinction for me. It knows which step we're on, after all.
+
+It's the same move as with autonomy - a dial that most systems don't turn all the way up. The UI equivalent: the interface is a choice you make per task. Which surface fits which task can be written down pretty directly:
+
+| Task type | Matching surface |
+|---|---|
+| view the plan, get an overview | Document |
+| change one line | Inline edit |
+| check against the requirement | Diff / compare view |
+| approve a risky step | Approval panel |
+| trace what ran | Timeline |
+| explore openly, before anything has a shape | Chat |
+
+Chat sits in the last row, and that's not a farewell: for open exploration, when the task doesn't have a shape yet, a text box is the right choice. The problem isn't chat. The problem is chat as the default for everything - including the five rows above it, where a more specific surface would do the job.
+
+Let's start at the top of the table. When a tool turns an issue into an implementation plan, the first thing I do with that plan is read it and make out its structure. The right surface for that isn't a conversation history but a document - a plan is an editor problem.
+
+## The editor: a plan is a document
+
+Back to our plan: one line isn't quite right - the migration should only run after the backup.
+
+In a chat you'd now write back: "No, swap steps 3 and 4, the backup has to come first." The agent reads your free text, interprets it and regenerates the plan for you. In the better case the order is now correct. In the worse case step 6, which was right before, has quietly shifted too - because a regeneration rolls the dice on the whole state again and has no guarantee that everything except your one change stays the same.
+
+That's the core problem with re-prompting as a correction mechanism: you have structured state - a typed plan object with `summary`, `steps[]`, `risks[]` - and you push it through a free-text interpretation to make one targeted change. The agent first has to reconstruct from your sentence what you mean, and then produces a completely new object. The contract between UI and agent still exists, but with every correction it gets fulfilled from scratch instead of being touched in one place.
+
+A plan is an artifact. You edit artifacts directly: click the line for step 3, change the text in the document, done. The UI replaces only that one entry in the plan object and leaves the rest untouched. The contract stays intact because you're working at the level of the object, not at the level of a new generation.
+
+<CodeTabs labels={["Chat correction", "Inline edit"]}>
+```ts
+// Correction sent back to the agent as free text.
+// It regenerates the WHOLE plan object from your sentence -
+// summary, steps[] and risks[] all get reinterpreted.
+// Things that were correct before can shift along with it.
+async function correctViaChat(message: string) {
+  const newPlan = await agent.send({
+    role: "user",
+    content: message, // "No, swap steps 3 and 4"
+  });
+  setPlan(newPlan); // full replacement, no diff
+}
+```
+
+```ts
+// Direct manipulation of a typed plan object.
+// Only the step you touched gets replaced, the contract
+// (summary, steps[], risks[]) stays structurally intact.
+function onSave(stepId: string, next: string) {
+  setPlan((plan) => ({
+    ...plan,
+    steps: plan.steps.map((step) =>
+      step.id === stepId ? { ...step, text: next } : step,
+    ),
+  }));
+}
+```
+</CodeTabs>
+
+The difference reads as abstract until you get your hands on it. Click a line in the plan and change it directly:
+
+<DemoInlineEdit />
+
+If you keep the autonomy dial from earlier in mind, this is the same separation at the UI level: intent versus execution. You edit the result, not the prompt. You stated the intent long ago - now you're correcting the execution without restarting the whole machinery.
+
+An honest caveat: this flat state - steps as a list, one field per entry - is a deliberate choice, not a stopgap. As long as the steps stand independently side by side, an array is enough. Only when steps have real ordering dependencies (step 5 may only run if 2 and 3 succeeded) do you need a task graph instead of a list. That's a different data structure and a different editing model - and for most plans you simply don't need it.
+
+Editing solves one problem: I can shape the plan without wrecking the state. It doesn't solve the other one. How do I know the plan even hits what the issue asked for? A fluently written list of steps always looks plausible. Whether it actually meets the requirement only becomes visible once I put the two side by side.
+
+## The compare view: what the agent says vs. what happens
+
+Remember the refund agent from this series. The chat shows a friendly sentence: "Refund initiated, the amount will be back in your account in a few days." The tool call went through, no error, no red border. Except no money moves. There's nothing in the ledger - no entry, no transaction, no trace. The agent produced a claim, not a result. That's exactly what false success is: an answer that looks like success while the backend state stays untouched.
+
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+
+A chat paragraph invites skimming. It's fluent, polite, plausible - and our eyes slide over the summary because it reads like a result. A diff does the opposite. It puts two states side by side and forces us to look: one thing on the left, the other on the right, the difference in between. Where chat tells a story, the compare view compares.
+
+> A green chat history with broken backend state is more dangerous than a red stack trace. The stack trace yells at you. The green history whispers that everything is fine.
+
+In agent systems the diff comes in two flavors, and each one exposes different gaps.
+
+The first: **original issue ↔ generated plan.** Here the requirement sits next to what the agent made of it. Does the plan really cover all three points from the issue, or only two, because the third quietly got swallowed along the way? In running text a missing requirement barely stands out - the plan sounds complete as long as we don't put the issue next to it. The comparison makes the omission visible before any code exists.
+
+The second: **claim ↔ system state.** What the agent claims to have done, against what the system actually shows. "Refund initiated" on the left - the missing ledger entry on the right. This flavor is the more important one, because it goes after the spot where chat lies most convincingly: the success message after a mutating action. The agent is welcome to make claims. We check the claim against the state.
+
+Both flavors, side by side - switch between them:
+
+<DemoCompare />
+
+This idea isn't a one-off. Several 2026 UX guides for agent systems describe patterns that at their core mean the same thing: the "action receipt", which confirms every action with proof, or tool-call review with a before/after diff and a rollback path. Different names, one move toward checkable comparison. Every agent action produces not just a statement about what supposedly happened, but an artifact where we can look up what did happen.
+
+<Callout type="warning">
+A green plan isn't a met requirement - any more than a green eval score is a production release. The diff shows you the difference between claim and reality. What you do with that difference is still up to your discipline: the action is done only when the state on the right makes good on the one on the left. The chat history doesn't get to decide that.
+</Callout>
+
+The compare view solves a visibility problem. It makes the gap between claim and effect tangible instead of hiding it in running text. But visibility isn't control. A diff shows me that the plan migrates a database or triggers a payment - it doesn't stop the step. For harmless actions, looking afterward is enough. For risky ones I need a checkpoint up front: a point where I decide whether this step gets to run at all.
+
+## The approval panel: approval as the primary interaction
+
+The compare view ended with an open question: who approves the risky step? In chat the answer is usually a popup that bursts into the middle of the history - a modal interrupt that yanks you out of your reading and leaves you alone with a yes/no decision. You click, the dialog disappears, and whatever you just confirmed scrolls away upward. Approval deserves its own surface, not an overlay on top of the conversation.
+
+An approval panel makes the state visible and scannable: pending → confirming → approved. It shows which tool call would run with which arguments *before* it runs - not as a free-text description, but as a concrete, parsed proposal. You see the mutation, not the story about it. And you see it in a fixed place that doesn't get buried in the history while something is still waiting for your decision.
+
+To keep every single step from landing in front of you, you need to sort by risk first: read-only, low-risk mutation, high-risk mutation, irreversible. The model can flag on its own what needs approval - a `requiresApproval` flag, set for DB migrations, auth and permission changes, billing logic, destructive or externally visible breaking changes. It's more reliable to enforce this classification as a policy at the tool level - an allowlist by tool type. Trusting the model's self-assessment alone is risky: under prompt injection or hallucination, it'll call exactly the touchy action harmless. That way a read happens quietly in the background while a `DROP` statement stops for confirmation. Only what really justifies the friction lands in front of a human.
+
+<LinkCard url="/en/blog/human-in-the-loop"/>
+
+And this is where the real problem lurks. An approve button tempts you to wave things through. Anyone who clicks "Approve" ten times in a row isn't checking anymore on the eleventh - that's rubber-stamping, and it's measurably dangerous. The human-in-the-loop discussion has described automation complacency for years: as soon as the suggested answers were wrong and got adopted blindly, the participants' accuracy dropped measurably - the wrong suggestion dragged them down with it instead of being corrected by them. Oversight that only nods isn't oversight.
+
+The countermeasure is called cognitive forcing: a deliberate intermediate step that breaks the reflex. The "confirming" state is one of those steps - a short pause where you have to give a reason, where you don't just click but write down in one sentence why this mutation is allowed to run. Here the friction is the feature. It forces your eyes back onto the tool call's arguments before it becomes reality.
+
+Try approving the step - it won't work without a reason:
+
+<DemoApproval />
+
+<Callout type="danger">
+An approve button that doesn't trigger anything in the system trains exactly the rubber-stamping it's supposed to prevent. If "Approve" has no consequences, people learn that clicking is enough - and the panel becomes a facade over an automation that has long been deciding on its own.
+</Callout>
+
+Concrete patterns for this are emerging in the UX discussion. An "intent preview" shows you what the agent is about to do and gives you more than a binary yes - for example: continue, change the plan, or take over yourself. The "autonomy dial" from 2026 UX guides - described in Smashing Magazine, among others - turns the degree of independence itself into an adjustable setting instead of hard-wiring it. The rule of thumb behind it: nudge, don't nag. Ask where it counts, not at every step - otherwise attention wears down and you're back to waving things through.
+
+Once approval is given, the work begins. Several tool calls run, state changes, something gets written, deleted, sent. The panel showed you what *should* happen. But how do I know what actually happened - in what order, with what result, and where it got stuck? The chat history at best retells it.
+
+## The timeline: a trace instead of a chat history
+
+After approval, something runs - and this is where the difference between two kinds of records shows. A chat history tells you what was said. An audit log or a trace shows what actually happened. Those aren't the same thing, and the gap between them is exactly where false success lives: the agent says "refund's out", the scrollback reads like a solved ticket - and the trace says the decisive tool call never went through.
+
+A timeline is more than the chat history made pretty: it's the trace waterfall - the hierarchical sequence of what the system did, with duration, nesting and result per step.
+
+We already know what a surface like that shows from the observability post: tool execution spans with arguments and results, approval events as a pause in the flow, timestamps, durations. At its core it's LLM calls for the model interactions, tool executions for every tool call, and the agent orchestration as the root span that holds it all together. In a good timeline I can filter (only tool calls, only errors), zoom and jump straight to a step - instead of scrolling through hundreds of chat bubbles.
+
+That's the point the agent UX discussion keeps making: in a long, partly autonomous session, hundreds of events pile up fast. The question "What happened between minute 30 and 45?" is practically unanswerable in a linear chat - you scroll, search, lose the thread. In a filterable timeline it's a range selection.
+
+<DemoTimeline />
+
+Let's be honest about where this fits. For a one-off plan generation - single-shot, one model call, one result - a timeline doesn't pay off much yet. There's hardly anything to nest, the "trace" is one line. Its value goes up the moment the plan gets *applied*: several tool calls in a row, several sub-issues written, an approval in the middle, maybe a retry after an error. Then the timeline is the difference between "I think it ran" and "I can see what ran - and where it got stuck".
+
+That's also why this surface and observability aren't two topics but one. The timeline is the frontend for the same trace you need in the backend anyway to debug incidents. If you instrument properly, you get the traceability interface almost for free.
+
+<LinkCard url="/en/blog/observability-ai-features"/>
+
+So we've seen four surfaces that in many cases work better than a chat window: editor, diff, approval panel, timeline. That leaves chat itself.
+
+## When chat is the right call after all
+
+Is chat done for? No - but it's only right for a certain kind of task. The distinction that matters here isn't "chat vs. UI", it's divergent vs. convergent.
+
+Divergent work opens up the search space. The target state isn't fixed yet, it only emerges along the way. You feel your way forward, throw things out, try another direction. That's what a conversation is built for: every turn is allowed to be vague, every next step corrects the previous one. Convergent work is the opposite. There's a checkable end state - an approval, a comparison, an applied result - and the only remaining question is whether that state is right. This is where chat gets weak, because it forces the checking into a text trail you have to reconstruct yourself.
+
+An example that shows both: you're refining a UI mockup. "Add a search field above the table." "Make the table more compact." "Take the second column back out." Every sentence narrows the search space a bit, and the goal - the good layout - doesn't even exist as a spec at the start. It crystallizes in the dialog. That's the exact opposite of a plan you approve up front. Nobody would want to force this process into an approval form, because there's nothing finished to approve. Here the conversation *is* the tool.
+
+Technically, "chat" doesn't have to mean bare text anymore. Modern frameworks support generative UI: the agent renders real components at runtime instead of just writing. A tool then returns a form, a table or a row of metric cards instead of plain text - in the Vercel AI SDK, for example, via tool invocations that the frontend translates into components. An honest note on that: the React Server Components route is currently paused in the AI SDK; the recommended approach is the client-side variant with `useChat` plus the tool invocations. The result is still a chat interface - but one with structured, interactive building blocks inside it.
+
+And that doesn't break this post's thesis, it confirms it. We pick the surface by the task. When the task is divergent exploration, chat wins - and as soon as a convergent moment shows up inside that exploration, you just slide a structured building block into the stream. Even "chat" is then often chat-plus-structure, not the raw form all of this started with.
+
+<Callout type="tip">
+Rule of thumb: divergent and exploratory, without a fixed target state → chat. Convergent, checking, acting, with a clear end state → structured surface (editor, diff, approval, timeline).
+</Callout>
+
+<Accordion title="When chat wins - and when it loses">
+**Chat wins:**
+- open brainstorming where the direction is still open
+- refining mockups and drafts step by step
+- questions to a knowledge base
+- early exploration where there's no defined target state yet
+
+**Chat loses:**
+- approving a risky action
+- comparing two states side by side
+- tracing a long, multi-step run
+- precisely editing a structured artifact
+</Accordion>
+
+That gives us the honest version of the thesis: chat is one surface among several, and it has a clear place where it belongs. If we consistently pick the surface by the task - what does that mean for building agent systems?
+
+## The control surface is the moat
+
+In the 2026 discussion, Blake Crosley boiled it down to a formula that sticks: what makes agents usable in production isn't the model and isn't the size of the context window, it's the interface that makes their work visible, checkable and approvable. The competitive advantage sits one floor above the reasoning, in the surface that makes it operable. The control surface is the real moat - what you can see of the agent's work and, if in doubt, stop.
+
+That ties the whole post together. An agent can fulfill a clean contract, pass every eval and write an airtight trace - and the user notices none of it as long as no UI shows it. Governance that only exists in the backend stays invisible to the human on the other end. The editor shows the contract before it gets executed. The diff shows the effect, before and after. The approval panel turns approval into a deliberate decision. The timeline records the run, retrievable instead of reconstructed from memory. A chat can tell you about all of that. The structured surfaces make it checkable.
+
+That closes the arc across the series. Every surface in this post has its roots in an earlier engineering problem:
+
+- **Autonomy dial instead of a free loop** - if you define decision points, you need an interface that hands control back at those points.
+- **Intent vs. execution** - the diff exists because a successful tool call doesn't mean the right thing happened; false success only becomes visible in the before and after.
+- **Approval as quality assurance** - the approval panel is the UI form of human-in-the-loop, approval as a deliberate step and not a reflex.
+- **Trace instead of speculation** - the timeline is observability for the user, the run as evidence instead of guesswork.
+
+<LinkCard url="/en/blog/agent-loops-entscheidungspunkte"/>
+<LinkCard url="/en/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/en/blog/human-in-the-loop"/>
+<LinkCard url="/en/blog/observability-ai-features"/>
+
+One surface is still missing from this list, and it sits at the beginning rather than the end: structured input itself - the assisted form, where the agent fills in the fields instead of asking for them. That's the next piece.
+
+> The best interface for an agent makes its work checkable - a chat just narrates it.

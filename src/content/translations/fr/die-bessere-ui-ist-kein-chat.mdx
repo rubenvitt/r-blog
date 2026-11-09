@@ -1,0 +1,245 @@
+---
+title: "Le chat est l'interface arrivée en premier - pas celle qui fonctionne"
+description: "Dès qu'un agent fait quelque chose qui a des conséquences, le chat est rarement la meilleure interface. Tour d'horizon de l'éditeur, du diff, du panneau d'approbation et de la timeline - et des cas où un champ de texte reste le bon outil."
+date: 2026-06-11
+tags: ["ai", "software-engineering", "ux"]
+image: ../../blog/_images/die-bessere-ui-ist-kein-chat/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import DemoInlineEdit from '../../../components/widgets/DemoInlineEdit.astro';
+import DemoCompare from '../../../components/widgets/DemoCompare.astro';
+import DemoApproval from '../../../components/widgets/DemoApproval.astro';
+import DemoTimeline from '../../../components/widgets/DemoTimeline.astro';
+
+> Le chat n'est pas une erreur. Le chat par défaut, si.
+
+Depuis des années, presque chaque nouvelle fonctionnalité d'IA a le même visage : un champ de texte en bas, un flux de réponses au-dessus. Que je pose une question, que je fasse reformuler un texte ou que je lâche un agent sur une base de données, l'interface reste la même colonne de bulles. C'est bon marché à construire et ça paraît familier. Seulement, ça colle rarement à ce que nous faisons réellement du résultat.
+
+Dès qu'un agent ne se contente plus de répondre mais produit quelque chose avec quoi je continue à travailler - un plan, une migration, un remboursement -, le vrai problème commence. Avec un tel résultat, je veux faire des choses très différentes, et très peu d'entre elles consistent à « taper encore un message ». Pour la plupart, il existe une surface mieux adaptée qu'un champ de texte de plus : un éditeur, un diff, un panneau d'approbation, une timeline.
+
+Cet article passe ces surfaces en revue une par une, avec un seul exemple en fil rouge : un outil qui transforme une issue GitHub en plan de mise en œuvre. C'est la couche d'interaction d'une série qui, jusqu'ici, parlait surtout de la mécanique interne des systèmes d'agents - Contracts, sécurité des outils, approbation, observability. L'interface, c'est l'endroit où cette mécanique devient visible, ou reste invisible.
+
+<LinkCard url="/fr/blog/agent-loops-entscheidungspunkte"/>
+
+## Une issue en entrée, 40 lignes de plan en sortie - LGTM ?
+
+Vous copiez l'URL d'une issue GitHub, la collez dans un champ, cliquez sur « Analyser ». Quelques secondes plus tard, le texte commence à arriver : d'abord un résumé de ce que l'issue demande vraiment. Puis les zones du code concernées. Puis une liste des risques, les étapes concrètes de mise en œuvre et, pour finir, quelques idées de tests. 40 lignes, bien structurées, avec titres et listes à puces. Un plan, pas du bavardage.
+
+Dans la plupart des outils que je connais, ce serait un fil de chat. Une bulle après l'autre, de haut en bas, et vous faites défiler. Ici, c'est autre chose : un document. Structuré, lisible d'une traite, avec des sections claires au lieu d'un fil sans fin de réponses et de relances. La différence semble d'abord cosmétique. Elle ne l'est pas.
+
+Car voici la question qui porte tout cet article : que faites-vous ensuite de ce plan ?
+
+Vous le lisez attentivement, pas en diagonale, parce qu'il va bientôt devenir du code. Vous butez sur l'étape 3, qui place la migration avant la sauvegarde, et vous voulez corriger cette seule ligne. Vous voulez confronter le plan à l'issue d'origine, pour voir s'il répond vraiment au besoin ou s'il planifie à côté. Vous voulez valider explicitement les deux étapes risquées - la migration de schéma, l'intervention sur l'auth - avant que quoi que ce soit ne se passe. Et ensuite vous voulez appliquer le plan, le transformer en vrai travail.
+
+Cinq activités sur le plan terminé. Lire, corriger, comparer, valider, appliquer. Et aucune ne s'appelle « continuer à chatter ».
+
+C'est le moment où l'interface de chat échoue sans bruit. 40 lignes de plan. LGTM. Approve. Done. Ou... dans quel champ de texte est-ce que je tape la correction de l'étape 3 ? J'écris « modifie l'étape 3, s'il te plaît, la migration doit passer après la sauvegarde » et j'espère que le modèle touchera la bonne ligne sans réécrire les 39 autres ? Ce n'est pas de l'édition. C'est décrire une édition et prier.
+
+Dès qu'un agent produit quelque chose avec quoi vous travaillez, l'unique conversation éclate en plusieurs activités distinctes. Le chat les fait toutes rentrer de force dans le même champ de texte. La vraie question, c'est pourquoi il est devenu le réglage par défaut pour tout, alors qu'il convient si rarement.
+
+## Six tâches, un champ de texte
+
+Regardons ce qui se passe autour du plan du chapitre précédent. La saisie et la génération viennent avant - puis les choses qu'on fait sur le plan terminé : lire et vérifier, éditer, valider, appliquer. Une demi-douzaine d'activités, chacune avec son propre rythme. Saisir, c'est une impulsion brève. La relecture, c'est une lecture lente, par sauts. Éditer, c'est ponctuel. Valider, c'est un moment unique et délibéré. Et un fil de chat sérialise tout ça dans une seule colonne qui grandit vers le bas.
+
+C'est là que ça frotte. Un fil est un mauvais outil de suivi de workflow, parce que la conversation et le workflow ne suivent pas la même horloge. La conversation veut que je réponde au dernier message. Le workflow veut que je revienne à l'étape trois, que j'y change deux lignes et que je laisse le reste tel quel. Dans le fil, ça veut dire : faire défiler, chercher, reconstituer le contexte de tête, taper un nouveau message qui décrit ce que je voulais en fait toucher directement. Le plan est un objet avec des états - le fil le traite comme une succession d'actes de parole.
+
+Dans le débat UX de 2026 sur les interfaces d'agents, une idée revient avec force, défendue entre autres par Adi Leviim dans UX Collective : le chat est l'interface qu'on a pu livrer le plus vite. Ça ne veut pas dire qu'elle fonctionne le mieux. Un champ de texte plus un flux de réponses, c'est bon marché à construire et ça s'applique à n'importe quel cas d'usage. Le prix est déplacé, pas supprimé. Six types de tâches différents, un seul champ de saisie - et c'est l'utilisateur qui porte la charge de distinguer les modes. Je dois formuler en prose si je veux poser une question, corriger ou valider - alors que l'UI pourrait faire cette distinction à ma place. Elle sait bien à quelle étape nous en sommes.
+
+C'est le même mouvement que pour l'autonomie - un curseur que la plupart des systèmes ne poussent pas jusqu'au bout. Pour l'UI, c'est pareil : l'interface est un choix qui se fait tâche par tâche. Quelle surface pour quelle tâche, ça se note assez directement :
+
+| Type de tâche | Surface adaptée |
+|---|---|
+| consulter le plan, avoir une vue d'ensemble | Document |
+| modifier une ligne | Édition inline |
+| vérifier par rapport au besoin | Vue diff / comparaison |
+| valider une étape risquée | Panneau d'approbation |
+| retracer ce qui s'est passé | Timeline |
+| explorer librement, sans forme encore | Chat |
+
+Le chat est sur la dernière ligne, et ce n'est pas un adieu : pour explorer librement, quand la tâche n'a pas encore de forme, un champ de texte est le bon choix. Le problème, ce n'est pas le chat. Le problème, c'est le chat par défaut pour tout - y compris pour les cinq lignes au-dessus, où une surface plus spécifique ferait le travail.
+
+Commençons par le haut du tableau. Quand un outil transforme une issue en plan de mise en œuvre, la première chose que je fais de ce plan, c'est le lire et en saisir la structure. Pour ça, la surface adaptée n'est pas un historique de conversation mais un document - un plan est un problème d'éditeur.
+
+## L'éditeur : un plan est un document
+
+Revenons à notre plan : une ligne ne va pas tout à fait - la migration ne doit tourner qu'après la sauvegarde.
+
+Dans un chat, vous répondez maintenant : « Non, inverse les étapes 3 et 4, la sauvegarde d'abord. » L'agent lit votre texte libre, l'interprète et vous régénère le plan. Dans le meilleur des cas, l'ordre est désormais correct. Dans le pire, l'étape 6, qui était juste avant, a discrètement bougé elle aussi - parce qu'une régénération rebat les cartes de tout le state et n'offre aucune garantie que tout reste identique en dehors de votre unique modification.
+
+C'est le cœur du problème quand on utilise le re-prompting comme mécanisme de correction : vous avez un state structuré - un objet plan typé avec `summary`, `steps[]`, `risks[]` - et vous le faites passer par une interprétation de texte libre pour un changement ponctuel. L'agent doit d'abord reconstituer à partir de votre phrase ce que vous voulez dire, puis il produit un objet entièrement nouveau. Le Contract entre l'UI et l'agent existe toujours, mais à chaque correction, il est rempli à nouveau de A à Z au lieu d'être retouché là où il faut.
+
+Un plan est un artefact. Un artefact, ça s'édite directement : clic sur la ligne de l'étape 3, on change le texte dans le document, terminé. L'UI remplace uniquement cette entrée dans l'objet plan et ne touche pas au reste. Le Contract reste intact parce que vous travaillez au niveau de l'objet, pas au niveau d'une nouvelle génération.
+
+<CodeTabs labels={["Correction par chat", "Édition inline"]}>
+```ts
+// Correction renvoyée à l'agent sous forme de texte libre.
+// Il régénère TOUT l'objet plan à partir de votre phrase -
+// summary, steps[] et risks[] sont réinterprétés.
+// Ce qui était correct avant peut bouger au passage.
+async function correctViaChat(message: string) {
+  const newPlan = await agent.send({
+    role: "user",
+    content: message, // "Non, inverse les étapes 3 et 4"
+  });
+  setPlan(newPlan); // remplacement complet, pas de diff
+}
+```
+
+```ts
+// Manipulation directe d'un objet plan typé.
+// Seule l'étape touchée est remplacée, le Contract
+// (summary, steps[], risks[]) reste structurellement intact.
+function onSave(stepId: string, next: string) {
+  setPlan((plan) => ({
+    ...plan,
+    steps: plan.steps.map((step) =>
+      step.id === stepId ? { ...step, text: next } : step,
+    ),
+  }));
+}
+```
+</CodeTabs>
+
+La différence reste abstraite tant qu'on ne l'a pas sous les doigts. Cliquez sur une ligne du plan et modifiez-la directement :
+
+<DemoInlineEdit />
+
+Si vous gardez en tête le curseur d'autonomie de tout à l'heure, on retrouve ici la même séparation, au niveau de l'UI : l'intention d'un côté, l'exécution de l'autre. Vous éditez le résultat, pas le prompt. L'intention, vous l'avez formulée depuis longtemps - maintenant vous corrigez l'exécution, sans relancer toute la machinerie.
+
+Une limite, en toute honnêteté : ce state plat - des étapes sous forme de liste, un champ par entrée - est un choix délibéré, pas un pis-aller. Tant que les étapes sont indépendantes les unes des autres, un tableau suffit. C'est seulement quand les étapes ont de vraies dépendances d'ordre (l'étape 5 ne peut tourner que si 2 et 3 ont réussi) qu'il vous faut un graphe de tâches plutôt qu'une liste. C'est une autre structure de données et un autre modèle d'édition - et pour la plupart des plans, vous n'en avez tout simplement pas besoin.
+
+L'édition règle un problème : je peux façonner le plan sans casser le state. Elle ne règle pas l'autre. Comment savoir si le plan colle vraiment à ce que demandait l'issue ? Une liste d'étapes bien tournée a toujours l'air plausible. Qu'elle réponde réellement au besoin, je ne le vois qu'en mettant les deux côte à côte.
+
+## La vue de comparaison : ce que dit l'agent vs. ce qui se passe
+
+Souvenons-nous du refund-agent de cette série. Dans le chat, la phrase aimable : « Remboursement effectué, le montant sera de retour sur votre compte d'ici quelques jours. » Le tool call est passé, pas d'erreur, pas de bordure rouge. Sauf que pas un centime ne bouge. Dans le ledger, rien - pas d'écriture, pas de transaction, pas de trace. L'agent a produit une affirmation, pas un résultat. C'est exactement ça, le False Success : une réponse qui a l'air d'un succès alors que le state du backend n'a pas bougé.
+
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+
+Un paragraphe de chat invite à la lecture en diagonale. Il est bien tourné, poli, plausible - et nos yeux glissent sur le résumé, parce qu'il se lit comme un résultat. Un diff fait l'inverse. Il met deux états côte à côte et nous oblige à regarder : à gauche l'un, à droite l'autre, entre les deux la différence. Là où le chat raconte, la vue de comparaison compare.
+
+> Un historique de chat tout vert avec un state backend cassé est plus dangereux qu'une stack trace rouge. La stack trace vous hurle dessus. L'historique vert vous murmure que tout va bien.
+
+Dans les systèmes d'agents, le diff existe en deux variantes, et chacune révèle des failles différentes.
+
+La première : **issue d'origine ↔ plan généré.** Ici, le besoin est posé à côté de ce que l'agent en a fait. Le plan couvre-t-il vraiment les trois points de l'issue, ou seulement deux, parce que le troisième a été discrètement avalé en route ? Dans un texte suivi, une exigence manquante se remarque à peine - le plan a l'air complet tant qu'on ne met pas l'issue à côté. La comparaison rend l'omission visible avant qu'une seule ligne de code n'existe.
+
+La seconde : **affirmation ↔ état du système.** Ce que l'agent prétend avoir fait, face à ce que le système montre réellement. « Remboursement effectué » à gauche - l'écriture manquante dans le ledger à droite. Cette variante est la plus importante, parce qu'elle intervient là où le chat ment de la façon la plus convaincante : dans le message de succès après une action qui modifie quelque chose. L'agent peut affirmer ce qu'il veut. Nous vérifions l'affirmation contre le state.
+
+Les deux variantes, côte à côte - basculez de l'une à l'autre :
+
+<DemoCompare />
+
+Cette idée n'est pas une trouvaille isolée. Dans plusieurs guides UX pour systèmes d'agents parus en 2026, on retrouve des patterns qui veulent dire au fond la même chose : l'« Action Receipt », qui atteste chaque action par un justificatif, ou la revue de tool call avec diff avant/après et chemin de rollback. Des noms différents, un même mouvement vers la comparaison vérifiable. Chaque action d'un agent produit non seulement une déclaration sur ce qui est censé s'être passé, mais un artefact sur lequel nous pouvons vérifier ce qui s'est passé.
+
+<Callout type="warning">
+Un plan au vert n'est pas une exigence satisfaite - pas plus qu'un score d'eval au vert n'est un feu vert pour la production. Le diff vous montre l'écart entre l'affirmation et la réalité. Ce que vous faites de cet écart reste votre discipline : l'action n'est terminée que lorsque l'état de droite tient la promesse de celui de gauche. Ce n'est pas l'historique du chat qui en décide.
+</Callout>
+
+La vue de comparaison résout un problème de visibilité. Elle rend tangible l'écart entre la promesse et l'effet, au lieu de le cacher dans un texte suivi. Mais la visibilité n'est pas le contrôle. Un diff me montre que le plan migre une base de données ou déclenche un paiement - il n'arrête pas l'étape. Pour les actions inoffensives, regarder après coup suffit. Pour les risquées, il me faut un garde-fou en amont : un point où je décide si cette étape a le droit de tourner, tout court.
+
+## Le panneau d'approbation : la validation comme interaction principale
+
+La vue de comparaison s'est terminée sur une question ouverte : qui valide l'étape risquée ? Dans un chat, la réponse est le plus souvent un popup qui surgit au milieu du fil - une interruption modale qui vous arrache à votre lecture et vous laisse seul avec une décision oui/non. Vous cliquez, la boîte de dialogue disparaît, et ce que vous venez de confirmer défile vers le haut. La validation mérite sa propre surface, pas un overlay par-dessus la conversation.
+
+Un panneau d'approbation rend l'état visible et facile à parcourir : en attente → en confirmation → validé. Il montre quel tool call tournerait avec quels arguments, *avant* qu'il ne tourne - pas sous forme de description en prose, mais comme une proposition concrète et parsée. Vous voyez la mutation, pas le récit qu'on en fait. Et vous la voyez à un endroit fixe, qui ne se noie pas dans le fil tant que quelque chose attend votre décision.
+
+Pour que chaque étape n'atterrisse pas devant vous, il faut un tri préalable selon le risque : lecture seule, mutation à faible risque, mutation à haut risque, irréversible. Le modèle peut marquer lui-même ce qui nécessite une validation - un flag `requiresApproval`, posé pour les migrations de base de données, les changements d'auth et de permissions, la logique de facturation, les breaking changes destructifs ou visibles de l'extérieur. Il est plus fiable d'imposer ce classement comme policy au niveau des outils - une allowlist par type d'outil. Se fier uniquement à l'auto-évaluation du modèle est risqué : en cas de prompt injection ou d'hallucination, il qualifiera justement l'action délicate d'inoffensive. Ainsi, une lecture se fait silencieusement en arrière-plan, tandis qu'une instruction `DROP` s'arrête pour confirmation. Seul ce qui justifie vraiment la friction arrive devant l'humain.
+
+<LinkCard url="/fr/blog/human-in-the-loop"/>
+
+Et c'est là que se cache le vrai problème. Un bouton de validation pousse à valider sans regarder. Quand on a cliqué dix fois de suite sur « Approve », on ne vérifie plus à la onzième - c'est du rubber-stamping, et c'est dangereux de façon mesurable. Dans le débat sur le Human-in-the-Loop, l'Automation Complacency est décrite depuis des années : dès que les réponses proposées étaient fausses et reprises aveuglément, le taux de réussite des participants baissait de façon mesurable - la mauvaise proposition les entraînait vers le bas au lieu d'être corrigée par eux. Une supervision qui se contente d'acquiescer n'est pas une supervision.
+
+La parade s'appelle le Cognitive Forcing : une étape intermédiaire délibérée qui casse le réflexe. L'état « en confirmation » est une telle étape - une courte pause avec justification obligatoire, où vous ne vous contentez pas de cliquer mais notez en une phrase pourquoi cette mutation a le droit de tourner. Ici, la friction, c'est la fonctionnalité. Elle force le regard à revenir sur les arguments du tool call avant qu'il ne devienne réalité.
+
+Essayez de valider l'étape - sans justification, impossible :
+
+<DemoApproval />
+
+<Callout type="danger">
+Un bouton de validation qui ne déclenche rien dans le système entraîne précisément le rubber-stamping qu'il est censé empêcher. Si « Approve » reste sans conséquence, l'humain apprend que cliquer suffit - et le panneau devient une façade posée sur un automatisme qui décide seul depuis longtemps.
+</Callout>
+
+Dans le débat UX, des patterns concrets se dessinent. Une « Intent Preview » vous montre ce que l'agent compte faire et vous offre plus qu'un oui binaire - par exemple : continuer, modifier le plan ou reprendre la main. L'« Autonomy Dial » des guides UX de 2026 - décrit entre autres par Smashing Magazine - fait du degré d'autonomie lui-même un paramètre réglable, au lieu de le câbler en dur. La règle empirique derrière : nudge, don't nag. Demandez là où ça compte, pas à chaque étape - sinon l'attention s'émousse, et vous voilà revenu à la validation à la chaîne.
+
+Une fois la validation donnée, le travail commence. Plusieurs tool calls tournent, des états changent, quelque chose est écrit, supprimé, envoyé. Le panneau vous a montré ce qui *devait* se passer. Mais comment savoir ce qui s'est réellement passé - dans quel ordre, avec quel résultat, à quel endroit ça a coincé ? L'historique du chat le restitue au mieux sous forme de récit.
+
+## La timeline : une trace plutôt qu'un historique de chat
+
+Après la validation, quelque chose tourne - et c'est là qu'apparaît la différence entre deux types d'enregistrement. Un historique de chat raconte ce qui a été dit. Un journal d'audit ou une trace montre ce qui s'est réellement passé. Ce n'est pas la même chose, et l'écart entre les deux est exactement l'endroit où habite le False Success : l'agent dit « Le remboursement est parti », le scrollback se lit comme un ticket résolu - et la trace indique que le tool call décisif n'est jamais passé.
+
+Une timeline, c'est plus que l'historique du chat en plus joli : c'est le waterfall de la trace - la séquence hiérarchique de ce que le système a fait, avec durée, imbrication et résultat pour chaque étape.
+
+Ce qu'une telle surface montre, nous le connaissons déjà grâce à l'article sur l'observability : des spans d'exécution d'outils avec arguments et résultat, des événements d'approbation comme pauses dans le déroulement, des timestamps, des durées. Au fond, ce sont des appels LLM pour les interactions avec le modèle, des exécutions d'outils pour chaque tool call, et l'orchestration de l'agent comme root span qui tient le tout. Dans une bonne timeline, je peux filtrer (seulement les tool calls, seulement les erreurs), zoomer et sauter directement à une étape - au lieu de faire défiler des centaines de bulles de chat.
+
+C'est le point que le débat sur l'UX des agents ne cesse de soulever : dans une session longue et en partie autonome, des centaines d'événements s'accumulent vite. La question « Que s'est-il passé entre la minute 30 et la minute 45 ? » est pratiquement sans réponse dans un chat linéaire - vous faites défiler, vous cherchez, vous perdez le fil. Dans une timeline filtrable, c'est une sélection de plage.
+
+<DemoTimeline />
+
+Restons honnêtes sur la portée. Pour une génération de plan ponctuelle - single-shot, un appel au modèle, un résultat -, une timeline n'apporte encore pas grand-chose. Il n'y a presque rien à imbriquer, la « trace » tient en une ligne. Sa valeur grimpe au moment où le plan est *appliqué* : plusieurs tool calls d'affilée, plusieurs sous-issues créées, une validation au milieu, peut-être un retry après une erreur. Là, la timeline fait la différence entre « Je crois que ça a marché » et « Je vois ce qui a tourné - et où ça a coincé ».
+
+C'est aussi pour ça que cette surface et l'observability ne sont pas deux sujets, mais un seul. La timeline est le frontend de la même trace dont vous avez de toute façon besoin côté backend pour déboguer les incidents. Si vous instrumentez proprement, l'interface de traçabilité vous est quasiment offerte.
+
+<LinkCard url="/fr/blog/observability-ai-features"/>
+
+Nous avons donc vu quatre surfaces qui, dans bien des cas, fonctionnent mieux qu'une fenêtre de chat : éditeur, diff, panneau d'approbation, timeline. Reste le chat lui-même.
+
+## Quand le chat est quand même le bon choix
+
+Le chat a fait son temps ? Non - mais seulement pour un certain type de tâche. La distinction qui compte ici n'est pas « chat vs. UI », mais divergent vs. convergent.
+
+Le travail divergent ouvre l'espace de recherche. L'état cible n'est pas encore fixé, il émerge en cours de route. Vous tâtonnez, vous jetez, vous essayez une autre direction. Une conversation est faite pour ça : chaque tour peut être vague, chaque étape suivante corrige la précédente. Le travail convergent, c'est l'inverse. Il existe un état final vérifiable - une validation, une comparaison, un résultat appliqué - et la seule question est de savoir si cet état est correct. Là, le chat faiblit, parce qu'il force la vérification dans une trace textuelle que vous devez reconstituer vous-même.
+
+Un exemple qui montre les deux : vous affinez une maquette d'UI. « Ajoute un champ de recherche au-dessus du tableau. » « Rends le tableau plus compact. » « Retire la deuxième colonne. » Chaque phrase resserre un peu l'espace de recherche, et le but - la bonne mise en page - n'existe pas encore comme spécification au départ. Il se cristallise dans le dialogue. C'est l'exact opposé d'un plan que vous validez à l'avance. Personne ne voudrait faire entrer ce processus dans un formulaire d'approbation, parce qu'il n'y a rien de fini à valider. Ici, la conversation *est* l'outil.
+
+Techniquement, « chat » ne veut d'ailleurs plus forcément dire texte brut. Les frameworks modernes permettent la Generative UI : l'agent rend de vrais composants à l'exécution au lieu de se contenter d'écrire. Un outil renvoie alors un formulaire, un tableau ou une série de metric cards au lieu de simple texte - dans le Vercel AI SDK, par exemple, via des tool invocations que le frontend traduit en composants. Une précision honnête : la voie des React Server Components est actuellement en pause dans l'AI SDK ; ce qui est recommandé, c'est la variante côté client avec `useChat` plus les tool invocations. Le résultat reste une interface de chat - mais une interface avec des briques structurées et interactives à l'intérieur.
+
+Et ce n'est pas une rupture avec la thèse de cet article, c'en est la confirmation. Nous choisissons la surface en fonction de la tâche. Si la tâche est de l'exploration divergente, le chat gagne - et dès qu'un moment convergent apparaît au sein de cette exploration, vous glissez simplement une brique structurée dans le flux. Même le « chat » est alors souvent du chat plus de la structure, pas la forme brute par laquelle tout a commencé.
+
+<Callout type="tip">
+Règle empirique : divergent et exploratoire, sans état cible fixe → chat. Convergent, qui vérifie, qui agit, avec un état final clair → surface structurée (éditeur, diff, approbation, timeline).
+</Callout>
+
+<Accordion title="Quand le chat gagne - et quand il perd">
+**Le chat gagne :**
+- un brainstorming ouvert, quand la direction n'est pas encore fixée
+- l'affinage d'une maquette ou d'un brouillon, pas à pas
+- les questions à une base de connaissances
+- l'exploration précoce, quand il n'existe pas encore d'état cible défini
+
+**Le chat perd :**
+- la validation d'une action risquée
+- la comparaison de deux états côte à côte
+- le suivi d'un déroulement long et en plusieurs étapes
+- l'édition précise d'un artefact structuré
+</Accordion>
+
+Voilà donc la version honnête de la thèse : le chat est une surface parmi d'autres, avec un terrain bien à elle. Si nous choisissons systématiquement la surface en fonction de la tâche, qu'est-ce que ça implique pour la construction de systèmes d'agents ?
+
+## L'interface de contrôle est le moat
+
+Blake Crosley l'a résumé en 2026 dans une formule qui reste en tête : ce qui fait qu'un agent est utilisable en production, ce n'est ni le modèle ni la taille de la fenêtre de contexte, mais l'interface qui rend son travail visible, vérifiable et validable. L'avantage concurrentiel se situe un étage au-dessus du raisonnement, dans la surface qui le rend utilisable. La Control Surface est le vrai moat - ce que vous voyez du travail de l'agent et ce que vous pouvez arrêter en cas de doute.
+
+C'est le résumé de tout cet article. Un agent peut remplir un Contract propre, réussir chaque eval et écrire une trace sans trou - et l'utilisateur n'en voit rien tant qu'aucune UI ne le montre. Une gouvernance qui n'existe que dans le backend reste invisible pour l'humain à l'autre bout. L'éditeur montre le Contract avant qu'il ne soit exécuté. Le diff montre l'effet en avant/après. Le panneau d'approbation fait de la validation une décision délibérée. La timeline consigne le déroulement, consultable au lieu d'être reconstitué de mémoire. Un chat peut raconter tout ça. Les surfaces structurées le rendent vérifiable.
+
+Et la boucle de la série est bouclée. Chaque surface de cet article prend racine dans un problème d'ingénierie antérieur :
+
+- **Un curseur d'autonomie plutôt qu'une boucle libre** - définir des points de décision, c'est avoir besoin d'une interface qui rend le contrôle à ces points-là.
+- **Intention vs. exécution** - le diff existe parce qu'un tool call réussi n'est pas encore un effet correct ; le False Success ne devient visible que dans l'avant/après.
+- **L'approbation comme assurance qualité** - le panneau d'approbation est la forme UI du Human-in-the-Loop, la validation comme étape délibérée et non comme réflexe.
+- **Une trace plutôt que des spéculations** - la timeline, c'est de l'observability pour l'utilisateur, le déroulement comme preuve et non comme supposition.
+
+<LinkCard url="/fr/blog/agent-loops-entscheidungspunkte"/>
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+<LinkCard url="/fr/blog/human-in-the-loop"/>
+<LinkCard url="/fr/blog/observability-ai-features"/>
+
+Il manque encore une surface dans cette liste, et elle se trouve au début plutôt qu'à la fin : la saisie structurée elle-même - le formulaire assisté, où l'agent remplit les champs au lieu de les demander. Ce sera le prochain épisode.
+
+> La meilleure interface pour un agent rend son travail vérifiable - un chat ne fait que le raconter.

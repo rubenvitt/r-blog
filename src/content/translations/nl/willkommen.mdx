@@ -1,0 +1,104 @@
+---
+title: "Welkom op mijn nieuwe blog"
+description: "Waarom ik van Ghost ben overgestapt naar een zelfgebouwde Astro-blog en wat deze blog allemaal kan."
+date: 2026-03-25
+tags: ["astro", "blog", "meta"]
+draft: false
+ai: generated
+---
+
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+
+Deze blog is mijn nieuwe thuis op het web. Gebouwd met Astro, gestyled met Tailwind CSS en gehost op Cloudflare Pages. Alles open source, alles in eigen hand.
+
+## Waarom de overstap?
+
+Ghost was prima — de editor is fantastisch, slash-commands zijn leuk. Maar ik wilde **volledige controle** over mijn design en mijn componenten. En ik wilde mijn posts als Markdown in een Git-repo hebben.
+
+<Callout type="tip">
+  Deze blog gebruikt MDX — dat betekent dat ik Astro-componenten direct in mijn Markdown-posts kan gebruiken.
+</Callout>
+
+## Wat deze blog kan
+
+### Link cards
+
+Links worden automatisch weergegeven als nette preview-kaarten:
+
+<LinkCard url="https://astro.build"/>
+
+### Callouts
+
+Verschillende typen voor verschillende doelen:
+
+<Callout type="info">
+  Dit is een infobox voor algemene opmerkingen.
+</Callout>
+
+<Callout type="warning">
+  Waarschuwing: deze API is experimenteel en kan veranderen.
+</Callout>
+
+<Callout type="danger">
+  Let op: deze actie kan niet ongedaan worden gemaakt.
+</Callout>
+
+### Code met tabs
+
+<CodeTabs labels={["npm", "pnpm", "yarn"]}>
+  ```bash
+  npm create astro@latest
+  ```
+  ```bash
+  pnpm create astro@latest
+  ```
+  ```bash
+  yarn create astro@latest
+  ```
+</CodeTabs>
+
+### Syntax highlighting
+
+```typescript
+interface BlogPost {
+  title: string;
+  date: Date;
+  tags: string[];
+  draft: boolean;
+}
+
+function getPublishedPosts(posts: BlogPost[]): BlogPost[] {
+  return posts
+    .filter((post) => !post.draft)
+    .sort((a, b) => b.date.valueOf() - a.date.valueOf());
+}
+```
+
+### Accordion
+
+<Accordion title="Hoe zit deze blog in elkaar?">
+  De blog gebruikt Astro als static site generator, met MDX voor de posts.
+  Tailwind CSS regelt de styling en Pagefind levert de zoekfunctie.
+  Alles wordt gehost op Cloudflare Pages.
+</Accordion>
+
+<Accordion title="Kan ik de broncode zien?">
+  Tuurlijk! De volledige broncode staat op GitHub.
+</Accordion>
+
+## Tech stack
+
+- **Framework**: Astro 6
+- **Styling**: Tailwind CSS 4
+- **Content**: MDX met custom widgets
+- **Zoeken**: Pagefind
+- **Hosting**: Cloudflare Pages
+- **Syntax highlighting**: Shiki
+
+---
+
+Binnenkort meer posts. Stay tuned!

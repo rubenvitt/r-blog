@@ -1,0 +1,355 @@
+---
+title: "La meilleure réponse n'est pas un objectif"
+description: "Un score d'eval qui ne mesure que la qualité récompense la force brute - plus de sampling, un plus gros modèle, plus de retries. Pourquoi la bonne base de décision est une frontière coût-qualité-latence, une courbe plutôt qu'un point, et comment choisir le point de fonctionnement en dollars plutôt qu'en pourcentage."
+date: 2026-06-27
+tags: ["ai", "evals", "software-engineering", "observability"]
+image: ../../blog/_images/die-beste-antwort-ist-keine-zielgroesse/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> La meilleure réponse n'est pas définie tant que vous ne savez pas ce qu'elle a coûté ni quand elle est arrivée.
+
+L'agent vous pose 40 lignes sous le nez. Vous les survolez, le plan a l'air propre, LGTM, merge. La réponse est bonne - le problème n'est pas là.
+
+Ce que personne n'a sous les yeux au moment du LGTM, c'est la facture : ce que ce run a brûlé en tokens et combien de temps l'utilisateur a attendu. Deux axes qui n'apparaissent dans aucune review - et qui, plus souvent que le contenu, décident si ça tient en production. Le réflexe de valider une bonne réponse sans discuter passe à côté.
+
+Comment savoir qu'une bonne réponse est une bonne réponse si je ne sais pas ce qu'elle a coûté ?
+
+## 40 lignes, LGTM - et le budget s'est envolé
+
+Le piège de ce réflexe, c'est qu'il a presque toujours raison. La réponse est juste, le code tourne. La facture arrive quand même - simplement ailleurs, sur un relevé que personne n'avait ouvert au moment du LGTM.
+
+Uber en a fait la démonstration chiffrée. Selon [Fortune](https://fortune.com/2026/05/26/uber-coo-ai-spending-tokens-claude-code/), le groupe a brûlé en quatre mois son budget 2026 pour les outils de coding IA. Le COO Andrew Macdonald explique en substance que ce trade est difficile à justifier sans lien clair avec la valeur livrée. Pas parce que les modèles répondent mal, mais parce que chaque réponse coûte des tokens et que la somme finit par ne plus correspondre à ce qu'elle produit.
+
+Microsoft se heurte au même mur. L'entreprise a [réduit](https://thenextweb.com/news/microsoft-claude-code-retreat-ai-cost) l'usage de Claude Code dans un grand groupe interne, parce que la facturation des tokens à l'usage rendait le rollout trop cher. Les outils étaient bons, les développeurs les voulaient, le modèle tenait ses promesses. Ce n'était simplement pas finançable par tête et par mois.
+
+Et puis il y a le cas qui inverse la direction. Klarna s'est lancé avec un support AI-first, moins cher que le dispositif humain d'avant, puis a [fait marche arrière vers un modèle hybride](https://www.entrepreneur.com/business-news/klarna-ceo-reverses-course-by-hiring-more-humans-not-ai/491396), parce que la variante bon marché était moins bonne. C'est là que ça devient inconfortable : qualité et coût ne tirent pas automatiquement dans le même sens. Parfois le cher est meilleur, parfois le bon marché est moins bon, et une réponse isolée ne vous dit pas dans quel cas vous êtes. Ma conclusion par défaut : garder le défaut étroit et n'ouvrir qu'avec des données.
+
+Pourquoi ça dérape aussi vite ? Ma lecture : l'économie des tokens de beaucoup d'abonnements est fortement subventionnée, en gros 25x à 40x sous le prix réel à l'usage, jusqu'à ce que le fournisseur ferme le robinet, par exemple sur l'accès SDK ou headless. Uber et Microsoft ne se sont pas trompés dans leurs calculs - la subvention n'a jamais été le vrai prix.
+
+Dans les trois cas, c'est le même axe qui a été ignoré - chez Uber et Microsoft le coût, chez Klarna la qualité que coûte la voie bon marché. Un axe qui ne figure sur aucune scorecard. Tant que je ne sais pas ce qu'une réponse a coûté et quand elle est arrivée, je ne peux pas dire si elle était bonne.
+
+## Le score d'eval auquel il manque un axe
+
+Ce « bon », que je ne peux pas juger sans prix ni horloge, a une origine concrète. Il vient de l'eval. Dans le post sur les evals, tout tournait autour d'une seule question : la réponse est-elle juste ? Sur l'assistant Doc-QA, le judge vérifie l'exactitude et le grounding par rapport aux docs sources et renvoie un taux de réussite - un chiffre reproductible qui tient dans la CI.
+
+<LinkCard url="/fr/blog/ai-evals-ci-pipeline" />
+
+Ce chiffre est la bonne base. Il cache seulement un piège intégré. Si le seul objectif s'appelle « maximiser le taux de réussite », l'eval récompense tous les chemins qui y mènent : plus de sampling, un plus gros modèle, un deuxième et un troisième retry, jusqu'à ce que le judge soit content. Le dernier point de pourcentage est presque toujours à portée de main si vous êtes prêt à le payer en coûts d'inférence. L'eval n'en voit rien, parce que les coûts n'existent tout simplement pas dans son monde.
+
+Concrètement, sur l'assistant Doc-QA, avec des chiffres illustratifs : nous lançons deux runs d'eval sur les mêmes 200 questions labellisées. Le run A prend le gros modèle avec un sample par question et arrive à, disons, 94 % de réussite. Le run B prend le même modèle en best-of-8 : huit samples par question, parmi lesquels un judge choisit le meilleur. Résultat : 94,6 %. Soit 0,6 point de plus, qui disparaît sans peine dans le bruit de mesure sur 200 questions, pour huit fois le prix d'inférence.
+
+Quel run est le meilleur ? Sur la seule feuille de scores, le run B gagne, d'un cheveu. En réalité, il brûle huit fois plus pour une différence que je ne sais pas distinguer du bruit de mesure. La question est mal posée tant que le score ne connaît pas d'axe de coût.
+
+> Une eval qui ne mesure que la qualité est un classement du gaspillage.
+
+Cet effet est bien documenté. Kapoor, Narayanan et leurs collègues de Princeton montrent dans [AI Agents That Matter](https://arxiv.org/pdf/2407.01502) le même mécanisme sur de vrais benchmarks d'agents : l'accuracy comme seul objectif récompense les systèmes dispendieux. Des architectures de recherche lourdes comme LATS coûtent dans leurs mesures plus de 50x plus cher, pour une accuracy comparable. Certaines baselines simples battent même les architectures SoTA coûteuses, « while costing much less ». Et là où les auteurs optimisent qualité et coût ensemble, ils obtiennent des coûts variables 53 % plus bas à accuracy égale.
+
+Leur exigence est donc simple : les dollars doivent figurer sur l'axe. Pas des FLOPs, pas un nombre de paramètres - le montant qui apparaît réellement sur la facture en fin de mois, parce que lui seul répond à la question que pose vraiment un produit qui traite des milliers de requêtes par jour.
+
+Du coup, ce que j'attends d'une eval change. Un score me dit si une configuration fonctionne. Ce qu'elle exige pour cela en argent et en temps d'attente ne figure nulle part dans le résultat. Un chiffre unique ne peut tout simplement pas saisir cette seconde moitié.
+
+## Trois axes, une courbe : la frontière de Pareto
+
+« Assez » n'est pas un chiffre sur un seul axe. Dès que nous regardons ensemble qualité, coût et latence, chaque configuration de notre assistant Doc-QA devient un point dans un espace à trois dimensions. Quel modèle répond, comment le prompt est construit, combien de documents le retrieval ramène (le k), si nous samplons une fois ou trois - chacune de ces décisions déplace le point. La petite configuration est bon marché et rapide, peut-être quelques points sous la grande. La grande est en haut à droite : plus précise, plus chère, plus lente.
+
+Ce qui est intéressant, c'est moins le point isolé que l'enveloppe que tous les points dessinent ensemble. La frontière de Pareto est l'ensemble des configurations qu'aucune autre ne bat simultanément sur les trois axes. Pareto-optimal veut dire : il n'existe aucune variante à la fois plus précise, moins chère et plus rapide. Tout ce qu'une autre configuration domine sur tous les plans sort du jeu.
+
+Le run B (la variante à 8x sampling) n'est pas sur cette frontière. Il est dominé : une configuration moins chère fournit la même qualité, ou mieux, pour moins d'argent. Une configuration dominée n'est jamais le bon choix, aussi beau que soit son score au classement.
+
+Et c'est là que la forme de la courbe devient un argument. Elle n'est pas droite. Au début, la qualité grimpe en flèche avec le coût, les premiers dollars achètent beaucoup. Puis elle s'aplatit. Ce point où la courbe se casse s'appelle le knee point : au-delà, même de gros sauts de coût n'achètent plus que des miettes d'accuracy. L'analyse de [syftr (DataRobot)](https://www.datarobot.com/blog/pareto-optimized-ai-workflows-syftr/) le chiffre - passé le coude, en gros 10x le coût pour une poignée de points. Lu depuis le côté bon marché, c'est le même constat : syftr rapporte une configuration qui coûte 37 % de moins à accuracy égale.
+
+Le [Holistic Agent Leaderboard (HAL)](https://arxiv.org/abs/2510.11977) de Princeton arrive à la même image sur 21 730 rollouts évalués - les modèles les plus chers ne se trouvent que rarement sur la frontière de Pareto accuracy-vs-cost. Mettre d'office le gros modèle par défaut, c'est donc souvent payer pour un point qui n'est même pas sur l'enveloppe.
+
+Trois axes, c'est difficile à dessiner, alors nous fixons la latence et traçons la qualité en fonction du coût - la latence, nous la récupérerons dans le chapitre sur la CI sous forme de second seuil. Les deux axes restants donnent une courbe avec un coude, et quelque part dessus se trouve le point de fonctionnement auquel nous voulons faire tourner l'assistant.
+
+<figure class="not-prose my-8">
+  <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pf-title pf-desc" class="w-full max-w-full h-auto">
+    <title id="pf-title">La frontière coût-qualité s'aplatit</title>
+    <desc id="pf-desc">Un graphique avec le coût par réponse sur l'axe x et la qualité (taux de réussite de l'eval) sur l'axe y. Une courbe concave monte fortement à gauche et s'aplatit vers la droite. Au coude (knee point) se trouve le point de fonctionnement choisi, à faible coût et haute qualité. À droite, à la même hauteur mais pour un coût multiplié, se trouve un point dominé : même qualité, plusieurs fois plus cher.</desc>
+
+    <line x1="80" y1="44" x2="80" y2="360" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.7"/>
+    <line x1="80" y1="360" x2="724" y2="360" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.7"/>
+    <path d="M 80 44 L 74 58 L 86 58 Z" fill="var(--color-text-muted)" opacity="0.7"/>
+    <path d="M 724 360 L 710 354 L 710 366 Z" fill="var(--color-text-muted)" opacity="0.7"/>
+
+    <text x="92" y="40" text-anchor="start" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">Qualité (taux de réussite de l'eval)</text>
+    <text x="716" y="388" text-anchor="end" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">Coût par réponse →</text>
+
+    <path d="M 120 332 C 178 300, 224 214, 304 180 C 404 138, 548 122, 700 116" fill="none" stroke="var(--color-accent)" stroke-width="2.5"/>
+
+    <text x="540" y="96" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="var(--color-text-muted)">la courbe s'aplatit - ~10x le coût pour quelques %</text>
+
+    <line x1="304" y1="180" x2="600" y2="180" stroke="var(--color-text-muted)" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.8"/>
+
+    <circle cx="304" cy="180" r="6.5" fill="var(--color-accent)"/>
+    <text x="300" y="166" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Point de fonctionnement</text>
+    <text x="300" y="208" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">au knee point</text>
+
+    <circle cx="600" cy="180" r="6.5" fill="none" stroke="var(--color-text-muted)" stroke-width="2"/>
+    <line x1="595.5" y1="175.5" x2="604.5" y2="184.5" stroke="var(--color-text-muted)" stroke-width="1.6"/>
+    <line x1="604.5" y1="175.5" x2="595.5" y2="184.5" stroke="var(--color-text-muted)" stroke-width="1.6"/>
+    <text x="600" y="166" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">dominé</text>
+    <text x="600" y="232" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">8x le coût,</text>
+    <text x="600" y="247" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">même qualité</text>
+  </svg>
+  <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Chaque configuration de modèle, de prompt et de sampling est un point. La frontière de Pareto en est le bord supérieur : la qualité maximale par unité de coût. Elle s'aplatit - après le knee point, quelques points de pourcentage coûtent plusieurs fois plus cher. Le run coûteux du chapitre précédent n'est pas sur la courbe mais à sa droite : même qualité, dominé.</figcaption>
+</figure>
+
+Ce n'est pas de la théorie avec des axes inventés. Artificial Analysis trace cette frontière en direct pour les modèles actuels : indice d'intelligence contre prix contre vitesse de sortie, modèle par modèle. De vrais graphiques de Pareto au lieu de chiffres estimés.
+
+<LinkCard url="https://artificialanalysis.ai/models"/>
+
+Pourquoi il existe entre deux modèles une ligne continue et pas seulement deux points, ça tient aux maths qui sont derrière.
+
+<Accordion title="Les maths de l'enveloppe convexe">
+[RouterBench (Hu et al.)](https://arxiv.org/abs/2403.12031) formalise la frontière coût-qualité comme une enveloppe convexe non décroissante sur les modèles disponibles. L'astuce : chaque point du segment qui relie deux modèles de la frontière est réellement atteignable, par mélange probabiliste - une partie des requêtes va à l'un des modèles, le reste à l'autre. C'est exactement ce que fait un routeur. La frontière n'est donc pas un saut entre modèles discrets, mais un spectre continu de points de fonctionnement. De l'aire sous cette frontière, RouterBench tire avec l'AIQ un chiffre unique pour comparer des stratégies de routage entières. La base : plus de 405 000 enregistrements d'inférence évalués.
+</Accordion>
+
+Reste à savoir d'où doivent venir ces trois axes, sans recâbler l'assistant à chaque mesure.
+
+## Vous mesurez déjà - il ne reste qu'à croiser
+
+Pas besoin de plus d'instrumentation, en réalité. Ces trois axes sont depuis longtemps dans la trace. Dans le post sur l'observability, nous avons déjà capturé les token counts par appel LLM, la version du modèle et la durée des spans. Ce sont les axes de Pareto - simplement, personne ne les a encore inscrits dans la scorecard de l'eval.
+
+<LinkCard url="/fr/blog/observability-ai-features"/>
+
+Commençons par les coûts, parce que ce sont eux qui découlent le plus directement des tokens. Le coût, c'est tokens fois prix, rien d'autre. Les prix selon [Anthropic Pricing](https://platform.claude.com/docs/en/about-claude/pricing) (état 2026-06, par million de tokens, input/output) :
+
+| Modèle | Input | Output |
+|---|---|---|
+| Haiku 4.5 | 1 $ | 5 $ |
+| Sonnet 4.6 | 3 $ | 15 $ |
+| Opus 4.8 | 5 $ | 25 $ |
+
+Par type de token, l'écart entre petit et gros modèle est exactement de 5x. Pour notre assistant Doc-QA, cela veut dire : que « Comment réinitialiser mon mot de passe ? » soit traité par Haiku ou par Opus multiplie le coût unitaire. À des milliers de questions par jour, c'est la différence entre une facture dont personne ne parle et une facture qui atterrit en réunion. Un levier qui la fait basculer en plus : la lecture depuis le cache ne coûte qu'environ un dixième du prix d'input ([Anthropic Prompt Caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)), et notre assistant pousse sans cesse les mêmes docs sources dans le prompt via le retrieval - l'essentiel est donc cachable.
+
+La latence, c'est tout bêtement la durée du span - un horodatage au début, un à la fin. Il n'en faut pas plus : coût égale tokens fois grille tarifaire, latence égale durée du span, et les deux figurent déjà dans chaque trace. Pas de second système, juste une jointure - ID du cas d'eval sur ID de trace, et les deux colonnes manquantes viennent se greffer sur la scorecard. Arize Phoenix fait la même chose dans son cost tracking : tokens fois prix, puis agrégation du span à la trace, jusqu'à l'expérience.
+
+Pour chaque cas d'eval, coût et latence figurent maintenant à côté du score d'exactitude. Vous savez donc, pour chaque réponse, ce qu'elle a coûté et combien de temps elle a pris. Le nuage de points devient une courbe.
+
+## Que faire de la courbe : routeur ou cascade
+
+La première réponse, réflexe, est presque toujours : prendre le plus gros modèle. C'est ce qui demande le moins de réflexion. Sauf que le plus gros modèle est un réflexe, pas une réponse. Un Haiku en 10-shot avec des exemples soigneusement construits bat sur beaucoup de tâches un Opus en zero-shot, pour environ un tiers du coût. Prendre l'endpoint le plus cher dès le premier prototype, c'est optimiser pour la vitesse de démo, pas pour l'économie du produit.
+
+Un cran avant se pose une question que les démos d'IA aiment sauter : faut-il seulement que ce soit un LLM ? Dans notre assistant Doc-QA, la partie qui sépare « question simple » de « synthèse sur plusieurs docs » n'a pas besoin d'être un modèle de langage. C'est de la classification, et un DistilBERT entraîné sur quelques milliers d'exemples labellisés s'en charge en quelques millisecondes pour des fractions de centime.
+
+C'est là que la frontière devient de l'architecture. Si la courbe s'aplatit en haut, si le modèle deux fois plus cher n'ajoute que quelques points de qualité, alors « toujours le gros modèle » revient tout simplement à jeter de l'argent par les fenêtres. Il existe deux façons établies d'exploiter la même courbe.
+
+Le routeur décide en amont, une seule fois, quel modèle reçoit la requête. Un seul appel, pas de double taxe d'inférence. Le [projet RouteLLM de LMSYS](https://www.lmsys.org/blog/2024-07-01-routellm/) montre jusqu'où ça va - plus de 85 % de réduction des coûts sur MT-Bench pour 95 % de la qualité du gros modèle, et seules 14 % des requêtes y arrivent. Le routeur n'est rien d'autre que le point de décision dont j'ai parlé dans un post précédent : un endroit où quelque chose est classé puis transmis. Là-bas, il s'agissait de choisir entre des tools ; ici, entre des modèles.
+
+<LinkCard url="/fr/blog/agent-loops-entscheidungspunkte"/>
+
+La cascade inverse l'ordre : d'abord le modèle bon marché, et c'est seulement si le résultat n'est pas assez bon qu'elle escalade vers le cher. [FrugalGPT](https://arxiv.org/abs/2305.05176) a popularisé le pattern et rapporte jusqu'à 98 % de réduction des coûts au niveau du gros modèle. Le prix à payer est dans la mécanique : la cascade travaille de manière séquentielle. À chaque escalade, le petit appel tourne d'abord, échoue, et ce n'est qu'ensuite que le gros démarre - un overhead de latence by design.
+
+<figure class="not-prose my-8">
+  <svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rc-title rc-desc" class="w-full max-w-full h-auto">
+    <title id="rc-title">Routeur contre cascade</title>
+    <desc id="rc-desc">Deux architectures côte à côte. À gauche, le routeur : une question entre dans un classifieur qui décide en amont et l'envoie soit au petit modèle (la plupart des questions), soit au gros modèle (quelques-unes) - une décision, un appel. À droite, la cascade : la question va d'abord au petit modèle, puis à un grounding check ; s'il passe, la réponse est prête, sinon la requête est escaladée séquentiellement vers le gros modèle.</desc>
+
+    <line x1="380" y1="40" x2="380" y2="348" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="4 5"/>
+
+    <text x="190" y="30" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="var(--color-text)">Routeur</text>
+    <text x="570" y="30" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="var(--color-text)">Cascade</text>
+
+    <rect x="140" y="50" width="100" height="38" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="190" y="74" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Question</text>
+
+    <line x1="190" y1="88" x2="190" y2="116" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 190 122 L 184 110 L 196 110 Z" fill="var(--color-text-muted)"/>
+
+    <rect x="108" y="124" width="164" height="46" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+    <text x="190" y="145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Le routeur classe</text>
+    <text x="190" y="161" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">en amont · signal bon marché</text>
+
+    <line x1="150" y1="170" x2="108" y2="240" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 104 246 L 104 232 L 114 239 Z" fill="var(--color-text-muted)"/>
+    <line x1="230" y1="170" x2="272" y2="240" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 276 246 L 266 239 L 276 232 Z" fill="var(--color-text-muted)"/>
+
+    <text x="120" y="206" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="var(--color-text-secondary)">~86 %</text>
+    <text x="262" y="206" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="var(--color-text-secondary)">~14 %</text>
+
+    <rect x="40" y="248" width="116" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="98" y="275" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">petit modèle</text>
+
+    <rect x="224" y="248" width="116" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="282" y="275" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">gros modèle</text>
+
+    <text x="190" y="324" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="var(--color-text-muted)">Une décision, un appel</text>
+
+    <rect x="520" y="50" width="100" height="38" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="570" y="74" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Question</text>
+
+    <line x1="570" y1="88" x2="570" y2="108" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 570 114 L 564 102 L 576 102 Z" fill="var(--color-text-muted)"/>
+
+    <rect x="505" y="116" width="130" height="42" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="570" y="142" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">petit modèle</text>
+
+    <line x1="570" y1="158" x2="570" y2="176" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 570 182 L 564 170 L 576 170 Z" fill="var(--color-text-muted)"/>
+
+    <rect x="500" y="184" width="140" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+    <text x="570" y="211" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Grounding check</text>
+
+    <line x1="640" y1="206" x2="694" y2="206" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 700 206 L 690 199 L 690 213 Z" fill="var(--color-text-muted)"/>
+    <text x="697" y="197" text-anchor="end" font-family="system-ui, sans-serif" font-size="10.5" font-weight="600" fill="var(--color-text-secondary)">pass → terminé</text>
+
+    <line x1="570" y1="228" x2="570" y2="258" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 570 264 L 564 252 L 576 252 Z" fill="var(--color-text-muted)"/>
+    <text x="582" y="248" text-anchor="start" font-family="system-ui, sans-serif" font-size="10.5" font-weight="600" fill="var(--color-text-secondary)">fail → escalade</text>
+
+    <rect x="505" y="266" width="130" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="570" y="293" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">gros modèle</text>
+
+    <text x="570" y="336" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="var(--color-text-muted)">Bon marché d'abord, escalade séquentielle</text>
+  </svg>
+  <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Deux façons d'exploiter la même courbe. Le routeur décide une fois, en amont, quel modèle s'y colle - un appel, pas de double inférence. La cascade laisse d'abord le petit modèle répondre et n'escalade que si un signal dur (ici : le grounding check) échoue - moins cher en moyenne, mais séquentiel, donc avec un overhead de latence.</figcaption>
+</figure>
+
+Dans notre assistant Doc-QA, les deux approches se présentent concrètement ainsi. Le routeur examine la question avant qu'un modèle ne réponde, en s'appuyant sur des signaux bon marché : la confidence du retrieval, le nombre de docs trouvés, la longueur de la question. « Comment réinitialiser mon mot de passe ? » tombe sur un seul doc avec une confidence élevée ; le petit modèle suffit. « Le délai d'annulation s'applique-t-il aussi aux articles précommandés si j'ai payé avec un bon d'achat ? » ramène quatre docs au score moyen, un cas de synthèse évident pour le gros.
+
+La cascade, elle, laisse simplement le petit modèle répondre et vérifie ensuite si la réponse tient la route. Si le grounding check casse, s'il manque un champ obligatoire ou si la réponse ne respecte pas le schéma, la même question part au gros modèle.
+
+<Callout type="warning">
+Escaladez sur des signaux durs (le grounding check échoue, le schéma casse, un champ obligatoire manque), pas sur une confidence verbalisée - les modèles n'ont jamais l'air aussi sûrs d'eux que lorsqu'ils se trompent.
+</Callout>
+
+Le pattern public correspondant vient du [routage de modèles cost-aware de Vercel](https://vercel.com/kb/guide/cost-aware-model-routing-with-ai-gateway) : une config par tiers avec fallbacks, plus un classifieur qui n'ajoute une étape ML plus coûteuse que dans la zone grise, quand la confidence est basse.
+
+Quant à savoir laquelle des deux approches l'emporte, la question a désormais été étudiée. Le papier [« Is Escalation Worth It? »](https://arxiv.org/abs/2605.06350) oppose des routeurs pré-génération à des cascades post-génération et arrive à un résultat inconfortable pour les fans de cascades : le routeur bat souvent la cascade. La raison est simple. Pour chaque requête escaladée, la cascade a déjà généré et payé la réponse bon marché avant qu'il soit clair qu'il faudra la jeter. Le routeur ne paie jamais cette taxe. Et selon le même travail, au-delà de deux étages, le gain devient marginal - la troisième classe de modèle rentabilise rarement son coût.
+
+Et comment le routeur sait-il quelle question est un cas limite ? Grâce à l'eval. Elle signale les questions sur lesquelles le petit modèle échoue en série, et fournit ainsi le signal sur lequel le classifieur route. Le routage suit l'eval - la confidence vient des données, pas du pifomètre. Anthropic recommande précisément ce pattern dans son propre [guide pour choisir le bon modèle](https://claude.com/resources/tutorials/choosing-the-right-claude-model) : fixer un modèle par défaut, descendre les tâches simples vers la petite classe et ne monter vers la grande que les plus exigeantes.
+
+La courbe vous dit donc où vous pouvez vous placer - mais pas encore où vous devriez vous placer.
+
+## Choisir le point de fonctionnement - en dollars, pas en pourcentage
+
+La courbe est un menu. Elle liste les points atteignables : le modèle bon marché en bas à gauche, le cher en haut à droite, la cascade quelque part entre les deux. Ce qu'elle ne fait pas à votre place, c'est trancher lequel de ces points est le bon. Une frontière de Pareto n'a par définition pas d'ordre total. Elle écarte ce qui est dominé et laisse le reste côte à côte, à égalité.
+
+C'est ce que Zellinger et Thomson (Caltech) reprochent à la pratique habituelle des evals dans [Economic Evaluation of LLMs](https://arxiv.org/abs/2507.03834) : regarder qualité et coût séparément « offers no way to compare between LLMs with distinct strengths and weaknesses ». Un modèle est plus précis, l'autre moins cher, et la frontière hausse les épaules. Pour pouvoir choisir, il vous faut un scalaire - un seul chiffre dans lequel qualité, coût et latence se rejoignent.
+
+Le même papier le fournit en traduisant tout dans une seule unité : le dollar. Le coût de la requête, la latence (multipliée par ce que vaut pour vous une seconde d'attente), l'abstention, rare - et surtout le coût d'une erreur, ce poste qui n'apparaît même pas dans le chiffre brut d'accuracy.
+
+<InfoBox>
+Idée de reward (Zellinger & Thomson) : chaque réponse reçoit une valeur en dollars, dont on retranche les charges - le coût de la requête, un terme de latence (temps d'attente multiplié par la disposition à payer par seconde), un terme d'erreur (ce que vous coûte une mauvaise réponse) et un terme d'abstention (ce que coûte le choix de ne pas répondre). Le meilleur point de fonctionnement est celui qui a le reward attendu le plus élevé.
+</InfoBox>
+
+Dès que vous pouvez chiffrer le coût des erreurs, ce calcul bat la lecture de la courbe à l'œil. Plus besoin de deviner si le saut vers le gros modèle vaut le coup - vous mettez un chiffre.
+
+<Accordion title="La formule du reward en détail">
+Au fond, le reward est une somme négative de termes en dollars : coût de la requête plus terme de latence plus terme d'erreur plus terme d'abstention, chacun affecté d'un poids qui exprime ce que vous coûte la dimension correspondante. Ce que vaut en dollars une seconde de latence ou une seule erreur dépend de votre domaine d'application ; dans le papier, ce sont des paramètres modélisés, pas des constantes universelles. Pour la version exacte, lisez l'article original. Pour la décision, l'essentiel suffit : dès que vous pouvez chiffrer le coût des erreurs, vous avez un scalaire qui ordonne les points de la frontière.
+</Accordion>
+
+Au quotidien, pas besoin de la formule complète pour aller dans la bonne direction. Une métrique suffit, que Braintrust appelle [cost per successful output](https://www.braintrust.dev/articles/how-to-track-llm-costs-2026) : votre dépense totale divisée par le nombre de requêtes qui passent un quality scorer. Une route moins chère fait bonne figure sur la facture, jusqu'à ce que vous remarquiez combien de fois elle tombe à côté. Chaque échec entraîne un retry, du rework, une deuxième question du même utilisateur - et la route bon marché devient la plus chère.
+
+C'est le revers économique du false success. Un run vert qui n'en était pas un ne disparaît pas comme ça - il réapparaît ici comme poste de coût, une itération plus tard et sous un autre nom.
+
+<LinkCard url="/fr/blog/tools-sind-keine-prompts"/>
+
+Et maintenant la partie sans laquelle ce post virerait au deck de réduction des coûts. Le même calcul en dollars bascule vite en faveur du gros modèle. Zellinger et Thomson le montrent : les modèles de raisonnement deviennent rentables dès que le coût d'une seule erreur dépasse 0,01 $. Et le gros modèle seul bat la cascade dès que le coût des erreurs atteint environ 0,10 $. Ce ne sont pas de gros chiffres. Une information contractuelle fausse, une posologie à côté de la plaque, un droit d'annulation inventé vous coûtent plus de dix centimes.
+
+Avec des coûts d'erreur élevés, « prenez le modèle le plus fort » est donc le résultat du calcul. Choisir le gros modèle pour des questions de médecine, d'argent ou de contrats, c'est calculer juste. Le cadrage de ce post, c'est : calculez au lieu de croire.
+
+On peut dérouler le scénario sur le même assistant Doc-QA. S'il vit dans le wiki interne de l'équipe engineering, une mauvaise réponse ne coûte pas cher : un collègue tique, pose la question, corrige. Coût d'erreur de l'ordre du centime, le petit modèle suffit. Si le même assistant est branché en façade du dialogue client sur les contrats ou les annulations, une information fausse peut coûter de l'argent bien réel ou déclencher un problème de compliance. Même formule, autre coût d'erreur, autre résultat : le gros modèle. Le point de fonctionnement n'est pas un réglage global que l'on fait une fois avant de l'oublier. Il se recalcule pour chaque domaine d'application.
+
+Pour qu'il n'y ait pas de malentendu : les coûts, on les optimise en dernier. J'aime ranger les exigences d'un produit LLM en couches - Reliability et Harmlessness en bas, au-dessus la fidélité aux faits, l'utilité et le passage à l'échelle, l'axe des coûts tout en haut. Tout en haut veut dire ici : en dernier. Bricoler les coûts avant que les couches du dessous soient en place, c'est optimiser des démos ou un comportement non vérifié.
+
+Reliability et Harmlessness ne sont pas négociables. Là, pas de « 90 %, ça suffit », et là, l'axe des coûts ne doit jamais l'emporter. Ce post optimise la couche supérieure de la pyramide - et seulement quand celles du dessous tiennent. Concrètement : quand l'eval est au vert.
+
+Mais un calcul dans un notebook ne change rien à ce qui tourne en production.
+
+## Dans la CI : score par dollar et par seconde comme gate
+
+Un calcul de Pareto dans un notebook survit jusqu'au prochain merge. Quelqu'un passe le gros modèle en défaut parce qu'une poignée de tickets réclamaient une meilleure qualité, le taux de réussite monte nettement, tout le monde approuve - et personne ne voit que le coût par réponse a grimpé avec. Pour éviter ça, l'axe économique doit aller là où l'axe qualité se trouve déjà depuis longtemps : dans le [pipeline](https://www.promptfoo.dev/docs/integrations/ci-cd/), en pass/fail strict.
+
+promptfoo le fait dans le même run que l'exactitude. À côté de l'assertion de qualité (pour l'assistant Doc-QA, un judge sur l'exactitude et le grounding de la réponse), vous ajoutez deux assertions au bloc `defaultTest` : un seuil `cost` et un seuil `latency`. Si une réponse dépasse l'une des limites, le test échoue - comme pour une mauvaise réponse.
+
+```yaml
+# promptfooconfig.yaml
+defaultTest:
+  assert:
+    - type: llm-rubric
+      value: La réponse est correcte et entièrement couverte par les docs liées
+    - type: cost
+      threshold: 0.002   # USD par réponse (illustratif, pour l'exemple Doc-QA)
+    - type: latency
+      threshold: 3000    # ms
+```
+
+Les seuils ci-dessus sont inventés pour l'exemple Doc-QA ; disons que 0,002 USD et trois secondes par réponse sont le plafond sur lequel produit et infra se sont mis d'accord. Deux détails pratiques que [promptfoo documente](https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/) : pour une vraie latence, il vous faut `--no-cache`, sinon vous mesurez des cache hits au lieu de réponses du modèle et chaque chiffre de latence du rapport relève de la fiction. Et l'assertion `cost` ne fonctionne que si le provider fournit des données de coût - d'après la doc, pour les modèles OpenAI et les providers custom ; pour Anthropic, vous récupérez les coûts via un provider custom avec une grille tarifaire.
+
+Si vous préférez un verdict par PR dans le fil de review : l'[eval-action de Braintrust](https://www.braintrust.dev/articles/how-to-track-llm-costs-2026) poste sur chaque PR un commentaire avec le delta de score par rapport à la branche de base, et les coûts à côté. Toutes les valeurs côte à côte avant d'appuyer sur merge.
+
+Une limite, quand même : ces outils loggent les axes. Ils ne tracent pas la frontière. Coût, latence et score apparaissent en colonnes dans le rapport ; quel point de fonctionnement se trouve sur le bord de Pareto et lequel est dominé, c'est à vous de le lire dans ces colonnes. Rares sont les harnesses qui sortent directement la courbe - [RouteLLM](https://github.com/lm-sys/RouteLLM) en fait partie, parce que le routage entre petit et gros modèle y est l'objet même de la recherche.
+
+| Outil | mesure coût + latence ? | va dans la CI ? | trace la courbe ? |
+| --- | --- | --- | --- |
+| promptfoo | oui, en assertion cost/latency | oui, comme gate de CI | non |
+| Braintrust | oui, cost per successful output | oui, en commentaire de PR | non |
+| [Arize Phoenix](https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking) | oui, coût calculé en tokens fois prix | OSS, dans l'experiment tracking | non |
+| RouteLLM | oui, dans le harness d'eval | oui | oui, sort la frontière |
+
+Pour l'assistant Doc-QA, tout ça se coule dans une règle que n'importe quel reviewer peut lire. Une route moins chère, où le petit modèle prend plus de questions, ne passe en production que si les trois conditions tiennent : le delta de taux de réussite reste dans la bande convenue, la latence reste dans le budget, et le cost per successful output baisse réellement. Si le taux de réussite sort de la bande, l'économie n'en est pas une. Si la latence dépasse la limite, vous avez économisé de l'argent et perdu des utilisateurs.
+
+Un vieux failure mode trouve ainsi enfin sa place dans la suite. « Trop cher en production » et « trop lent sous charge » étaient jusqu'ici des choses que quelqu'un remarquait en exploitation et notait dans un ticket. En assertions cost et latency, elles font passer une PR au rouge avant le merge. La suite, qui ne regardait jusqu'ici que l'exactitude, gagne une dimension économique - le même mouvement que celui qui transforme les incidents en tests de régression.
+
+<LinkCard url="/fr/blog/incident-zu-regressionstest"/>
+
+Une assertion cost qui bloque une PR a un effet secondaire prévisible : tôt ou tard, quelqu'un parle de programme d'économies et demande si la qualité est sacrifiée sur l'autel du contrôle de gestion. Et les objections derrière ne sont pas toutes au rabais.
+
+## Les objections classiques
+
+Toute décision d'architecture se heurte à des objections, et pour le routage, je connais la plupart avant même qu'elles tombent. Quelques-unes reviennent sans cesse. Les voici, chacune avec la réponse la plus honnête que j'aie.
+
+### « Les coûts d'inférence baissent de toute façon. »
+
+C'est vrai, et de façon spectaculaire : a16z chiffre la chute du prix d'inférence à niveau de qualité fixe à environ 10x par an, en gros 1000x en trois ans ([LLMflation](https://a16z.com/llmflation-llm-inference-cost/)). Le hic est dans « à niveau de qualité fixe ». Qui chasse plutôt la frontière se retrouve sur la courbe inverse : selon [Price of Progress](https://arxiv.org/abs/2511.23455), les coûts tout en haut augmentent de 3x à 18x par an, et sur GPQA-Diamond une part considérable du progrès mesuré vient d'une dépense d'inférence plus élevée plutôt que de gains d'efficacité. La baisse des prix plaide de toute façon pour le routage : le modèle « assez bon » d'aujourd'hui était la frontière d'hier.
+
+### « Chez nous, la qualité n'est pas négociable. »
+
+« Non négociable », au bout du compte, c'est aussi un résultat de calcul. Si les coûts d'erreur sont assez élevés, le calcul du chapitre sur le point de fonctionnement tombe de toute façon sur le gros modèle, partout. Vous ne perdez donc rien à faire le calcul ; vous obtenez une justification qui va plus loin que « ça a l'air plus sûr ».
+
+### « Le routage ajoute de la latence et de la complexité. »
+
+C'est vrai pour la cascade : elle essaie d'abord le petit modèle, vérifie le résultat et escalade si besoin vers le gros, un deuxième appel en plus, séquentiel, avec toute la latence qui va avec. Le routage prédictif fonctionne autrement : un classifieur décide en amont, puis il y a exactement un appel. La pénalité de latence de la cascade est réelle ; celle du routeur prédictif se limite aux quelques millisecondes de la décision de routage elle-même.
+
+### « Le routeur peut être manipulé. »
+
+Oui. Ce qu'on appelle des confounder gadgets, des fragments de texte manipulés dans le prompt, peuvent pousser un routeur à envoyer délibérément chaque requête vers le modèle cher ([Rerouting LLM Routers](https://arxiv.org/abs/2501.01818)). C'est un DoS sur les coûts : l'attaquant fait grimper votre facture sans que les réponses se dégradent visiblement. Une contre-mesure existe déjà : [RerouteGuard](https://arxiv.org/abs/2601.21380) annonce une détection quasi complète avec un taux de faux positifs très bas.
+
+<Callout type="warning">
+Traitez votre routeur comme une partie de la surface d'attaque. Dès que la décision de routage dépend d'un input utilisateur, elle devient une cible. Mettez un monitoring sur la répartition entre modèles et une alerte qui se déclenche quand la part d'appels coûteux grimpe sans raison apparente.
+</Callout>
+
+### « Nous sommes trop petits pour ça. »
+
+Dans le cas le plus simple, le routage n'est qu'un changement de string. Un routeur managé prend la décision à votre place, et combiné à la règle « petit par défaut, gros seulement si nécessaire », vous avez l'essentiel sans construire votre propre pipeline de classification. Ça ne coûte pas des semaines d'engineering. Ça coûte une décision consciente.
+
+### « Plusieurs modèles = plus de complexité d'intégration. »
+
+Il y a du vrai. Chaque route est une intégration, les prompts ne migrent pas 1:1 d'un modèle à l'autre, et les modèles doivent être épinglés, sinon une mise à jour silencieuse du provider change le comportement de votre système du jour au lendemain. Ce qui atténue la douleur : les gateways compatibles OpenAI réduisent souvent le changement de modèle à une string, et votre suite d'eval est l'assurance contre les surprises de migration - si elle passe au vert, le changement n'a rien cassé.
+
+Vous remarquez quelque chose ? Les deux premières objections ne font pas bon ménage. « Les coûts baissent de toute façon » et « la qualité n'est pas négociable », personne ne peut croire les deux à la fois, car qui veut la frontière sans compromis se retrouve, selon Price of Progress, sur la courbe de coûts montante. Le trade-off reste mobile, et en 2026 le levier se déplace : on passe de « rendre le petit modèle grand » à « rendre le gros modèle bon marché », via le caching, les outputs structurés et des schémas d'output stricts qui économisent des tokens. Ça ne sape pas la thèse de ce post, ça la prolonge à un nouveau point de fonctionnement.
+
+## La qualité est une fonction, pas un scalaire
+
+Quel que soit le levier que vous actionnez, que vous muscliez le petit modèle ou que vous rendiez le gros moins cher : la question de fond reste la même. Une réponse juste qui dévore le budget de la journée ne vaut pas grand-chose en exploitation - aussi correcte soit-elle. La « meilleure réponse » reste indéfinie tant qu'il n'y a ni étiquette de prix ni horloge à côté. Une eval qui ne mesure que la vérité mesure une grandeur qui, seule, ne suffit pas en production. À des milliers de questions Doc-QA par jour, c'est la masse qui décide : la simple réinitialisation de mot de passe, à laquelle un petit modèle répond aussi bien qu'un gros, tourne des milliers de fois. Que vous l'envoyiez ou non au modèle cher pèse au final plus lourd sur la facture que les quelques questions ambiguës sur les annulations pour lesquelles le gros modèle vaut vraiment le coup.
+
+La frontière sur laquelle repose cette décision ne reste pas immobile. Les prix baissent, de nouveaux modèles arrivent, et ce qui est aujourd'hui le haut de gamme coûteux sera du milieu de gamme dans six mois. Qui choisit une fois « le bon modèle » puis ne regarde plus pendant trois ans se retrouve au mauvais point sans s'en rendre compte. Le choix du modèle est donc une mesure récurrente. Par défaut, le plus petit modèle qui passe l'eval, et ne montez que quand les données l'exigent. Dans le post sur les agent loops, le conseil était « par défaut l'architecture la plus étroite, n'élargir qu'avec des données » - au niveau du modèle, il s'applique mot pour mot.
+
+Alors : arrêtez de chercher la meilleure réponse. Cherchez la réponse la moins chère qui soit assez bonne - et mesurez « assez bonne » au lieu de l'espérer. « Assez bonne », c'est le seuil de votre eval. « Pas chère », ce sont les deux axes, coût et latence, qui dorment depuis longtemps dans vos traces. Vous avez déjà les deux. Il vous suffit de les croiser dans la même scorecard.
+
+Ça n'interdit pas la voie coûteuse. Si les coûts d'erreur sont assez élevés (argent, santé, réputation), alors le gros modèle seul est le résultat du calcul, pas son adversaire. La différence avec avant : cette fois, vous avez fait le calcul, au lieu de prendre le plus gros dans le doute, simplement parce qu'il était là.
+
+Le routage n'est qu'un levier. Côté provider, il y en a d'autres - prompt caching, traitement par batch, les tiers Flex et Priority, qui vous permettent d'échanger de la latence contre du prix. Tout ça relève du « FinOps pour l'IA ». Mais c'est un autre post.
+
+> La qualité est une fonction, pas un scalaire.

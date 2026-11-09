@@ -1,0 +1,192 @@
+---
+title: "Å bygge var den enkle delen: Hva et halvt år med frivillig-programvare i drift har lært meg"
+description: "Tre kvelder, tre verktøy – og så? Hvordan ni små apper for frivilligenheten ble til én, hvorfor en grønn health check ikke merket noe, og hva jeg gjør når jeg er på ferie."
+date: 2026-10-24
+tags: ["software-engineering", "katastrophenschutz", "release-engineering", "ai"]
+image: ../../blog/_images/ehrenamt-software-betreiben/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+> Med AI tar det én kveld å bygge en app. Å drifte den tar litt tid hver kveld – ganger så mange apper som du har.
+
+Se for deg et leteoppdrag. Et menneske er savnet, det begynner å bli mørkt, og over skogholtet henger en drone. I kommandobilen, kjøretøyet operasjonen ledes fra, ser innsatsledelsen på en skjerm og vil se det dronen ser. Selve letingen skjer via fjernkontrollen til piloten, der er bildet uansett. For at det også skal komme frem til kommandobilen, holder jeg på å bygge en programvare på fritiden. Den kjører på en server som ingen andre enn jeg tar seg av.
+
+I april skrev jeg om hvor lett det har blitt å bygge programvare for frivillig arbeid med AI. Tre verktøy på tre kvelder, alle i bruk på ekte oppdrag, og koden har jeg ikke lest. Konklusjonen min den gangen: Viktigere enn kodekunnskap er det å vite hva en programvare trenger for å kjøre.
+
+<LinkCard url="/nb/blog/drei-abende-drei-tools"/>
+
+Reaksjonene gikk nesten alle i samme retning, og de kom fra folk som har holdt på med dette i årevis. Det dyre er ikke å bygge, skrev en, men vedlikehold og drift: oppdateringer, backup, sikkerhetshull, dataflytting. Ingen heksekunst, men man må vite om det og få det satt opp først. En annen, som har driftet programvare for foreninger i flere tiår, stilte spørsmålet som har fulgt meg siden: Hva skjer hvis programvaren ikke kjører og jeg er på ferie? Og en tredje oppsummerte det kort: Den som bygger noe, eier det, og må også stelle det.
+
+De hadde rett. Dette er historien om de seks månedene etterpå.
+
+## Et halvt år senere
+
+For å minne om hva det handlet om: Flugmappe som digital sjekkliste for droneflygingene våre, da-feedback for anonyme tilbakemeldinger etter en tjenestekveld, og easy-fileshare for å dele filer uten styr. Koden skrev AI-en, jeg beskrev hva som skulle komme ut i andre enden. Og for det tilfellet at noe skulle låse seg, sto det en ganske avslappet plan i innlegget den gangen: "Da fikser jeg det. Eller så fikser AI-en det."
+
+Et halvt år senere ser regnskapet slik ut:
+
+| App | Til hva | Hva det ble av den |
+|-----|-------|------------------|
+| **Flugmappe** | Sjekkliste for droneflyginger | kjører videre, selvstendig |
+| **da-feedback** | anonym feedback etter tjenestekvelder | lever i dag videre som en byggekloss i en felles app |
+| **easy-fileshare** | dele filer | erstattet i sommer, i dag også en del av den felles appen |
+
+At to av tre ikke lenger står alene, har en forhistorie. De tre verktøyene var nemlig aldri alene. Noen små apper for enheten vår kjørte allerede fra før, andre kom til i løpet av sommeren: et ekstra lagringssted for opplastinger, en startside der du finner de andre, en QR-kodegenerator, en følgesvenn for dronetrening, en lagerbok for utstyret vårt og hele to apper for utlån og forvaltning av sambandsradioene våre. Sammen med da-feedback og easy-fileshare ble det ni små apper, hver for seg. Flugmappe kjører fortsatt selvstendig.
+
+Teknisk bodde hver av disse appene i sin egen container. Tenk på det som en egen leilighet, med egen strøm, egen lås og egen postkasse. Alle leilighetene ligger på samme tomt: en liten server, altså en maskin som går døgnet rundt og kan nås fra internett. Og hver leilighet hadde sin egen innredning: egen teknikk under panseret, en egen database, altså appens hukommelse, en egen pipeline (samlebåndet som automatisk bygger en ny versjon ved hver endring og bringer den ut på serveren) og en egen backup, altså en sikkerhetskopi av dataene. Eller ingen.
+
+Hva det betyr i hverdagen, viser da-feedback ganske godt. Der hadde jeg satt opp Dependabot, en bot fra GitHub (plattformen koden min ligger på), som melder fra når komponenter som er bygget inn trenger oppdateringer, og som leverer et ferdig endringsforslag med det samme. I juli meldte den om tre oppdateringer som var på tide. Jeg tok ikke inn ett eneste av forslagene, de ble bare liggende.
+
+I tillegg kommer en annen hake. I da-feedback sjekket Dependabot bare møblene, altså de ferdige komponentene appen er satt sammen av. Grunnmuren, grunnsystemet appen kjører på (på fagspråket base image), så den aldri på. Selv om jeg hadde tatt inn hvert forslag med en gang, ville den delen blitt stående usjekket.
+
+Regnestykket bak er ganske enkelt, men i april satte jeg det likevel ikke opp. Hver app vil ha jevnlig stell: gå gjennom oppdateringer, sjekke om alt fortsatt lever. Med én app går det fint ved siden av. Med ni blir det et ekstra frivillig verv, som skjer om kvelden etter det første. Tja, og noen må gjøre det, og hos oss er den noen meg.
+
+Oppdateringer som blir liggende, er riktignok den stille delen av problemet. Den mer ubehagelige hadde allerede vist seg i juni, med easy-fileshare: Noe gikk i stykker, og den automatiske kontrollen av om appen fortsatt levde, hadde ingenting å utsette, hele tiden.
+
+## Health checken var grønn
+
+I juni 2026 begynte nedlastinger i easy-fileshare å stoppe opp midtveis, det lille verktøyet vi i enheten bruker til å sende filer videre. Ikke hver gang, bare iblant. I stedet for filen kom det da en feilside fra Cloudflare. Hos meg står Cloudflare som en portvakt foran serveren: Hver forespørsel går gjennom ham først, og hvis appen bak er stille for lenge, sender han folk bort igjen med beskjeden "tidsavbrudd".
+
+Det er egentlig dette health checken er til for. Det er et kontrollblikk serveren kaster på appen med jevne mellomrom, omtrent som en røykvarsler: "Lever du fortsatt?" Svarer appen, står alt på grønt. Og checken sto på grønt, hele tiden.
+
+Den første mistanken falt på databasen. Akkurat den grønne checken talte imot: Databasen jobber slik i denne appen at et heng der stopper hele appen, også svaret på kontrollblikket. Hadde databasen låst seg, ville checken frosset med. Den grønne haken var altså ubrukelig og et indisium på samme tid – ubrukelig fordi den ikke merket utfallet, og et indisium fordi den utelukket et falskt spor.
+
+Årsaken lå et annet sted. Selve filene ligger i et eget fillager ved siden av appen, et slags lagerrom. For hver nedlasting henter appen filen fra dette lageret gjennom en ledning, og av disse ledningene hadde den 50. Hvis noen avbrøt en nedlasting midt i, for eksempel fordi mobilen mistet dekning, skulle ledningen blitt ledig igjen. Det ble den ikke. Den ble liggende åpen, og appen ventet pliktoppfyllende videre på en som for lengst hadde gått.
+
+Etter rundt 50 slike avbrudd var det ingen ledninger igjen. Fra da av hang hver nedlasting, og appen selv meldte ingen feil. Bare Cloudflare ga opp etter en stund. Alt som ikke trengte en ledning til lageret, svarte derimot blidt videre, ikke minst health checken. Røykvarsleren hang i et rom der det ikke brant.
+
+Fiksen bygde Claude, AI-en jeg jobber med disse verktøyene sammen med. Hver ledning har nå en tidsgrense, og en avbrutt nedlasting gir straks fra seg ledningen sin. Kontrollblikket spør heller ikke lenger bare "Lever du fortsatt?", det sjekker i tillegg om lageret kan nås. Det ble bevist med 150 samtidig avbrutte nedlastinger, tre ganger så mange som før ville vært nok til å stoppe alt.
+
+Så kom det noe som overrasker mange som er nye med Docker. Docker er programmet som forvalter leilighetene på serveren: Det starter og stopper dem. Piper røykvarsleren og melder appen som "unhealthy", altså syk, skjer det ... først ingenting. Den startes høyst på nytt hvis appen der inne krasjer helt, og selv det bare hvis man uttrykkelig har bedt Docker om det. En app som fortsatt puster, men ikke leverer noe lenger, blir liggende til noen griper inn for hånd. Derfor kom det til en liten hjelper som heter autoheal. Den lytter til røykvarslerne og starter en leilighet på nytt så snart den meldes syk.
+
+I ettertid gjorde health checken det den var bedt om. Den sjekket om appen svarte. Om den kunne det folk åpner den for, nemlig å laste ned en fil, var det ingen som hadde spurt den om. Et kontrollblikk ser jo bare dit jeg sender det.
+
+I innlegget om hvordan man følger med på AI-funksjoner i drift (observability) sto det blant de typiske feilene å bare måle happy path, altså bare veien der alt går bra. Skjer åpenbart også med et lite filverktøy i frivillig arbeid.
+
+<LinkCard url="/nb/blog/observability-ai-features"/>
+
+<Accordion title="For de nysgjerrige: hva som skjedde teknisk">
+easy-fileshare er en Next.js-app som legger filer i et S3-kompatibelt lager (MinIO) og henter dem via AWS SDK. SDK-et bruker som standard en pool på 50 sockets, og det uten inactivity timeout. Hvis en klient avbrøt midt i nedlastingen, ble S3-strømmen stående åpen på serversiden, og socketen kom aldri tilbake i poolen. Etter rundt 50 slike lekkasjer hang hver nye nedlasting: 0 % CPU, ingen ny forbindelse til MinIO, og Cloudflare leverte en 524-feil når ventetiden løp ut.
+
+Databasen (SQLite) kunne utelukkes fordi den jobber synkront i denne appen. En blokkerende skriveoperasjon ville stoppet hele prosessen, health-endepunktet inkludert.
+
+Fiksen består av flere deler: en begrenset socket-pool med timeouts, et abort-signal som sendes videre fra den avbrutte requesten helt til S3-kallet, og en health check som i tillegg spør med S3 HEAD om lageret svarer. I tillegg kommer en restart policy og autoheal som sidecar, altså en liten sidevogn-container som starter "unhealthy"-containere på nytt. Det ble verifisert med 150 samtidige avbrudd midt i strømmen.
+</Accordion>
+
+## Ni leiligheter, ett hus
+
+I juli sto jeg overfor et valg. Jeg kunne ha spandert en bedre health check på hver app, i tillegg til en egen omstartshjelper og en skikkelig backup. Ni ganger. Og ved neste utfall ville jeg igjen måttet lete i ni kroker for å finne ut hvilken som låste seg denne gangen. Ni leiligheter betyr også ni røykvarslere jeg må sjekke, og ni samlebånd som går ved hver ny versjon. Så jeg snudde spørsmålet: Hvordan blir jeg kvitt apper uten at de frivillige mangler noe?
+
+Den 19. juli begynte jeg på IuK-Suite (IuK står for Information und Kommunikation, altså informasjon og samband). Suiten er det felles huset der alle appene bor sammen. Hver app heter en modul der og beholder ringeklokken sin, altså den gamle nettadressen. Innloggingen skjer ved inngangsdøren, via Pocket ID, en liten innloggingstjeneste som nå står for én innlogging til alle modulene. Inne har hver modul sitt eget rom med eget skap: en egen databasefil. Det som står i lagerboken, ligger ikke i samme fil som listen over sambandsradioene. Hvem som i det hele tatt ser hvilket rom, avgjøres av én sentral liste.
+
+<ProjectCard title="IuK-Suite" description="Web-suite for IuK-arbeidet (informasjon og samband) i en frivillig enhet innen sivil beredskap, med én innlogging til alle moduler" githubUrl="https://github.com/rubenvitt/iuk-suite"/>
+
+For de frivillige har nesten ingenting endret seg. Adressene er de samme, tilgangene også. Det eneste nye er at alt nå ser likt ut.
+
+For meg har det derimot endret seg en hel del. Det er én vei nye versjoner kommer inn i huset på, og én backup for alt. Dependabot har bare ett prosjekt å holde øye med for alle disse appene. Og vil jeg vite om alt lever, trenger jeg bare å sjekke ett sted. Om kontrollblikket der også ser inn i hvert rom, er siden juni et spørsmål jeg stiller meg ved hver check.
+
+Ikke overraskende var jeg ikke den første som kom på ideen. Programvareselskapet Segment slo en gang sammen 140 små tjenester til én eneste, fordi hver nye tjeneste økte driftsarbeidet med like mye.
+
+<LinkCard url="https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices"/>
+
+Den egentlige risikoen lå i selve flyttingen. Til flyttingene finnes det skriftlige instrukser, såkalte runbooks: sjekklister for hva som skjer i hvilken rekkefølge ved utflytting og innflytting.
+
+Instruksen for fillageret, som easy-fileshare og det andre opplastingslageret gikk inn i, inneholder en regel jeg mener er den viktigste: Om det fortsatt ligger data i den gamle appen, skal telles, ikke antas. Når den rives, forsvinner den gamle leiligheten med alt innhold. Den som river med seg en oversett fil, har tilintetgjort den, og "det var jo ingenting igjen der" hjelper da ingen.
+
+For det samme fillageret var en annen test avgjørende: en låst dør. At de som har tilgang ser filene sine, er den åpenbare delen. Viktigere var det motsatte: Den som ikke har fått tilgang til modulen, skal få se "finnes ikke", på nettet feilsiden 404. Kommer det i stedet en helt vanlig side, står forvaltningen av fillageret åpen for alle som har en eller annen konto.
+
+For dronetreningen lå hindringen et annet sted. Der var tilgangskoder og innloggingslenker for lengst delt ut, og også de som hadde appen offline på mobilen akkurat da, skulle bare kunne fortsette etter flyttingen. Alt dette måtte fungere uendret. Instruksen la derfor opp til å la den gamle appen stå i to uker som reserve, og å gå tilbake ville vært et lite grep: la adressen peke på den gamle leiligheten igjen.
+
+## Hva et felles hus koster
+
+Flyttingen har tatt mye arbeid av meg. Et hus har riktignok en egenskap ni separate leiligheter ikke hadde: et felles sikringsskap. Går hovedsikringen, er det mørkt i alle rom, helt uavhengig av hvilket rom kortslutningen skjedde i. I teknikken kalles det blast radius, altså hvor langt trykkbølgen fra en feil når. Med ni separate apper traff en feil i én app som regel bare den. I suiten kan den treffe alle.
+
+Jeg trenger ikke lete lenge etter eksempler, de står i mine egne notater om suiten. Til fillageret hører en virusskanner som sjekker opplastede filer. Den kjører i en egen liten container på samme tomt, rett ved siden av suiten, og suiten venter ved oppstart til den melder seg klar.
+
+<Callout type="warning">
+Virusskanneren trenger en liten innstillingsfil på serveren. Mangler den, lager Docker rett og slett en tom mappe i stedet. Virusskanneren starter da uten innstillinger, og health checken dens feiler. Fordi suiten venter på den, starter den ikke i det hele tatt. Feedback, lagerbok, startside: ingenting kan nås, på grunn av en manglende fil som ingen av disse appene har noe med å gjøre.
+</Callout>
+
+Det andre eksempelet er stillere. Da fillageret flyttet inn i suiten, kom det tre innstillinger til, uten dem starter ikke hele huset lenger. Den som glemmer dem ved oppsettet eller legger dem inn først senere, har i mellomtiden også lammet startsiden, selv om den ikke har noe som helst med filer å gjøre. Ett rom flytter inn, og plutselig henger inngangsdøren på rommets lysbryter.
+
+Og så finnes det et utfall som ikke noe hus forhindrer. Bussfaktoren beskriver hvor mange personer som må falle ut før ingenting fungerer lenger (det litt makabre bildet bak er en buss som treffer noen). Hos oss ligger den på 1, før flyttingen like mye som etter. Sammenslåing sparer arbeid, men fordeler ikke kunnskap. Hvem andre enn meg vet at virusskanneren trenger en innstillingsfil? Nettopp.
+
+Dermed er vi ganske normale. Allerede i slutten av 2019 var det ingen som var ansvarlig for IT i 22 % av de allmennyttige organisasjonene i Tyskland, ifølge [Digital-Report 2020 fra Haus des Stiftens](https://www.hausdesstiftens.org/?p=16381) (på tysk). Betalt for det blir uansett nesten ingen: Ifølge [ZiviZ-Survey 2023](https://www.ziviz.de/sites/ziv/files/ziviz-survey_2023_trendbericht.pdf) (på tysk) har bare 27 % av organisasjonene i sivilsamfunnet i det hele tatt betalte ansatte. Hos oss finnes det i det minste noen som tar seg av det, bare akkurat én.
+
+En liten trøst, eller ironi, alt etter humøret: Også verktøy har en bussfaktor. Watchtower var et populært verktøy som automatisk oppdaterer containere til nye versjoner. I desember 2025 ble prosjektet arkivert, altså lagt ned. De frivillige bak bruker knapt Docker selv lenger og hadde verken tid eller lyst til å føre det videre.
+
+<LinkCard url="https://github.com/containrrr/watchtower"/>
+
+## Hvem som passer på om natten
+
+Når selv det kjente verktøyet for automatiske oppdateringer ikke har noen vedlikeholder lenger, gjenstår spørsmålet om hvem som legger inn oppdateringene hos meg. Frem til sensommeren var svaret: meg, en kveld, med en instruks ved siden av. Hver oppdatering var en liten økt. Hent ny versjon, sammenlign med den gamle, start, sjekk om appen fortsatt svarer. Ingenting av det var vanskelig, jeg gjorde det bare aldri likt to ganger.
+
+I dag kjører det automatiske tester etter hver endring i koden. Blir en endring tatt inn i hovedgrenen av koden (på fagspråket: merget) og alle testene er grønne, går den nye versjonen automatisk ut. Et skript kjører rollouten, altså utrullingen, i samme rekkefølge hver gang. I innlegget om release-disiplin sto innvendingen "Vi er for små for en sånn prosess" fortsatt. En automatisk rollout etter hver merge er den minste versjonen av den.
+
+<LinkCard url="/nb/blog/ai-rollout-canary-shadow"/>
+
+I tillegg kommer et sikkerhetsnett. På serveren ligger noen filer med innstillinger, og av og til har noen endret noe der for hånd – i praksis: meg. Rollouten husker hvordan disse filene skal se ut. Avviker en av dem, avbryter den før den rører noe som helst. Bakgrunnen var en innstilling som bare sto på serveren og ikke i malen disse filene kommer fra. Den som bare hadde erstattet filen med malen ved oppdateringen, ville mistet den i det stille.
+
+<Accordion title="For de nysgjerrige: oppdateringer av komponentene og en bevisst risiko">
+De eksterne komponentene tar Dependabot seg fortsatt av. Nå sjekker den også base imaget, grunnmuren til suiten. Siden juli 2026 venter den som standard tre dager før den foreslår en ny versjon. I den tiden blir manipulerte versjoner som regel oppdaget av andre, og det senker risikoen for å få tak i en versjon som nettopp er kompromittert. Sikkerhetsoppdateringer foreslår den fortsatt med en gang, men også de rulles først ut når forslaget er tatt inn.
+
+Det hele har en hake. For at rollouten skal komme frem til serveren, kjører det en hjelper fra GitHub der, en såkalt runner, som utfører stegene. Samtidig er koden til suiten offentlig. GitHub selv fraråder denne kombinasjonen. Jeg har tatt risikoen bevisst og sikret den. Hvordan, står med vilje ikke her.
+</Accordion>
+
+Lenge var backupen en oppgave serveren startet av seg selv med jevne mellomrom. Strengt tatt var det ingen backup. Oppgaven sto ingen andre steder enn på serveren, og den som så på resten, visste ingenting om den. Kopien lå på samme maskin som dataene: Brenner serveren, er begge borte. Og hvis oppgaven feilet, var det ingen som merket det.
+
+Nå tar en egen liten hjelper i huset seg av det, en slags vaktmester med én eneste oppgave. Han sender kopien til et annet sted og sier fra når noe går galt. Og han henger bevisst ikke på noe, akkurat som ingenting henger på ham: Suiten starter også når backupen er i trøbbel, og backupen venter ikke på at suiten skal være frisk. Etter historien med virusskanneren ville jeg for alt i verden ikke at nettopp backupen skulle rive driften med seg. Et uhell har han også hatt: To backuper i samme sekund fikk samme filnavn, den andre overskrev den første og meldte blidt suksess. Nå avbryter vaktmesteren heller i et slikt tilfelle og spør, fritt oversatt, om klokken har stoppet.
+
+Gjenstår spørsmålet om hvem som leser instruksene. Ikke bare for flyttingene, også for hver større oppdatering finnes det en runbook med sjekkpunkter. De er skrevet for to lesere: meg og Claude Code, altså den samme AI-en som ved nedlastingsfiksen, bare direkte på serveren, der den går gjennom instruksene steg for steg. AI-en som var med på å bygge appene, hjelper altså også med driften.
+
+Den egentlige beslutningen ligger dermed i mergen: Det som tas inn, går ut. En merge er fort gjort, særlig når testene uansett er grønne. I innlegget om human in the loop, altså om godkjenning fra mennesker, beskrev jeg godkjenningen som en del av sikkerhetsarkitekturen, inkludert faren for at den blir et stempel som settes på alt uten å bli lest. Hos meg er det stempelet mergen.
+
+<LinkCard url="/nb/blog/human-in-the-loop"/>
+
+Blir mergen etter hvert bare et nikk, uten at noen ser etter lenger? Ærlig talt: Jeg nikker allerede. For et feedbackskjema eller en lagerbok synes jeg det er forsvarlig, testene fanger det groveste, og fallhøyden er liten.
+
+## Hvorfor Suchlage ikke flytter inn
+
+Egentlig kunne historien sluttet her: ett hus, én automatisk rollout, én vaktmester for backupen. Men én app bor bevisst ikke der. Og det er ikke fordi den er viktigere.
+
+Suchlage er det nyeste prosjektet mitt og er fortsatt i alpha, altså i en tidlig testfase. Akkurat nå pågår de første forsøkene med den ekte dronen, godkjenningen i felt gjenstår. Ideen er scenen fra begynnelsen: Under et leteoppdrag flyr en drone over søksområdet, og innsatsledelsen sitter i kommandobilen. Suchlage bringer livebildet fra kameraet, den aktuelle posisjonen og dronens flyspor så langt dit og ut på mobilene til folkene i terrenget. Selve letingen skjer fortsatt via fjernkontrollen: Der ser piloten alt dronen ser, og det forblir kilden alle stoler på. Suchlage er et ekstra blikk for dem som ikke står ved siden av piloten. Kjenner du Flugmappe fra et tidligere innlegg, den digitale dronesjekklisten vår: Dette er neste steg innenfor det samme innsatsområdet.
+
+<LinkCard url="/nb/blog/papier-fliegt-nicht"/>
+
+<ProjectCard title="Suchlage" description="Situasjonshub for droneoppdrag under leteaksjoner: livebilde, posisjon og flyspor i kommandobilen og på mobilen" githubUrl="https://github.com/rubenvitt/suchlage"/>
+
+Teknisk har Suchlage lite til felles med suiten. Posisjonen og de andre måleverdiene fra dronen kommer inn via MQTT, en meldingskanal laget for mange små måleverdier. Videoen går som livestream, altså som en kontinuerlig datastrøm i stedet for en ferdig fil. Noen deler kan bare nås i et privat nett som rett og slett ikke er synlig utenfra. Og programmet bak er skrevet i Rust, et annet programmeringsspråk enn suiten.
+
+Takten er også en annen. I suiten kjører backupen automatisk i bakgrunnen. I driftsinstruksen for Suchlage står det en kort setning ved backupen: "Ikke under en flyging."
+
+I tillegg kommer det felles sikringsskapet Suchlage ville fått i suitens hus. Er det en feil i lagerboken, er det irriterende, da leter noen etter en ladekabel én dag lenger. River den samme feilen med seg livebildet under en pågående leteaksjon, ser innsatsledelsen på en svart skjerm. Letingen fortsetter riktignok via fjernkontrollen, men i kommandobilen mangler akkurat det Suchlage er bygget for. Og omvendt skal ikke et problem i videostrømmen ta fra noen lagerboken.
+
+Werner Vogels, teknologisjefen i Amazon, skrev i en [tekst om hvorvidt man kan bygge programvare i ett stort stykke](https://www.allthingsdistributed.com/2023/05/monoliths-are-not-dinosaurs.html): "Building evolvable software systems is a strategy, not a religion." På norsk omtrent: Å bygge programvare slik at den kan videreutvikles, er en strategi og ikke en religion. For meg betyr det: Om jeg slår sammen eller skiller, avgjør jeg fra sak til sak, etter en enkel tommelfingerregel. Slå sammen det som feiler på samme måte. Skill det som feiler annerledes.
+
+Å stå utenfor betyr likevel ikke å være uten regler. I Suchlage blir hver endring som tas inn i hovedgrenen av koden, til en nummerert versjon, og en systemside i appen viser hvilken versjon som kjører akkurat nå, så ingen må gjette under en innsats. Lager en ny versjon trøbbel, finnes det en nedskrevet vei tilbake til den forrige. I tillegg kommer en fullstendig test som spiller gjennom hele appen én gang på min egen maskin og nekter å kjøre på den ekte serveren, slik at den aldri ved et uhell overskriver ekte data eller tilgangsdata der.
+
+Helt så langt som suiten har Suchlage likevel ikke kommet. Backupen er fortsatt håndarbeid der: stopp serveren kort, kopier bort dataene, start igjen. Om det forblir sånn, er åpent. Tja, jeg vet i hvert fall at det er åpent.
+
+I "Tre kvelder, tre verktøy" var begrunnelsen min for å bygge raskt at lite står på spill. Går noe i stykker, fikser jeg det bare, og risikoen er en tapt kveld. Det gjelder også for Suchlage, og det med vilje: Fjernkontrollen forblir sannheten, det er der letingen skjer. Faller Suchlage ut, ser ikke innsatsledelsen bildet lenger, men letingen fortsetter likevel. At Suchlage forblir separat, har altså ingenting med fallhøyden å gjøre. Den feiler rett og slett annerledes enn resten.
+
+## Hva jeg gjør når jeg er på ferie
+
+Tilbake til spørsmålet fra kommentarene. Hva skjer hvis programvaren ikke kjører og jeg er på ferie?
+
+Det ærlige svaret er mindre enn jeg skulle ønske. Jeg kan ikke gjøre meg erstattelig, bussfaktoren står på 1, og det endrer ikke engang det fineste huset på. Det jeg kunne endre, er mengden av det som må gjøres i en nødsituasjon. I stedet for ni leiligheter med ni særegenheter finnes det ett hus, én vei for oppdateringer, én backup som sier fra om feil, og en nedskrevet instruks for hvert større grep. Så lenge ingenting tas inn i den tiden, går heller ingen ny versjon ut. Huset kjører videre i den tilstanden jeg forlot det i.
+
+Og hvis det henger likevel? Da blir det sannsynligvis hengende til noen ser etter. Omstartshjelperen fra historien i juni har suiten foreløpig ikke, Docker starter den bare på nytt hvis den virkelig krasjer. Det er et åpent punkt, og et litt pinlig et, fordi jeg allerede har lært den leksen én gang.
+
+For Suchlage er svaret mitt enda tynnere, men fallhøyden er også mindre enn det høres ut som: Faller den ut, fortsetter letingen via fjernkontrollen, bare uten en ekstra skjerm i kommandobilen.
+
+Instruksene er i det minste skrevet slik at ikke bare jeg kan lese dem. Claude Code går allerede gjennom dem på serveren i dag. Et menneske fra enheten kunne i prinsippet også gjort det, med litt mot og en innlogging. Om noen melder seg til det, er et annet spørsmål, og det lar seg ikke avklare på én kveld.
+
+I april visste jeg allerede at programvare trenger mer enn kode. Det jeg undervurderte, var hvor ofte den trenger det. Den som bygger tre verktøy på tre kvelder, har tre verktøy å drifte etterpå, hver eneste kveld. Den viktigste beslutningen det siste halve året var derfor hvilke apper som flytter sammen, og hvilke som bevisst blir boende alene.
+
+> Appen som gir minst arbeid, er den som ikke finnes lenger.

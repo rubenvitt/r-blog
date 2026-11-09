@@ -1,0 +1,266 @@
+---
+title: "Papper flyger inte: Hur en PWA ersätter drönarchecklistan i befolkningsskyddet"
+description: "Hur jag byggde en offline-PWA för drönarinsatser i befolkningsskyddet med hjälp av AI - och varför domänkunskap väger tyngre än prompts."
+date: 2026-03-31
+tags: ["ai", "software-engineering", "pwa", "katastrophenschutz"]
+image: ../../blog/_images/papier-fliegt-nicht/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+import einsatzkarte from '../../blog/_images/papier-fliegt-nicht/einsatzkarte.png';
+import wetterbewertung from '../../blog/_images/papier-fliegt-nicht/wetterbewertung.png';
+import pdfBericht from '../../blog/_images/papier-fliegt-nicht/pdf-bericht.png';
+
+Drönargruppen står på insatsplatsen, UAV:n är startklar - men innan något lyfter måste allt dokumenteras. Och dokumentationen? Den ligger i fordonet. På papper.
+
+## Papperet stannar i utrustningsfordonet
+
+I befolkningsskyddet flyger drönare inte bara iväg. Innan en UAV får lyfta går gruppen igenom en strukturerad process: registrera insatsdata, bedöma väderförhållandena, göra en SORA-riskbedömning, förbereda flyganmälan, beta av checklistor. Efter flygningen följer efterarbetet. Allt detta dokumenteras hittills på papper - i GW AufklTruLu, utrustningsfordonet för flygspaningsgruppen.
+
+Det fungerar. På sätt och vis. Men det har gränser som märks under insatsen.
+
+**Det första problemet är platsen.** Pappersdokumentationen fylls i vid fordonet. Piloten står däremot vid UAV:n - ofta flera tiotals meter bort. Kolla aktuella väderdata? Tillbaka till fordonet. Gå igenom en checklista? Tillbaka till fordonet. Läsa på om en procedur för att situationen kräver det? Tillbaka till fordonet. Eller ur minnet. Under en insats är inget av det idealiskt.
+
+**Det andra problemet är procedurerna.** Normal-, contingency- och emergency-procedurer - kodifierade som N1 till N6, C0 till C6 och E1 till E3 - ligger som separata dokument i fordonet. Det är handlingsinstruktionerna för allt som kan gå fel: från normal drift via störningar ända till fullständig förlust av kontrollen. Under stress, vid UAV:n, i vind och oväsen, har man inte de dokumenten med sig. Man skulle behöva kunna dem utantill. Eller, just det, gå tillbaka till fordonet.
+
+**Det tredje problemet är beräkningarna.** Papper kan inte räkna. Vindhastigheten vid marken säger inte mycket om förhållandena på 120 meters flyghöjd - för det behövs en interpolation.
+
+<Accordion title="Vad är SORA?">
+SORA (Specific Operations Risk Assessment) är en standardiserad metod för riskbedömning av drönarflygningar. Den kombinerar två dimensioner: **Ground Risk** (GRC) - hur farlig är en krasch för människor på marken? - och **Air Risk** (ARC) - hur sannolik är en kollision i luftrummet? Tillsammans ger de **SAIL** (Specific Assurance and Integrity Level), som avgör vilka säkerhetsåtgärder flygningen kräver. Beräkningen är ingen magkänsla, utan en definierad matris med konkreta indata.
+
+<LinkCard url="https://www.easa.europa.eu/en/domains/drones-air-mobility/operating-drone/specific-category-civil-drones/specific-operations-risk-assessment-sora"/>
+</Accordion>
+
+SORA-bedömningen - GRC plus ARC ger SAIL - görs på papper, för hand, med risk för fel, och från noll varje gång.
+
+<Accordion title="Vad är EGRED?">
+EGRED står för **Empfehlungen für Gemeinsame Regelungen zum Einsatz von Drohnen im Bevölkerungsschutz** (rekommendationer för gemensamma regler för drönaranvändning i befolkningsskyddet). Dokumentet ges ut av BBK (Tysklands federala myndighet för befolkningsskydd och katastrofhjälp) och definierar i sin andra version (EGRED 2) bland annat kraven på en strukturerad insatsdokumentation för drönarflygningar i BOS-sammanhang, alltså inom Tysklands blåljus- och säkerhetsorganisationer.
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
+</Accordion>
+
+Det är precis den strukturerade dokumentationen som EGRED 2 kräver. Inte som rekommendation, utan som grund för att UAV:er ska kunna drivas enligt reglerna i befolkningsskyddet. Dokumentationen ska vara spårbar, fullständig och standardiserad. Papper klarar det - men papper kan inte stötta. Det räknar inte, det påminner inte, det är inte där piloten står.
+
+Det kan en smartphone. Den finns i fickan, den fungerar offline, den kan räkna. Visa väderdata, hålla ordning på checklistor, slå upp procedurer, beräkna SORA-värden - allt direkt vid UAV:n, inte i fordonet. Inte som ersättning för processen, utan som ett verktyg som tar processen dit där den behövs. En Progressive Web App (PWA) - alltså en applikation som körs i webbläsaren, känns som en vanlig app och fungerar även offline.
+
+> En pappersdokumentation i utrustningsfordonet kan inte interpolera vindhastigheten på 120 meters höjd.
+
+Tänk om just det - dokumentation, beräkningar, checklistor, procedurer - kunde köras på smartphonen? Offline, direkt på insatsplatsen?
+
+## Från papperslista till PWA: vad appen kan
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="Offline-PWA för drönarinsatser i befolkningsskyddet"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+Appen heter ”UAV Einsatzverwaltung”. Inget kalkylark, inget PDF-formulär - en Progressive Web App som körs direkt i webbläsaren och fungerar på alla surfplattor som används vid insatser.
+
+Flödet utgår från det som faktiskt händer under en insats. Fyra faser, löst baserade på EGRED-schemat:
+
+### 1. Registrera insatsdata
+
+Position via GPS eller manuell inmatning. Val av drönare bland förkonfigurerade profiler - just nu DJI Matrice 350 RTK och DJI Matrice 200, var och en med sina specifika gränsvärden. Besättningens storlek, insatsuppdrag och en interaktiv karta med ritverktyg: positionen sätts som en cirkelmarkör, sökområdet ritas in som polygon.
+
+<Figure src={einsatzkarte} alt="Insatskarta med inritat sökområde (blå polygon) och positionsmarkör (röd) på Weseler Heide" caption="Interaktiv insatskarta: position och sökområde ritas in direkt i appen."/>
+
+### 2. Förflygningskontroll - hjärtat
+
+Här händer det som aldrig fungerade på papper: automatiserad omgivningsanalys i realtid.
+
+**Väder**: Appen hämtar aktuella data från Open-Meteo - vind, byar, temperatur, nederbörd, sikt, luftfuktighet, tryck, daggpunkt. Varje värde får en trafikljusbedömning: grön, gul, röd - avstämd mot de specifika gränsvärdena för den valda drönaren. Vindhastigheten interpoleras till den faktiska flyghöjden, baserat på mätdata vid 10m, 80m, 120m och 180m. Ingen magkänsla längre om huruvida ”det nog blåser mer där uppe”.
+
+<Figure src={wetterbewertung} alt="Väderbedömning med trafikljusfärger: vind och byar röda, temperatur gul, övriga parametrar gröna. Därunder METAR-representativitet och rekommendationer." caption="Automatisk väderbedömning med trafikljuslogik - avstämd mot gränsvärdena för DJI Matrice 350 RTK."/>
+
+**Geomagnetism**: K-index från NOAA SWPC visar om geomagnetiska störningar kan påverka drönarens kompass. Låter exotiskt, men är en verklig risk - särskilt för Matrice-serien.
+
+**Omgivning**: Via OpenStreetMap och Overpass-API:t kontrollerar appen automatiskt vad som finns i insatsområdet. Luftrum, vägar, järnvägar, kraftledningar, sjukhus, naturskyddsområden. Allt det man annars skulle behöva leta upp manuellt på en karta.
+
+**SORA-riskbedömning**: Markrisk (GRC) plus luftrumsrisk (ARC) ger tillsammans SAIL - Specific Assurance and Integrity Level. Appen beräknar det automatiskt utifrån registrerade data. Det som förut var ett diagram som jag fick gå igenom manuellt är nu ett klick.
+
+Till det kommer tekniska checklistor för själva drönaren. Propellrar, batterier, firmware, kamera - punkt för punkt.
+
+### 3. Flygningar och efterarbete
+
+De två sista faserna sluter cirkeln: varje flygning dokumenteras för sig (starttid, landningstid, särskilda händelser), sedan genererar appen en fullständig PDF-rapport - alla väderdata, checklistor, flygtider, kartor i ett och samma dokument. Det är det som till slut hamnar i insatsakten.
+
+<Figure src={pdfBericht} alt="Första sidan av den genererade UAV-uppdragsrapporten med insatsnamn, position, datum och drönartyp" caption="Den genererade PDF-uppdragsrapporten - den digitala motsvarigheten till pappersdokumentationen."/>
+
+Viktigt i praktiken: en insats kan ha flera platser. Översvämningsläge med tre spaningspunkter? En insats, tre segment, var och en med egen förflygningskontroll och egna flygningar.
+
+### Procedurerna direkt i appen
+
+Alla normal-, contingency- och emergency-procedurer finns inlagda i appen. Inte som PDF-bilaga, utan som navigerbara checklistor.
+
+Några exempel:
+
+- **N1 ”Före start”**: ”Check Controlled Ground upprättad” - ”Call Out: CLEAR PROP!”
+- **C4.2 ”Bemannat luftfartyg”**: ”Call Out: OKÄNT LUFTFARTYG!” → inled landning
+- **E1 ”Terminering”**: ”Call Out: HAVERI! HAVERI! HAVERI!”
+
+Den som under stress måste hitta rätt procedur scrollar inte igenom en 30-sidig handbok. Procedurerna N1 till N6, C0 till C6 och E1 till E3 plus nödplaner (ERP) ligger alla ett tryck bort.
+
+<Callout type="tip">
+  **Så installerar du PWA:n på surfplattan du har med på insatser:** Öppna [uav.iuk-ue.de](https://uav.iuk-ue.de) i webbläsaren, tryck på webbläsarmenyn (tre prickar eller dela-symbolen) och välj ”Lägg till på hemskärmen”. Appen körs sedan som en native-applikation - inklusive offlinestöd.
+</Callout>
+
+Så långt funktionerna ur användarens perspektiv. Men en app som hämtar väderdata, använder GPS och genererar PDF:er - behöver inte den en rejäl backend? Spoiler: nej.
+
+## Ingen backend, inga problem: local-first som designbeslut
+
+En frivillig BOS-enhet har ingen budget för serverinfrastruktur. Ingen admin som sköter databaser. Och ingen lust att hålla på med cookie-banners, GDPR-register över behandlingar och molnabonnemang. Alltså: ingen backend.
+
+Det låter som en begränsning. Men det är det inte - det är ett arkitekturbeslut.
+
+### Allt bor i webbläsaren
+
+Alla insatsdata, formulärinmatningar och kartlager sparas i localStorage. Ingen server, ingen databas, inga konton. Webbläsaren är databasen. En service worker ser till att appen går även utan mobilnät - efter första laddningen fungerar allt offline.
+
+För icke-utvecklare betyder det: öppna länken, klart. Ingen inloggning, inget ”servern kan inte nås”, inget ”uppdatera appen”. För utvecklare: caching-arkitekturen är skiktad, och varje skikt har sin egen strategi.
+
+<Accordion title="Tech stack i detalj">
+
+| Teknik | Version | Syfte |
+|---|---|---|
+| [React](https://react.dev/) | 19 | UI-ramverk |
+| [TypeScript](https://www.typescriptlang.org/) | 5.9 (strict) | Typsäkerhet |
+| [Vite](https://vite.dev/) | 8 | Byggverktyg och dev-server |
+| [Tailwind CSS](https://tailwindcss.com/) | 4 | Utility-first-styling |
+| [React Router](https://reactrouter.com/) | 7 | Routing på klientsidan |
+| [TanStack Query](https://tanstack.com/query) | 5 | Server-state och caching |
+| [React Leaflet](https://react-leaflet.js.org/) | 5 | Kartintegration |
+| [Leaflet Geoman](https://geoman.io/) | - | Ritverktyg |
+| [jsPDF](https://github.com/parallax/jsPDF) | - | PDF-generering |
+| [React Compiler](https://react.dev/learn/react-compiler) | - | Automatisk memoization |
+| [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) | - | PWA med Workbox service worker |
+| [Sentry](https://sentry.io/) | - | Felspårning |
+
+</Accordion>
+
+### Caching-skikten
+
+Alla API-svar behandlas inte likadant. Väderdata blir inaktuella på minuter, kartplattor gäller i månader, omgivningsdata ändras sällan. Strategin per datatyp:
+
+| Data | Strategi | Livslängd |
+|---|---|---|
+| Väder (Open-Meteo) | NetworkFirst | 10 minuter |
+| K-index (NOAA) | NetworkFirst | 1 timme |
+| Kartplattor (OSM) | CacheFirst | 7 dagar |
+| Omgivning (Overpass) | localStorage | 8 timmar |
+| Insatsdata | localStorage | 56h aktiva / 24h avslutade |
+
+TanStack Query sköter state-hanteringen för alla API-anrop och persisterar query-cacharna i localStorage - så överlever cachade väderdata till och med en omstart av webbläsaren. Service workern via Workbox fångar upp nätverksanrop och levererar, beroende på strategi, det cachade eller det färska svaret.
+
+### Den medvetna avvägningen
+
+Data finns bara på enheten. Ingen synk mellan surfplatta och smartphone. Aktiva insatser raderas automatiskt efter 56 timmar, avslutade efter 24 timmar. Det är inget misstag - en insats är en insats, inget arkiv. PDF-rapporten är arkivet.
+
+Och appen är en PWA: installerbar som en native-app, men utan beroende av en appbutik. En länk räcker. Inget Apple-utvecklarkonto, ingen granskning på Google Play. Deploya en uppdatering, och nästa gång någon öppnar appen har de den nya versionen.
+
+Varför inte bara en vanlig app? För att varje alternativ har nackdelar som väger tungt i frivilligverksamhet:
+
+| | Native-app | Molnapp | PWA local-first |
+|---|---|---|---|
+| Installation | App Store | Ingen | Länk / hemskärm |
+| Offline | Ja | Nej | Ja (efter första laddningen) |
+| Server krävs | Nej | Ja | Nej |
+| Uppdateringar | Granskning i butik | Direkt | Direkt |
+| Kostnader | Utvecklarlicens | Server + DB | Hosting (statisk) |
+| Dataskydd | Lokalt | Moln | Lokalt |
+
+> Frivilligverksamheten behöver inga molnabonnemang. Den behöver verktyg som fungerar när mobilnätet inte gör det.
+
+Men hur bygger man en sådan app? Med React, TypeScript, service workers, kartor, PDF-generering, offline-caching - allt på en gång? Svaret: med AI. Men inte på det sätt man kanske tror.
+
+## Vad AI:n byggde - och vad den inte byggde
+
+Claude Code var min kodpartner i det här projektet. Jag visste vad som skulle komma ut i slutändan - kraven formulerade vi tillsammans, men målbilden kom från mig. Arbetsfördelningen var tydlig - och den var inte slumpmässig.
+
+### Vad AI:n levererade
+
+AI:n kunde bygga det tekniska skelettet på några minuter - gränssnitt, kartor, offlinestöd, PDF-generering. För var och en av de här teknikerna hade jag annars fått läsa dokumentation, leta exempel och skriva boilerplate. Responsiv design? Prompt. Registrering av service worker? Prompt. Kartplattor som fungerar offline? Prompt.
+
+Att väder-API:t levererar vindvärden på flera höjder och att AI:n på egen hand byggde en interpolation för den faktiska flyghöjden - det behövde jag inte förklara. Det är den delen som AI-kodverktyg är bra på: teknisk implementation med kända mönster.
+
+<Accordion title="Vilka tekniker AI:n implementerade">
+Den tekniska bredden är imponerande: React-komponenter, Tailwind-layout, API-integration med Open-Meteo och Overpass, caching via TanStack Query och service worker, PWA-setup med Workbox, PDF-generering med jsPDF, kartintegration med Leaflet. Allt samtidigt, i en och samma kodbas, med konsekventa TypeScript-typer.
+</Accordion>
+
+### Vad AI:n inte visste
+
+Och här blir det intressant. AI:n hade ingen aning om:
+
+- **EGRED-faserna** och deras ordning - att en drönarinsats följer ett fast förlopp från insatsdata via förflygningskontroll och flygningar till efterarbete
+- **SORA-metodiken** - hur Ground Risk Class, Air Risk Class och SAIL hänger ihop och beräknas
+- **Contingency- och emergency-procedurerna** - över 15 procedurer med specifika call-outs, roller (RPIC, RP, markpersonal) och eskaleringsvägar
+- **Vädergränsvärden per drönarmodell** - dem matade jag in via drönarens bruksanvisning, och AI:n extraherade själv de relevanta värdena
+- **Insatsstrukturen** - att en insats kan ha flera segment med olika platser
+- **Facktermerna** - ”Controlled Ground”, ”Flight Geography”, ”Contingency Volume”, skillnaden mellan RPIC och RP
+
+Ingen prompt i världen hade kunnat ta fram den informationen. Den finns i drifthandböcker, SORA-dokument och insatserfarenhet. AI:n kan implementera procedurer - men inte hitta på dem.
+
+<Callout type="warning">
+AI-genererad kod är bara så bra som de verksamhetskrav som går in i den. Utan domänkunskap är det inte tekniken som saknas i koden, utan substansen.
+</Callout>
+
+### Den verkliga arbetsfördelningen
+
+**Människan**: domänkunskap, arkitekturbeslut (ingen backend, allt offline), verksamhetskrav, gränsvärden, procedurer, validering av resultaten.
+
+**AI:n**: implementationstempo, teknisk bredd över hela stacken - React, TypeScript, Tailwind, service worker, PDF-generering, kartintegration - allt parallellt, allt konsekvent.
+
+Det här är ingen arbetsfördelning mellan ”tänka” och ”skriva”. Båda sidor bidrar med substans. Men AI:n bidrar med substans bara där det finns kända lösningar på kända problem. Själva domänen - de specifika reglerna, de specifika förloppen, de specifika gränsvärdena - den måste en människa stå för.
+
+### Ingen vibe coding
+
+2026 diskuteras vibe coding flitigt. ”Bygg en drönarapp åt mig” som prompt ger ett snyggt UI med påhittade data. Inga riktiga procedurer. Inga korrekta gränsvärden. Ingen giltig SORA-beräkning. Inget som någon kan lita på under en verklig insats.
+
+Det som fungerar: ”Implementera den här contingency-proceduren. Fas C4.2 innebär: markpersonalen rapporterar ett bemannat luftfartyg, RPIC inleder landning enligt N6. Eskalering till E1 sker vid förlust av kontrollen.” Det är en specifikation. Och specifikationer kan AI:n omsätta.
+
+<LinkCard url="/sv/blog/tools-sind-keine-prompts"/>
+
+Samma logik som i de tidigare inläggen: AI:n är ett kraftfullt verktyg - men verktyg ersätter inte förståelse. I en drönarapp för befolkningsskyddet är ”fel” inte dålig UX, utan en säkerhetsrisk.
+
+> Vibe coding tar slut där domänkunskapen börjar. AI:n kan implementera procedurer, men inte hitta på dem.
+
+## Att ersätta papper betyder att förstå processer
+
+Den här appen är inget teknikprojekt. React, PWA, AI - det är verktyg. Det verkliga jobbet ligger någon annanstans: i processerna som står på papperschecklistorna. Att förstå dem, strukturera dem och sedan återge dem digitalt - det är arbetet.
+
+Digitalisering utan processförståelse producerar digitalt papper. En PDF på surfplattan är ingen förbättring jämfört med ett ark i utrustningsfordonet. Först när jag förstår *varför* ett steg finns, *vem* som utför det och *vad* som händer om det misslyckas - först då kan jag digitalisera det på ett vettigt sätt.
+
+Appen används just nu av en riktig BOS-enhet i befolkningsskyddet. Feedbacken flödar tillbaka in i procedurerna, procedurerna flödar tillbaka in i koden. Och eftersom andra enheter står inför samma utmaningar är projektet open source - vem som helst kan använda det, anpassa det och bidra med egna checklistor.
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="Offline-PWA för drönarinsatser i befolkningsskyddet - open source på GitHub"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
+
+### Bron till mjukvaruarkitekturen
+
+Den som känner till de tidigare inläggen i den här bloggen lägger nog märke till något nu. I mjukvaruvärlden finns koncept som under andra namn löser exakt samma problem - och parallellerna är slående:
+
+**EGRED-checklistor är Contracts** - alltså bindande överenskommelser om vad ett system ska göra och inte göra. Definierade förlopp med tydliga villkor, roller och eskaleringsvägar.
+
+**SORA är en policy engine** - ett regelverk som fattar beslut automatiskt. GRC plus ARC ger SAIL - input in, risknivå ut. Inget utrymme för godtycke, inget ”det löser sig nog”.
+
+**Väderbedömningen är en eval** - en strukturerad kontroll mot definierade kriterier. Mätvärden kontrolleras mot gränsvärden, trafikljusfärger delas ut, beslut härleds.
+
+**Nödprocedurerna är eskaleringsvägar** - stegvisa responsplaner med tydliga triggers. C0 leder till E1, E1 kan utlösa E3. Varje steg har egna regler och eget ansvar.
+
+Koncepten är desamma. Domänen är en annan. Och det är precis därför de går att överföra - oavsett om det gäller ett agentsystem eller ett utrustningsfordon.
+
+> De bästa digitala verktygen kommer inte ur teknik, utan ur processförståelse - oavsett om det är i utrustningsfordonet eller i agentsystemet.

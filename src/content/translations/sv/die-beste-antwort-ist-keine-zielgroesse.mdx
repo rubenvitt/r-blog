@@ -1,0 +1,355 @@
+---
+title: "Det bästa svaret är inget optimeringsmål"
+description: "En eval-score som bara mäter kvalitet belönar brute force – mer sampling, större modell, fler retries. Varför rätt beslutsunderlag är en cost-quality-latency-frontier, en kurva i stället för en punkt, och hur du väljer din operating point i dollar i stället för procent."
+date: 2026-06-27
+tags: ["ai", "evals", "software-engineering", "observability"]
+image: ../../blog/_images/die-beste-antwort-ist-keine-zielgroesse/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+
+> Det bästa svaret är odefinierat så länge du inte vet vad det kostade och när det kom fram.
+
+Agenten lägger fram 40 rader. Du skummar igenom dem, planen ser ren ut, LGTM, merge. Svaret är bra – det är inte där problemet ligger.
+
+Det ingen har öppet när LGTM:en skrivs är fakturan: hur många tokens just den här körningen brände och hur länge användaren fick vänta. Två axlar som aldrig dyker upp i en review – och som ofta avgör mer om något håller i produktion än själva innehållet. Reflexen att bara vinka igenom ett bra svar missar dem.
+
+Hur vet jag att ett bra svar är ett bra svar, om jag inte vet vad det kostade?
+
+## 40 rader, LGTM – och budgeten är slut
+
+Det luriga med den här reflexen är att den nästan alltid har rätt. Svaret stämmer, koden kör. Notan kommer ändå – den hamnar bara någon annanstans, på en faktura som ingen hade öppen när LGTM:en skrevs.
+
+Uber har visat det i siffror. Enligt [Fortune](https://fortune.com/2026/05/26/uber-coo-ai-spending-tokens-claude-code/) brände koncernen upp hela 2026 års budget för AI-kodverktyg på fyra månader. COO Andrew Macdonald säger ungefär att den affären är svår att försvara utan en tydlig koppling till den nytta som faktiskt levereras. Inte för att modellerna svarar dåligt, utan för att varje svar kostar tokens och summan till slut inte längre står i proportion till vad den ger.
+
+Microsoft har kört in i samma vägg. Företaget har [dragit ner](https://thenextweb.com/news/microsoft-claude-code-retreat-ai-cost) på användningen av Claude Code i en stor intern grupp, eftersom den användningsbaserade token-debiteringen gjorde utrullningen för dyr. Verktygen var bra, utvecklarna ville ha dem, modellen levererade. Det gick bara inte att finansiera per person och månad.
+
+Och så finns fallet som vänder på riktningen. Klarna gick ut med en AI-first-kundtjänst, billigare än det mänskliga upplägget innan, och [backade sedan till en hybridmodell](https://www.entrepreneur.com/business-news/klarna-ceo-reverses-course-by-hiring-more-humans-not-ai/491396) eftersom den billiga varianten var sämre. Det är den obekväma punkten: kvalitet och kostnad drar inte automatiskt åt samma håll. Ibland är det dyra bättre, ibland är det billiga sämre, och vilket fall du har framför dig kan du inte se på ett enskilt svar. Min standardslutsats av det: håll defaulten snäv och öppna upp först när du har data.
+
+Varför eskalerar det så snabbt? Min tolkning: token-ekonomin i många subscription-modeller är kraftigt subventionerad, grovt 25x till 40x under det verkliga användningspriset, tills leverantören vrider av kranen, till exempel vid SDK- eller headless-åtkomst. Uber och Microsoft räknade inte fel – subventionen var aldrig det riktiga priset.
+
+I alla tre fallen missades samma axel – hos Uber och Microsoft kostnaden, hos Klarna kvaliteten som den billiga vägen kostar. En axel som inte står på något scorecard. Så länge jag inte vet vad ett svar kostade och när det kom fram kan jag inte säga om det var bra.
+
+## Eval-scoren som saknar en axel
+
+Det här ”bra”, som jag inte kan bedöma utan prislapp och klocka, har ett konkret ursprung. Det kommer från evalen. I evals-inlägget handlade allt om en enda fråga: stämmer svaret? Judgen kontrollerar korrekthet och grounding hos Doc-QA-assistenten mot källdokumenten och returnerar en pass rate – en reproducerbar siffra som passar in i CI.
+
+<LinkCard url="/sv/blog/ai-evals-ci-pipeline" />
+
+Den siffran är rätt grund. Den har bara en inbyggd fälla. Om det enda målet heter ”maximera pass rate” belönar evalen varje väg dit: mer sampling, en större modell, en andra och tredje retry tills judgen är nöjd. Den sista procentenheten går nästan alltid att få, om du är beredd att betala för den i inferenskostnad. Evalen märker inget av det, eftersom kostnad helt enkelt inte finns med i dess bild.
+
+Konkret med Doc-QA-assistenten och illustrativa siffror: vi kör två eval-runs över samma 200 märkta frågor. Run A använder den stora modellen med ett sample per fråga och landar på, säg, 94 % pass rate. Run B använder samma modell med best-of-8: åtta samples per fråga, där en judge väljer ut det bästa. Resultat: 94,6 %. Det är 0,6 procentenheter mer, som vid 200 frågor bekvämt försvinner i mätbruset, till åtta gånger inferenspriset.
+
+Vilken run är bäst? På det rena score-bladet vinner Run B, med en hårsmån. I praktiken bränner den åtta gånger så mycket för en skillnad som jag inte kan skilja från mätbrus. Frågan är fel ställd så länge scoren inte känner till någon kostnadsaxel.
+
+> En eval som bara mäter kvalitet är en topplista över slöseri.
+
+Den här effekten är väldokumenterad. Kapoor, Narayanan och kollegor från Princeton visar i [AI Agents That Matter](https://arxiv.org/pdf/2407.01502) samma mekanism på riktiga agent-benchmarks: accuracy som enda målvariabel belönar slösaktiga system. Påkostade sökarkitekturer som LATS kostar i deras mätningar över 50x så mycket, med liknande accuracy. Vissa enkla baselines slår till och med de dyra SoTA-arkitekturerna, ”while costing much less”. Och där författarna optimerar kvalitet och kostnad tillsammans får de ut 53 % lägre rörliga kostnader vid samma accuracy.
+
+Deras krav är därför enkelt: dollar hör hemma på axeln. Inte FLOPs, inte antal parametrar – beloppet som faktiskt står på fakturan i slutet av månaden, eftersom bara det besvarar den fråga som en produkt med tusentals anrop per dag verkligen ställer.
+
+Därmed ändras vad jag överhuvudtaget förväntar mig av en eval. En score säger mig om en konfiguration fungerar. Vad den kräver i pengar och väntetid för det står ingenstans i resultatet. En enda siffra kan inte fånga den andra halvan.
+
+## Tre axlar, en kurva: Pareto-frontiern
+
+Tillräckligt bra är ingen siffra på en enskild axel. Så fort vi tittar på kvalitet, kostnad och latens tillsammans blir varje konfiguration av vår Doc-QA-assistent en punkt i ett tredimensionellt rum. Vilken modell som svarar, hur prompten är byggd, hur många dokument retrievalen hämtar (k), om vi samplar en gång eller tre – varje sådant beslut flyttar punkten. Den lilla konfigurationen ligger billigt och snabbt, kanske några procentenheter under den stora. Den stora ligger uppe till höger: mer exakt, dyrare, långsammare.
+
+Det intressanta är inte den enskilda punkten utan höljet som alla punkter spänner upp tillsammans. Pareto-frontiern är mängden konfigurationer som ingen annan slår på alla tre axlarna samtidigt. Pareto-optimal betyder: det finns ingen variant som samtidigt är mer exakt, billigare och snabbare. Allt som domineras av en annan konfiguration i alla avseenden faller bort.
+
+Run B (varianten med 8x sampling) ligger inte på den här frontiern. Den är dominerad: en billigare konfiguration ger samma eller bättre kvalitet för mindre pengar. En dominerad konfiguration är aldrig rätt val, hur bra dess score än ser ut på topplistan.
+
+Och här blir kurvans form ett argument. Den är inte rak. I början stiger kvaliteten brant med kostnaden, de första dollarna köper mycket. Sedan planar den ut. Punkten där kurvan böjer av kallas knee point: därifrån köper även stora kostnadshopp bara bråkdelar av accuracy. Analysen från [syftr (DataRobot)](https://www.datarobot.com/blog/pareto-optimized-ai-workflows-syftr/) sätter siffror på det – bortom knät grovt 10x kostnad för en handfull procentenheter. Läst från den billiga sidan blir slutsatsen densamma: syftr rapporterar en konfiguration som kostar 37 % mindre vid samma accuracy.
+
+[Holistic Agent Leaderboard (HAL)](https://arxiv.org/abs/2510.11977) från Princeton kommer över 21 730 utvärderade rollouts fram till samma bild – de dyraste modellerna ligger bara sällan på accuracy-vs-cost-Pareto-frontiern. Den som sätter den stora modellen som default rakt av betalar alltså ofta för en punkt som inte ens ligger på höljet.
+
+Tre axlar är svåra att rita, så vi håller latensen fast och plottar kvalitet mot kostnad – latensen tar vi tillbaka i CI-avsnittet som en andra tröskel. Av de två återstående axlarna blir en kurva med ett knä, och någonstans på den ligger den operating point där vi vill köra assistenten.
+
+<figure class="not-prose my-8">
+  <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pf-title pf-desc" class="w-full max-w-full h-auto">
+    <title id="pf-title">Cost-quality-frontiern planar ut</title>
+    <desc id="pf-desc">Ett diagram med kostnad per svar på x-axeln och kvalitet (eval-pass-rate) på y-axeln. En konkav kurva stiger brant till vänster och planar ut åt höger. Vid knät (knee point) sitter den valda operating pointen, med låg kostnad och hög kvalitet. Till höger på samma höjd, men till mångdubbel kostnad, ligger en dominerad punkt: samma kvalitet, mångdubbelt dyrare.</desc>
+
+    <line x1="80" y1="44" x2="80" y2="360" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.7"/>
+    <line x1="80" y1="360" x2="724" y2="360" stroke="var(--color-text-muted)" stroke-width="1.5" opacity="0.7"/>
+    <path d="M 80 44 L 74 58 L 86 58 Z" fill="var(--color-text-muted)" opacity="0.7"/>
+    <path d="M 724 360 L 710 354 L 710 366 Z" fill="var(--color-text-muted)" opacity="0.7"/>
+
+    <text x="92" y="40" text-anchor="start" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">Kvalitet (eval-pass-rate)</text>
+    <text x="716" y="388" text-anchor="end" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">Kostnad per svar →</text>
+
+    <path d="M 120 332 C 178 300, 224 214, 304 180 C 404 138, 548 122, 700 116" fill="none" stroke="var(--color-accent)" stroke-width="2.5"/>
+
+    <text x="540" y="96" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="var(--color-text-muted)">kurvan planar ut – ~10x kostnad för få %</text>
+
+    <line x1="304" y1="180" x2="600" y2="180" stroke="var(--color-text-muted)" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.8"/>
+
+    <circle cx="304" cy="180" r="6.5" fill="var(--color-accent)"/>
+    <text x="300" y="166" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Operating point</text>
+    <text x="300" y="208" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">vid knee pointen</text>
+
+    <circle cx="600" cy="180" r="6.5" fill="none" stroke="var(--color-text-muted)" stroke-width="2"/>
+    <line x1="595.5" y1="175.5" x2="604.5" y2="184.5" stroke="var(--color-text-muted)" stroke-width="1.6"/>
+    <line x1="604.5" y1="175.5" x2="595.5" y2="184.5" stroke="var(--color-text-muted)" stroke-width="1.6"/>
+    <text x="600" y="166" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text-secondary)">dominerad</text>
+    <text x="600" y="232" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">8x kostnad,</text>
+    <text x="600" y="247" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-muted)">samma kvalitet</text>
+  </svg>
+  <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Varje konfiguration av modell, prompt och sampling är en punkt. Pareto-frontiern är överkanten: maximal kvalitet per kostnad. Den planar ut – efter knee pointen kostar några få procentenheter mångdubbelt. Den dyra körningen från förra avsnittet ligger inte på kurvan utan till höger om den: samma kvalitet, dominerad.</figcaption>
+</figure>
+
+Det här är ingen teori med påhittade axlar. Artificial Analysis plottar den här frontiern live för aktuella modeller: intelligence index mot pris mot output-hastighet, modell för modell. Riktiga Pareto-diagram i stället för uppskattade siffror.
+
+<LinkCard url="https://artificialanalysis.ai/models"/>
+
+Varför det mellan två modeller över huvud taget finns en sammanhängande linje och inte bara två punkter ligger i matematiken bakom.
+
+<Accordion title="Matten bakom det konvexa höljet">
+[RouterBench (Hu et al.)](https://arxiv.org/abs/2403.12031) formaliserar cost-quality-frontiern som ett icke-avtagande konvext hölje över de tillgängliga modellerna. Poängen: varje punkt på sträckan mellan två modeller på frontiern går att nå på riktigt, nämligen genom probabilistisk blandning – en del av anropen går till den ena modellen, resten till den andra. Det är vad en router gör. Därmed är frontiern inget hopp mellan diskreta modeller utan ett kontinuerligt spektrum av driftpunkter. Av ytan under frontiern gör RouterBench med AIQ en enda jämförelsesiffra mellan hela routing-strategier. Underlaget: över 405 000 utvärderade inferens-records.
+</Accordion>
+
+Frågan som återstår är var de här tre axlarna ska komma ifrån utan att vi behöver koppla om assistenten för varje mätning.
+
+## Du mäter redan – du slår bara inte ihop det
+
+Mer instrumentering behövs faktiskt inte. De tre axlarna ligger redan i tracen. I observability-inlägget fångade vi redan token-counts per LLM-anrop, modellversionen och span-längden. Det är Pareto-axlarna – det är bara ingen som har skrivit in dem i eval-scorecardet hittills.
+
+<LinkCard url="/sv/blog/observability-ai-features"/>
+
+Vi börjar med kostnaden, eftersom den faller mest direkt ur tokens. Kostnad är tokens gånger pris, inget annat. Priserna enligt [Anthropic Pricing](https://platform.claude.com/docs/en/about-claude/pricing) (per 2026-06, per 1M tokens, input/output):
+
+| Modell | Input | Output |
+|---|---|---|
+| Haiku 4.5 | 1$ | 5$ |
+| Sonnet 4.6 | 3$ | 15$ |
+| Opus 4.8 | 5$ | 25$ |
+
+Per token-typ skiljer det exakt 5x mellan liten och stor modell. För vår Doc-QA-assistent betyder det: om ”Hur återställer jag mitt lösenord?” besvaras av Haiku eller av Opus gör flera gångers skillnad i styckkostnad. Vid tusentals frågor per dag är det skillnaden mellan en faktura som ingen pratar om och en som hamnar på mötesagendan. En hävstång som tippar det ytterligare: cache-read kostar bara runt en tiondel av input-priset ([Anthropic Prompt Caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)), och vår assistent trycker via retrievalen ständigt in samma källdokument i prompten – det mesta går alltså att cacha.
+
+Latensen är helt enkelt spanets längd – en tidsstämpel i början, en i slutet. Mer behövs inte: kostnad är tokens gånger pristabell, latens är span-längd, och båda står redan i varje trace. Inget andra system, bara en join – eval-case-ID mot trace-ID, och de två saknade kolumnerna hänger på scorecardet. Samma sak gör Arize Phoenix i sin cost tracking: tokens gånger pris, sedan rollup från span via trace upp till experimentet.
+
+Per eval-case står nu kostnad och latens bredvid korrekthetsscoren. Därmed vet du för varje svar vad det kostade och hur lång tid det tog. Punktmolnet blir en kurva.
+
+## Vad du gör med kurvan: router vs. cascade
+
+Det första, reflexmässiga svaret på det är nästan alltid: ta den största modellen. Det kräver minst eftertanke. Men den största modellen är en reflex, inte ett svar. En Haiku med omsorgsfullt byggda 10-shot-exempel slår i många tasks en zero-shot Opus, till ungefär en tredjedel av kostnaden. Den som tar den dyraste endpointen till första prototypen optimerar för demotempo, inte för produktekonomi.
+
+Ett steg tidigare finns en fråga som gärna hoppas över i AI-demos: måste det här ens vara en LLM? I vår Doc-QA-assistent behöver den del som skiljer ”enkel fråga” från ”syntes över flera dokument” inte vara en språkmodell. Det är en klassificering, och en DistilBERT tränad på några tusen märkta exempel klarar den på millisekunder för bråkdelar av en cent.
+
+Nu blir frontiern arkitektur. Om kurvan planar ut upptill, om den dubbelt så dyra modellen bara lägger på några procentenheter kvalitet, då är ”alltid den stora modellen” helt enkelt bortkastade pengar. Det finns två etablerade sätt att utnyttja samma kurva.
+
+Routern bestämmer i förväg, och en gång, vilken modell som får anropet. Ett enda anrop, ingen dubbel inferensskatt. [RouteLLM-projektet från LMSYS](https://www.lmsys.org/blog/2024-07-01-routellm/) visar hur långt det räcker – över 85 % kostnadsminskning på MT-Bench vid 95 % av den stora modellens kvalitet, och bara 14 % av anropen hamnar alls där. Routern är inget annat än den beslutspunkt jag skrev om i ett tidigare inlägg: ett ställe där något klassificeras och skickas vidare. Där handlade det om valet mellan tools, här om valet mellan modeller.
+
+<LinkCard url="/sv/blog/agent-loops-entscheidungspunkte"/>
+
+Cascaden vänder på ordningen: först den billiga modellen, och bara om resultatet inte är tillräckligt bra eskalerar den till den dyra. [FrugalGPT](https://arxiv.org/abs/2305.05176) gjorde mönstret känt och rapporterar upp till 98 % kostnadsminskning på den stora modellens nivå. Priset för det sitter i mekaniken: cascaden arbetar sekventiellt. Vid varje eskalering körs först det lilla anropet, misslyckas, och först sedan startar det stora – latens-overhead by design.
+
+<figure class="not-prose my-8">
+  <svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rc-title rc-desc" class="w-full max-w-full h-auto">
+    <title id="rc-title">Router mot cascade</title>
+    <desc id="rc-desc">Två arkitekturer sida vid sida. Till vänster routern: en fråga går in i en klassificerare som fattar ett beslut i förväg och skickar den antingen till den lilla modellen (de flesta frågor) eller den stora modellen (ett fåtal) – ett beslut, ett anrop. Till höger cascaden: frågan går först till den lilla modellen, sedan till en grounding-check; om den går igenom är svaret klart, annars eskaleras anropet sekventiellt till den stora modellen.</desc>
+
+    <line x1="380" y1="40" x2="380" y2="348" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="4 5"/>
+
+    <text x="190" y="30" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="var(--color-text)">Router</text>
+    <text x="570" y="30" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="var(--color-text)">Cascade</text>
+
+    <rect x="140" y="50" width="100" height="38" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="190" y="74" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Fråga</text>
+
+    <line x1="190" y1="88" x2="190" y2="116" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 190 122 L 184 110 L 196 110 Z" fill="var(--color-text-muted)"/>
+
+    <rect x="108" y="124" width="164" height="46" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+    <text x="190" y="145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Routern klassificerar</text>
+    <text x="190" y="161" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="var(--color-text-secondary)">i förväg · billig signal</text>
+
+    <line x1="150" y1="170" x2="108" y2="240" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 104 246 L 104 232 L 114 239 Z" fill="var(--color-text-muted)"/>
+    <line x1="230" y1="170" x2="272" y2="240" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 276 246 L 266 239 L 276 232 Z" fill="var(--color-text-muted)"/>
+
+    <text x="120" y="206" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="var(--color-text-secondary)">~86%</text>
+    <text x="262" y="206" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="var(--color-text-secondary)">~14%</text>
+
+    <rect x="40" y="248" width="116" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="98" y="275" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">liten modell</text>
+
+    <rect x="224" y="248" width="116" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="282" y="275" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">stor modell</text>
+
+    <text x="190" y="324" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="var(--color-text-muted)">Ett beslut, ett anrop</text>
+
+    <rect x="520" y="50" width="100" height="38" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="570" y="74" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Fråga</text>
+
+    <line x1="570" y1="88" x2="570" y2="108" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 570 114 L 564 102 L 576 102 Z" fill="var(--color-text-muted)"/>
+
+    <rect x="505" y="116" width="130" height="42" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="570" y="142" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">liten modell</text>
+
+    <line x1="570" y1="158" x2="570" y2="176" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 570 182 L 564 170 L 576 170 Z" fill="var(--color-text-muted)"/>
+
+    <rect x="500" y="184" width="140" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-accent)" stroke-width="1.5"/>
+    <text x="570" y="211" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">Grounding-check</text>
+
+    <line x1="640" y1="206" x2="694" y2="206" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 700 206 L 690 199 L 690 213 Z" fill="var(--color-text-muted)"/>
+    <text x="697" y="197" text-anchor="end" font-family="system-ui, sans-serif" font-size="10.5" font-weight="600" fill="var(--color-text-secondary)">pass → klart</text>
+
+    <line x1="570" y1="228" x2="570" y2="258" stroke="var(--color-text-muted)" stroke-width="1.5"/>
+    <path d="M 570 264 L 564 252 L 576 252 Z" fill="var(--color-text-muted)"/>
+    <text x="582" y="248" text-anchor="start" font-family="system-ui, sans-serif" font-size="10.5" font-weight="600" fill="var(--color-text-secondary)">fail → eskalera</text>
+
+    <rect x="505" y="266" width="130" height="44" rx="7" fill="var(--color-bg-secondary)" stroke="var(--color-border)" stroke-width="1"/>
+    <text x="570" y="293" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="var(--color-text)">stor modell</text>
+
+    <text x="570" y="336" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="var(--color-text-muted)">Billigt först, sekventiell eskalering</text>
+  </svg>
+  <figcaption class="mt-3 text-center text-sm text-(--color-text-muted)">Två sätt att utnyttja samma kurva. Routern bestämmer en gång i förväg vilken modell som tar frågan – ett anrop, ingen dubbel inferens. Cascaden låter först den lilla modellen försöka och eskalerar bara när en hård signal (här: grounding-checken) fallerar – billigare i snitt, men sekventiell och därmed med latens-overhead.</figcaption>
+</figure>
+
+I vår Doc-QA-assistent ser båda vägarna konkret ut så här. Routern tittar på frågan innan någon modell svarar och lutar sig mot billiga signaler: retrieval-confidence, antal träffade dokument, frågans längd. ”Hur återställer jag mitt lösenord?” träffar ett enda dokument med hög confidence; där räcker den lilla modellen. ”Gäller ångerfristen även förbeställda varor om jag har betalat med presentkort?” drar in fyra dokument med medelmåttig score, ett tydligt syntesfall för den stora.
+
+Cascaden låter i stället den lilla modellen helt enkelt svara och kontrollerar efteråt om svaret håller. Om grounding-checken fallerar, ett obligatoriskt fält saknas eller svaret inte passar schemat, går samma fråga till den stora modellen.
+
+<Callout type="warning">
+Eskalera på hårda signaler (grounding-checken fallerar, schemat bryts, ett obligatoriskt fält saknas), inte på verbaliserad confidence – modeller låter som mest övertygade när de har fel.
+</Callout>
+
+Ett öppet dokumenterat exempel på mönstret kommer från [Vercels cost-aware model routing](https://vercel.com/kb/guide/cost-aware-model-routing-with-ai-gateway): en tier-config med fallbacks plus en klassificerare som bara i gråzonen, vid låg confidence, lägger på ett dyrare ML-steg.
+
+Vilken av de två vägarna som vinner har redan undersökts. Studien [”Is Escalation Worth It?”](https://arxiv.org/abs/2605.06350) ställer pre-generation-routers mot post-generation-cascades och kommer fram till ett resultat som är obekvämt för cascade-fans: routern slår ofta cascaden. Skälet är enkelt. För varje eskalerad query har cascaden redan genererat och betalat det billiga svaret innan det blev klart att svaret måste kastas. Routern betalar aldrig den skatten. Och fler än två steg ger enligt samma arbete knappt något – den tredje modellklassen tjänar sällan in sin egen kostnad.
+
+Och hur vet routern vilken fråga som är ett gränsfall? Från evalen. Den markerar vilka frågor den lilla modellen misslyckas med på löpande band och levererar därmed signalen som klassificeraren routar efter. Routingen följer evalen – confidence kommer från data, inte från magkänsla. Anthropic rekommenderar i sin egen [guide till modellval](https://claude.com/resources/tutorials/choosing-the-right-claude-model) precis det här mönstret: sätt en default-modell, skjut ner enkla tasks till den lilla klassen och lyft bara det mest krävande till den stora.
+
+Därmed säger kurvan dig var du kan sitta på den – men ännu inte var du borde sitta.
+
+## Välj din operating point – i dollar, inte i procent
+
+Kurvan är en meny. Den listar vilka punkter som går att nå: den billiga modellen nere till vänster, den dyra uppe till höger, cascaden någonstans däremellan. Det den inte gör åt dig är att svara på vilken av punkterna som är den rätta. En Pareto-frontier har per definition ingen totalordning. Den sorterar bort det som domineras och låter resten stå jämsides som likvärdiga.
+
+Det är just det Zellinger och Thomson (Caltech) invänder mot vanlig eval-praxis i [Economic Evaluation of LLMs](https://arxiv.org/abs/2507.03834): att titta på kvalitet och kostnad var för sig ”offers no way to compare between LLMs with distinct strengths and weaknesses”. Den ena modellen är mer exakt, den andra billigare, och frontiern rycker på axlarna. För att alls kunna välja behöver du en skalär – en enda siffra där kvalitet, kostnad och latens faller ihop.
+
+Den skalären levererar samma studie genom att översätta allt till samma enhet: dollar. Queryns kostnad, latensen (multiplicerad med vad en sekunds väntan är värd för dig), den sällsynta abstentionen – och framför allt kostnaden för ett fel, den post som inte ens finns med i den rena accuracy-siffran.
+
+<InfoBox>
+Reward-idén (Zellinger & Thomson): varje svar får ett dollarvärde som belastningarna dras av från – query-kostnaden, en latensterm (väntetid gånger betalningsvilja per sekund), en felterm (vad ett felaktigt svar kostar dig) och en abstention-term (vad det kostar att hellre inte svara). Den bästa operating pointen är den med högst förväntad reward.
+</InfoBox>
+
+Så fort du kan sätta en siffra på felkostnaden slår den här kalkylen att läsa av kurvan med ögat. Du behöver inte gissa om hoppet till den stora modellen lönar sig – du stoppar in en siffra.
+
+<Accordion title="Reward-formeln i detalj">
+I grunden är reward en negativ summa av dollartermer: query-kostnad plus latensterm plus felterm plus abstention-term, var och en med en vikt som uttrycker hur dyr den dimensionen är för dig. Hur mycket en sekunds latens eller ett enskilt fel räknas i dollar beror på ditt användningsområde; i studien är det modellerade parametrar, inga universella konstanter. Den som vill ha det exakt läser originalarbetet. För beslutet räcker kärnan: så fort du kan sätta en siffra på felkostnaden har du en skalär som ordnar punkterna på frontiern.
+</Accordion>
+
+I vardagen behöver du inte hela formeln för att gå åt rätt håll. Det räcker med ett mått som Braintrust kallar [cost per successful output](https://www.braintrust.dev/articles/how-to-track-llm-costs-2026): din totala spend delat med antalet requests som klarar en quality scorer. En billigare route ser bra ut på fakturan tills du märker hur ofta den har fel. Varje fail drar med sig en retry, ett omtag, en andra fråga från samma användare – och den billiga routen blir den dyrare.
+
+Det är den ekonomiska baksidan av false success. En grön körning som egentligen inte var det försvinner inte bara – den dyker upp här igen som en kostnadspost, en iteration senare och under ett annat namn.
+
+<LinkCard url="/sv/blog/tools-sind-keine-prompts"/>
+
+Och nu den del utan vilken det här inlägget urartar till en sparpresentation. Samma dollarkalkyl tippar snabbt över till den stora modellens fördel. Zellinger och Thomson visar: reasoning-modeller lönar sig så fort kostnaden för ett enskilt fel stiger över 0,01$. Och den enskilda stora modellen slår cascaden så fort felkostnaden når runt 0,10$. Det är inga stora siffror. Ett felaktigt besked om ett avtal, en felaktig doseringsuppgift, en påhittad rätt till avbokning kostar dig mer än tio cent.
+
+Vid höga felkostnader är ”ta den starkaste modellen” alltså resultatet av kalkylen. Den som väljer den stora modellen för medicin, pengar eller avtalsfrågor räknar rätt. Det här inläggets framing är: räkna i stället för att tro.
+
+Det går att spela igenom med samma Doc-QA-assistent. Ligger den i den interna eng-wikin är ett felaktigt svar billigt: en kollega höjer på ögonbrynen, frågar, rättar. Felkostnader på centnivå, den lilla modellen räcker. Sitter samma assistent längst fram i den kundvända avtals- eller avbokningsdialogen kan ett felaktigt besked utlösa riktiga pengar eller ett compliance-problem. Samma formel, andra felkostnader, annat resultat: stor modell. Operating pointen är inget du ställer in globalt en gång och glömmer. Den ska räknas om per användningsområde.
+
+Så att ingen missförstår: kostnad optimerar du sist. Jag sorterar gärna kraven på en LLM-produkt i lager – reliability och harmlessness längst ner, ovanför faktatrohet, nytta och skalning, kostnadsaxeln högst upp. Högst upp betyder här: sist i tur. Den som skruvar på kostnaden innan lagren under är på plats optimerar demos eller oprövat beteende.
+
+Reliability och harmlessness är inte förhandlingsbara. Där finns inget ”90 % räcker”, och där får kostnadsaxeln aldrig vinna. Det här inlägget optimerar pyramidens översta lager – och bara när lagren under är på plats. Konkret betyder det: när evalen är grön.
+
+Men en kalkyl i en notebook ändrar ingenting i det som körs i produktion.
+
+## In i CI: score per dollar, per sekund som gate
+
+En Pareto-kalkyl i en notebook överlever till nästa merge. Någon sätter den stora modellen som default eftersom en handfull ärenden ropade efter bättre kvalitet, pass raten stiger märkbart, alla nickar – och ingen ser att kostnaden per svar har vuxit med. För att det inte ska hända hör den ekonomiska axeln hemma där kvalitetsaxeln redan sitter: i [pipelinen](https://www.promptfoo.dev/docs/integrations/ci-cd/), som ett hårt pass/fail.
+
+promptfoo gör det i samma körning som korrektheten. Bredvid kvalitets-assertionen (för Doc-QA-assistenten en judge på svarets korrekthet och grounding) hänger du in två assertions till i `defaultTest`-blocket: en `cost`- och en `latency`-tröskel. Spräcker ett svar någon av gränserna faller testet – precis som för ett felaktigt svar.
+
+```yaml
+# promptfooconfig.yaml
+defaultTest:
+  assert:
+    - type: llm-rubric
+      value: Svaret är korrekt och helt underbyggt av de länkade dokumenten
+    - type: cost
+      threshold: 0.002   # USD per svar (illustrativt för Doc-QA-exemplet)
+    - type: latency
+      threshold: 3000    # ms
+```
+
+Trösklarna ovan är påhittade för Doc-QA-exemplet; låt oss säga att 0,002 USD och tre sekunder per svar är vad produkt och infra har enats om som tak. Två detaljer från praktiken [dokumenterar promptfoo](https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/): för riktig latens behöver du `--no-cache`, annars mäter du cache-hits i stället för modellsvar och varje latenssiffra i rapporten är fiktion. Och `cost`-assertionen fungerar bara om providern levererar kostnadsdata – enligt dokumentationen för OpenAI-modeller och custom providers; för Anthropic hämtar du kostnaden via en custom provider med pristabell.
+
+Den som hellre vill ha ett utlåtande per PR i review-tråden: [Braintrusts eval-action](https://www.braintrust.dev/articles/how-to-track-llm-costs-2026) postar per PR en kommentar med score-deltat mot base-branchen, och kostnaden bredvid. Alla värden sida vid sida innan du trycker på merge.
+
+En begränsning hör till: de här verktygen loggar axlarna. De drar inte upp frontiern. Kostnad, latens och score står som kolumner i rapporten; vilken operating point som ligger på Pareto-kanten och vilken som domineras läser du själv ut ur kolumnerna. Bara ett fåtal harnesses ger dig kurvan direkt – [RouteLLM](https://github.com/lm-sys/RouteLLM) är ett av dem, eftersom routingen mellan liten och stor där är själva forskningsobjektet.
+
+| Verktyg | mäter kostnad + latens? | går in i CI? | ritar kurvan? |
+| --- | --- | --- | --- |
+| promptfoo | ja, som cost/latency-assertion | ja, som CI-gate | nej |
+| Braintrust | ja, cost per successful output | ja, som PR-kommentar | nej |
+| [Arize Phoenix](https://arize.com/docs/phoenix/tracing/how-to-tracing/cost-tracking) | ja, kostnad från tokens gånger pris | OSS, i experiment-trackingen | nej |
+| RouteLLM | ja, i eval-harnessen | ja | ja, ger ut frontiern |
+
+För Doc-QA-assistenten gjuts det till en regel som varje reviewer kan läsa. En billigare route, där den lilla modellen tar fler frågor, går bara live om alla tre villkoren håller: pass-rate-deltat stannar inom det överenskomna bandet, latensen håller sig inom budget, och cost per successful output sjunker faktiskt. Faller pass raten ut ur bandet är besparingen ingen besparing. Stiger latensen över gränsen har du sparat pengar och förlorat användare.
+
+Därmed får en gammal felmod äntligen en plats i sviten. ”För dyrt i produktion” och ”för långsamt under last” var hittills saker som någon i driften märkte och skrev in i ett ärende. Som cost- och latency-assertion färgar de en PR röd innan den mergas. Sviten, som hittills bara tittade på korrekthet, får en ekonomisk dimension – samma rörelse som gör incidenter till regressionstester.
+
+<LinkCard url="/sv/blog/incident-zu-regressionstest"/>
+
+En cost-assertion som blockerar en PR har en förutsägbar bieffekt: förr eller senare kallar någon det ett sparprogram och frågar om kvaliteten offras på ekonomiavdelningens altare. Och alla invändningar bakom det är inte billiga.
+
+## Vanliga motargument
+
+Varje arkitekturbeslut möter invändningar, och när det gäller routing känner jag till de flesta innan de kommer. Några dyker upp gång på gång. Här är de, var och en med det ärligaste svar jag har.
+
+### ”Inferenskostnaderna sjunker ju ändå.”
+
+Stämmer, och det rejält: a16z sätter prisfallet för inferens vid fast kvalitetsnivå till runt 10x per år, grovt 1000x på tre år ([LLMflation](https://a16z.com/llmflation-llm-inference-cost/)). Haken sitter i ”fast kvalitetsnivå”. Den som i stället jagar frontiern sitter på den motsatta kurvan: enligt [Price of Progress](https://arxiv.org/abs/2511.23455) stiger kostnaderna i överkanten 3x till 18x per år, och för GPQA-Diamond kommer en avsevärd del av de uppmätta framstegen från högre inferensutgifter snarare än från effektivitet. Det fallande priset talar dessutom för routing: dagens ”tillräckligt bra”-modell var gårdagens frontier.
+
+### ”Kvalitet är inte förhandlingsbart hos oss.”
+
+”Inte förhandlingsbart” är i slutänden också bara ett räkneresultat. Är felkostnaderna tillräckligt höga landar kalkylen från operating-point-avsnittet ändå på den stora modellen, överallt. Du förlorar alltså inget på att räkna igenom det; du får en motivering som räcker längre än ”känns säkrare”.
+
+### ”Routing ger extra latens och komplexitet.”
+
+För cascaden stämmer det: den provar först den lilla modellen, kontrollerar resultatet och eskalerar vid behov till den stora, ett andra anrop ovanpå, sekventiellt, med all latens som hör till. Prediktiv routing fungerar annorlunda: en klassificerare bestämmer i förväg, sedan görs exakt ett anrop. Cascadens latensstraff är verkligt, den prediktiva routerns ligger i millisekundsområdet för själva routing-beslutet.
+
+### ”Routern går att manipulera.”
+
+Ja. Så kallade confounder gadgets, manipulerade textsnuttar i prompten, kan få en router att avsiktligt skicka varje anrop till den dyra modellen ([Rerouting LLM Routers](https://arxiv.org/abs/2501.01818)). Det är en kostnads-DoS: angriparen driver upp din faktura utan att svaren blir synbart sämre. En motåtgärd finns redan: [RerouteGuard](https://arxiv.org/abs/2601.21380) rapporterar nästan fullständig detection vid mycket låg false positive rate.
+
+<Callout type="warning">
+Behandla din router som en del av attack surface. Så fort routing-beslutet beror på användarinput är det ett mål för angrepp. Sätt monitoring på modellfördelningen och ett larm som går när andelen dyra anrop skjuter i höjden utan synbar anledning.
+</Callout>
+
+### ”Vi är för små för det här.”
+
+I det enklaste fallet är routing bara ett strängbyte. En managed router tar beslutet åt dig, och i kombination med regeln ”default till liten, stor bara vid behov” har du det väsentliga utan att bygga en egen klassificerar-pipeline. Det kostar inga veckor av engineering. Det kostar ett medvetet beslut.
+
+### ”Flera modeller = mer integrationskomplexitet.”
+
+Det ligger något i det. Varje route är en integration, prompts migrerar inte 1:1 mellan modeller, och modeller måste pinnas, annars flyttar en tyst provider-uppdatering ditt beteende över en natt. Det som lindrar: OpenAI-kompatibla gateways reducerar ofta modellbytet till en sträng, och din eval-svit är försäkringen mot migrationsöverraskningar – är den grön har bytet inte förstört något.
+
+Märker du något? De två första invändningarna går inte ihop. ”Kostnaderna sjunker ändå” och ”kvalitet är inte förhandlingsbart” kan ingen tro på samtidigt, för den som kompromisslöst vill ha frontiern sitter enligt Price of Progress på den stigande kostnadskurvan. Trade-offen förblir rörlig, och per 2026 flyttar hävstången: bort från ”gör den lilla modellen stor”, mot ”gör den stora modellen billig”, via caching, strukturerade outputs och hårda output-scheman som sparar tokens. Det undergräver inte tesen i det här inlägget, det skriver vidare på den vid en ny operating point.
+
+## Kvalitet är en funktion, ingen skalär
+
+Vilken hävstång du än drar i, om du rustar upp den lilla modellen eller gör den stora billigare: den underliggande frågan är densamma. Ett svar som stämmer men äter upp dagsbudgeten duger inte mycket till i drift – hur korrekt det än är. ”Bästa svaret” förblir odefinierat så länge ingen prislapp och ingen klocka hänger bredvid. En eval som bara mäter sanning mäter en storhet som i produktion inte räcker på egen hand. Vid tusentals Doc-QA-frågor om dagen avgör volymen: den enkla lösenordsåterställningen, som en liten modell besvarar lika rätt som en stor, körs tusentals gånger. Att skicka den genom den dyra modellen kostar dig i slutändan mer än de få tvetydiga avbokningsfrågorna där den stora modellen verkligen lönar sig.
+
+Frontiern som det här beslutet sitter på står inte still. Priser faller, nya modeller landar, och det som i dag är den dyra toppen är mellanklass om ett halvår. Den som väljer ”rätt modell” en gång och sedan inte tittar igen på tre år sitter på fel punkt utan att märka det. Modellvalet är därför en återkommande mätning. Sätt defaulten till den minsta modellen som klarar evalen, och sträck dig uppåt först när data kräver det. I inlägget om agent-loopar löd rådet ”default till den snävaste arkitekturen, öppna upp först med data” – på modellnivå gäller det ord för ord.
+
+Alltså: sluta leta efter det bästa svaret. Leta efter det billigaste svaret som är tillräckligt bra – och mät ”tillräckligt bra” i stället för att hoppas på det. ”Tillräckligt bra” är din evals tröskelvärde. ”Billigt” är de två axlarna, kostnad och latens, som redan ligger i dina traces. Båda har du redan. Du behöver bara slå ihop dem i samma scorecard.
+
+Det förbjuder inte den dyra vägen. Är felkostnaderna tillräckligt höga (pengar, hälsa, rykte) är den enskilda stora modellen kalkylens resultat, inte dess motståndare. Skillnaden mot tidigare: den här gången har du räknat på det, i stället för att i tveksamma fall bara ta den största för att den fanns där.
+
+Routing är bara en hävstång. På provider-nivå finns fler – prompt caching, batch-bearbetning, flex- och priority-tiers där du byter latens mot pris. Allt det faller under ”FinOps för AI”. Men det är ett annat inlägg.
+
+> Kvalitet är en funktion, ingen skalär.

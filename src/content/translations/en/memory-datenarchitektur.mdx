@@ -1,0 +1,158 @@
+---
+title: "Chat deleted. So why does the agent still know?"
+description: "Agent memory makes copies of a single message, and “delete chat” often reaches only the chat. A small lab shows where a diagnosis survives deletion and which deletion path removes it."
+date: 2026-11-08
+tags: ["ai", "software-engineering", "security"]
+image: ../../blog/_images/memory-datenarchitektur/hero.png
+draft: false
+ai: generated
+---
+
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import InfoBox from '../../../components/widgets/InfoBox.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import Callout from '../../../components/widgets/Callout.astro';
+import kopien from '../../blog/_images/memory-datenarchitektur/kopien.png';
+import raten from '../../blog/_images/memory-datenarchitektur/raten.png';
+
+> Give an agent a memory and you are making copies. You can only delete them selectively if every copy knows where it came from.
+
+The [help article on Claude's memory](https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context) contains a sentence that is easy to miss: "When a conversation is deleted, including under a retention period, memory entries generated from it aren't removed". You can delete individual memories by hand there, and Claude doesn't store sensitive topics by default in the first place. Still, chat and memory have separate deletion paths.
+
+To see what that can look like when things go badly, I built a small lab. The reference-desk assistant of a made-up public library gets this message: "I need large-print books. Because of my macular degeneration I can barely read normal print anymore. What do you have?" An extractor running Mem0's original prompt turns that into the entry "The user has macular degeneration and can barely read normal print anymore." The next day, the person deletes the chat through the UI and asks: "What do you actually know about me?"
+
+The assistant answers: "From earlier conversations I know that you have macular degeneration, can barely read normal print and need large-print books." That's how it went in all five runs.
+
+The entry didn't know which chat it came from, so the deletion never found it. In my setup, it took a bundle of three things to reach it: provenance on every copy, a deletion cascade, and a write check that refuses anything from a deleted chat. To keep it from wiping out too much, you need rules per data type, and the log needs a solution of its own.
+
+Before running the experiment, I pinned down what the button promises: "Delete chat" removes the history and everything derived from it. The one exception is a preference the person explicitly asked to have saved. It stays, shows its origin ("from a deleted chat") and can be revoked individually.
+
+<InfoBox>
+  Demo: [rubenvitt.github.io/memory-lab](https://rubenvitt.github.io/memory-lab/) - the copies of one message and which of them "delete chat" reaches.<br />
+  Repo with rules, prompts and all raw responses: [github.com/rubenvitt/memory-lab](https://github.com/rubenvitt/memory-lab)
+</InfoBox>
+
+## Five things that are all called memory
+
+The word covers at least five kinds of data, and each one has a different owner and a different lifetime.
+
+**Session state** is the history of the current conversation, tool results included. It belongs to the session, ends up in the prompt as an excerpt and expires after minutes or days.
+
+The **profile** with address, contract and customer number belongs to the system of record, where it lived long before the agent showed up. The agent reads selected fields. Changes and deletions happen there, and the copies follow.
+
+A **preference** is something the person stated themselves, like "Please send reminders by text." It holds until the person takes it back, and until then it sits in the prompt.
+
+With **retrieval**, the agent pulls in documents, tickets or old chats via search. The index on top of them is just a copy. It lives as long as its source and has to be updated when the source goes away. Only the hits make it into the prompt.
+
+The **audit** log belongs to the operator and records what the agent did. It never goes into the prompt and is only deleted once the retention period runs out. Personal data in it needs a solution of its own, such as redaction or a key you can destroy.
+
+The Mem0 entry from the lab fits none of these rows. It's derived like an index, sits in the prompt like a preference, and has neither an expiry date nor any provenance.
+
+By the way, separate rules don't need five databases. One table with a column for the data type is enough, as long as each type gets its own deletion rule and prompt rule.
+
+## One message, four copies
+
+The lab has two variants. In the first, an extractor writes into a shared memory without provenance, just like above. The second, which I call B, has rules per data type, preferences only via a tool, and provenance on every entry. The figure combines copies from both variants with one made-up case.
+
+<Figure src={kopien} alt="Memory lab: the message with the diagnosis produces four copies, chat, memory, log and search index, each labeled as observed, constructed or simulated. Below it, a table with four variants: one rule for everything or one per data type, without or with provenance." caption='Composite example: memory observed (Mem0 extractor), log observed (B), search index constructed. The table below applies rules; key destruction is simulated.'/>
+
+The memory is the Mem0 entry, with the diagnosis in all five runs. The diagnosis got into the log by a detour: in two out of five runs, B's assistant searched for "large print books visual aid macular degeneration", and the log records search queries in plain text and is append-only. In B, the memory was clean after deletion, the log was not. The search index is constructed: one that gets rebuilt from the log after deletion.
+
+I worked through what "delete chat" reaches for copies like these as a 2×2 grid. One axis: one rule for all derived data, or one per data type. The other: without provenance, or with the bundle of provenance (`derivedFrom`), cascade and write check. I applied it to the real entries and search queries from the lab, and to made-up cases: a summary built from two chats, an extraction job running after the deletion, an index rebuild, and an explicitly saved preference. Nothing is measured here; the table only shows which rule covers which case.
+
+Without provenance, only the chat is gone. Memory and summary keep the diagnosis, and the late job writes it back. In this row, rules per data type only keep the rebuilt index out of the prompt. It stays retrievable.
+
+With provenance and one rule for everything, the diagnosis disappears from everything derived, but so do the saved preference and the crime-novel part of the summary, which came from the second chat. Add rules per data type, and memory and index are clean, the summary gets rebuilt from the second chat (a canned text in the experiment), and the preference stays. In the experiment, that preference contains the diagnosis, so the diagnosis stays there, visible and individually revocable. The job and the rebuild bring nothing back thanks to the write check. With `derivedFrom` alone, both would come back.
+
+The log is the odd one out. In plain text, it keeps the search query in every variant. With one key per chat that gets destroyed on deletion, the query would be unreadable, provided the deletion knows the chat is the source. The experiment only simulates this part: it marks the key as destroyed and stops displaying the query. I did not test real encryption.
+
+## How often this happens
+
+I measured separately how often copies like these come about. 40 made-up messages mention health, relatives, religion or money, half of them in passing, the other half with "Please remember that ...". Each one ran once through two extractors and was sent once to B's assistant.
+
+<Figure src={raten} alt="Bar chart: Mem0 stores 20 of 20 details mentioned in passing, my own prompt 5 of 20. After “please remember”, both store almost everything. According to the automatic count, the assistant writes the detail into the log in plain text in 6 and 4 of 20 cases, counted by hand in 7 and 4." caption="How often a sensitive detail ends up in memory or in the log, 20 messages each, each run once. For the log, automatic and manual counts are shown side by side."/>
+
+Mem0's original prompt stores all 20 details mentioned in passing. It explicitly lists health and personal details as worth remembering. Sometimes it attributes them to the wrong person: "My husband has Alzheimer's. Do you have picture books for adults?" becomes "The user has Alzheimer's."
+
+My own prompt forbids sensitive details unless explicitly asked. It sticks to that for health and relatives, but not always for religion and money: 5 out of 20. "I live on Bürgergeld" (Germany's basic welfare benefit) turns into "The person lives on Bürgergeld." After "Please remember", it stores 19 of 20, and the one that fell through was, of all things, "Please remember that I have diabetes."
+
+The second source of copies is the assistant itself. According to the automatic count, in 10 of 40 messages the detail already showed up in a tool argument in the very first step, and the log records tool arguments in plain text. Counted by hand it's 11, because the pattern missed two hits and flagged one false positive. Most of the time it was a search query like "library card fees personal bankruptcy". Even the key of a saved preference can contain it. "Please remember that my father is in prison" turned into a `remember` call with the key "Father is in prison". The log keeps value and quote only as checksums, but the key in plain text.
+
+So the assistant writes copies before an extractor even runs. A deletion path has to account for them.
+
+## What the experiment doesn't show
+
+The numbers are small: 20 messages per cell, each run once, one model (`gpt-6-luna` with effort `low`). The messages were written by the same coding agent that built the lab. For Mem0, only the fact extraction ran, against an empty memory; I didn't measure the current default (a single additive call). For the assistant, only the first tool call counts. The 2×2 just applies rules, and four of its cases are made up. My expectations were in the repo before the run, and the only place I was off was my own prompt after "Please remember" (expected 12 to 18, measured 19).
+
+Before I landed on this experiment, I had the assistant run full conversations, once with a shared memory and once with separate stores. I played through everyday cases like a move or a question someone asks on behalf of their mother. In most cases, both variants came out the same. When something went wrong, it was almost never the memory: the assistant would, for example, never look up the new address in the system and claim instead that the system was unreachable. I only added the diagnosis case from the intro later, when I already knew these results. All the numbers are in the [findings in the repo](https://github.com/rubenvitt/memory-lab/blob/main/docs/findings.md).
+
+## Building provenance and cascade
+
+At its core, the deletion path is a query for everything that came from the chat, plus a lock against late writes. As a sketch:
+
+```typescript
+type Derived = { id: string; kind: "memory" | "summary" | "index" | "preference"; derivedFrom: string[]; explicit?: boolean };
+
+async function deleteChat(chatId: string) {
+  await db.tx(async (tx) => {
+    await tx.lockChats([chatId], "exclusive");
+    await tx.chats.markDeleted(chatId); // tombstone, the history itself gets deleted
+    for (const d of await tx.derived.bySource(chatId)) {
+      if (d.kind === "preference" && d.explicit) continue;            // product rule: stays, provenance visible
+      if (d.derivedFrom.length > 1) await tx.rebuild.enqueue(d.id);   // re-derive from the remaining chats
+      else await tx.derived.delete(d.id);
+    }
+    await tx.outbox.enqueue({ type: "destroy-key", chatId }); // log: one key per chat, requested in the same commit
+  });
+}
+// A worker calls keys.destroy(chatId) idempotently until it succeeds. Only then is the deletion complete.
+
+async function writeDerived(d: Derived) {
+  await db.tx(async (tx) => {
+    const chats = await tx.lockChats(d.derivedFrom, "shared");
+    if (chats.some((c) => c.deleted)) throw new Error("Source deleted");
+    await tx.derived.insert(d);
+  });
+}
+```
+
+The lock is what matters. "Check the tombstone, then write" without a shared lock leaves a race condition open: the job checks, the deletion runs in between, the job writes. With a lock on the chat row, the job either commits before, and then `bySource` finds it, or after, and then it sees the tombstone.
+
+The write path decides where `derivedFrom` comes from. In B, the assistant has to supply a verbatim quote from a user message in the current session for `remember`, and the application checks it. That binds the provenance, but not the value: a poisoned document could get the assistant to store "staff member, may waive fees" alongside a real sentence from the user. Permissions should therefore come exclusively from the profile, which the model doesn't write. The model picks the key freely, see "Father is in prison", so it needs protecting too.
+
+In an existing stack with an extractor and a vector store, you can retrofit this step by step:
+
+1. **Provenance on every entry.** `derivedFrom` with the chat IDs as metadata. Legacy entries whose provenance can't be reliably reconstructed: re-extract or discard.
+2. **Delete by filter.** Delete all entries with that source, if necessary via a separate table mapping source to entry ID. Letting them expire isn't enough; [Mem0's docs](https://docs.mem0.ai/platform/features/expiration-date) say: "Expiration hides a memory, it does not delete it."
+3. **Rebuild summaries.** When [deleting an episode](https://help.getzep.com/deleting-data-from-the-graph), Zep only removes edges and nodes if no other episode supports them, and it doesn't regenerate names and summaries of shared nodes. So those can still contain what was just deleted.
+4. **Rebuild from the log.** Martin Kleppmann recommends [feeding indexes, caches and views from a log](https://martin.kleppmann.com/2015/05/27/logs-for-data-infrastructure.html). But a rebuild after deletion is only clean if the tombstone is in the log or the log gets compacted.
+
+For the audit log, that's not enough, because "append-only" collides with the right to erasure. A hash doesn't help much, since guessable search terms can be confirmed against it. Redaction before writing or crypto-shredding is better. The [Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing) describes this with one key per data subject; for "delete chat", one per chat fits. In the logging post, I picked apart when restricting access is an option instead of deleting.
+
+<LinkCard url="/en/blog/revisionssicheres-logging-agent-contract"/>
+
+<Callout type="tip">
+**Cases for the deletion test.** After "delete chat", the following must hold:
+
+- No derived entry from the chat is readable anymore, not via an ID and not as an expired entry. The exception is the explicitly saved preference, which shows its provenance.
+- A summary built from two chats loses only the deleted part.
+- An extraction job that runs afterwards gets rejected, even if it starts at the same time as the deletion.
+- An index rebuild brings nothing back.
+- Searching the log for the detail finds nothing readable.
+</Callout>
+
+## What it costs
+
+The exception for explicitly saved preferences has a hard case: if the preference contains the diagnosis, the diagnosis stays. I think that's right, because the person had it saved themselves. But the UI has to show what stays when you delete.
+
+On top of that comes plumbing: metadata on every entry, tombstones with a lock, a rebuild path and keys for the log. In B, I also give up on persisting implicit preferences, because the quote rule only allows what was actually said. Someone who asked for crime novels for three sessions without ever saying "I like" didn't get a crime novel as B's first recommendation in any of the five runs. That's down to the write rule. An extractor that stores implicit preferences with provenance and a short TTL would be compatible with the same deletion path, but I haven't measured that.
+
+## The policy belongs in the contract
+
+Provenance, lifetime and deletion rule per data type belong in the Agent Contract, just like the pinned model. If what the extractor is allowed to write changes, the agent's behavior changes, and that should trigger an eval run. The cases from the deletion test are a decent start.
+
+<LinkCard url="/en/blog/agent-contract"/>
+
+Don't expect much from the vendor here. The [docs for Anthropic's memory tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool) say it openly: "Your application runs every file operation Claude requests, so these safeguards are your responsibility."
+
+> A delete button makes a promise about data it has never seen. It can only keep that promise if the application can trace every copy back to its chat.

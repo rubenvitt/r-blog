@@ -1,0 +1,266 @@
+---
+title: "Papier vliegt niet: hoe een PWA de dronechecklist in de rampenbestrijding vervangt"
+description: "Hoe ik met AI een offline PWA voor drone-inzetten in de civiele bescherming heb gebouwd - en waarom domeinkennis belangrijker is dan prompts."
+date: 2026-03-31
+tags: ["ai", "software-engineering", "pwa", "katastrophenschutz"]
+image: ../../blog/_images/papier-fliegt-nicht/hero.png
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Figure from '../../../components/widgets/Figure.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import ProjectCard from '../../../components/widgets/ProjectCard.astro';
+
+import einsatzkarte from '../../blog/_images/papier-fliegt-nicht/einsatzkarte.png';
+import wetterbewertung from '../../blog/_images/papier-fliegt-nicht/wetterbewertung.png';
+import pdfBericht from '../../blog/_images/papier-fliegt-nicht/pdf-bericht.png';
+
+Het droneteam staat ter plaatse, de UAV is klaar voor de start - maar voordat er ook maar iets vliegt, moet er gedocumenteerd worden. En die documentatie? Die ligt in het voertuig. Op papier.
+
+## Papier blijft in de materiaalwagen
+
+In de rampenbestrijding vliegen drones niet zomaar weg. Voordat een UAV mag opstijgen, doorloopt het team een gestructureerd proces: inzetgegevens vastleggen, weersomstandigheden beoordelen, een SORA-risicobeoordeling uitvoeren, de vluchtmelding voorbereiden, checklists afwerken. Na de vlucht volgt de afronding. Dat alles wordt tot nu toe op papier gedocumenteerd - in de Gerätewagen Aufklärungstrupp Luft, de materiaalwagen van het luchtverkenningsteam, kortweg GW AufklTruLu.
+
+Dat werkt. Min of meer. Maar het heeft grenzen die je tijdens een inzet voelt.
+
+**Het eerste probleem is de plek.** De papieren documentatie wordt in het voertuig ingevuld. De piloot staat echter bij de UAV - vaak tientallen meters verderop. Actuele weergegevens opzoeken? Terug naar het voertuig. Een checklist controleren? Terug naar het voertuig. Een procedure nalezen omdat de situatie erom vraagt? Terug naar het voertuig. Of uit je hoofd. Tijdens een inzet is geen van beide ideaal.
+
+**Het tweede probleem zijn de procedures.** Normal-, contingency- en emergency-procedures - gecodeerd als N1 tot N6, C0 tot C6 en E1 tot E3 - liggen als aparte documenten in het voertuig. Dat zijn de instructies voor alles wat mis kan gaan: van normaal bedrijf via storingen tot volledig controleverlies. Onder stress, bij de UAV, met wind en lawaai, heb je die documenten niet bij je. Je zou ze uit je hoofd moeten kennen. Of toch maar terug naar het voertuig.
+
+**Het derde probleem is het rekenwerk.** Papier kan niet rekenen. De windsnelheid op de grond zegt weinig over de omstandigheden op 120 meter vlieghoogte - daarvoor is interpolatie nodig.
+
+<Accordion title="Wat is SORA?">
+SORA (Specific Operations Risk Assessment) is een gestandaardiseerde methode om de risico's van dronevluchten te beoordelen. Ze combineert twee dimensies: het **Ground Risk** (GRC) - hoe gevaarlijk is een crash voor mensen op de grond? - en het **Air Risk** (ARC) - hoe waarschijnlijk is een botsing in het luchtruim? Samen leveren die het **SAIL** (Specific Assurance and Integrity Level) op, dat bepaalt welke veiligheidsmaatregelen voor de vlucht nodig zijn. De berekening is geen onderbuikgevoel, maar een gedefinieerde matrix met concrete invoerwaarden.
+
+<LinkCard url="https://www.easa.europa.eu/en/domains/drones-air-mobility/operating-drone/specific-category-civil-drones/specific-operations-risk-assessment-sora"/>
+</Accordion>
+
+De SORA-beoordeling - GRC plus ARC levert SAIL op - doe je op papier met de hand, foutgevoelig, en elke keer opnieuw.
+
+<Accordion title="Wat is EGRED?">
+EGRED staat voor **Empfehlungen für Gemeinsame Regelungen zum Einsatz von Drohnen im Bevölkerungsschutz**, oftewel aanbevelingen voor gemeenschappelijke regels voor de inzet van drones in de civiele bescherming. Het document wordt uitgegeven door het BBK (Bundesamt für Bevölkerungsschutz und Katastrophenhilfe, de Duitse federale dienst voor civiele bescherming en rampenhulp) en definieert in zijn tweede versie (EGRED 2) onder meer de eisen aan een gestructureerde inzetdocumentatie voor dronevluchten in de BOS-context (BOS: Duitse overheidsdiensten en organisaties met veiligheidstaken, zoals politie, brandweer en hulpdiensten).
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
+</Accordion>
+
+Precies die gestructureerde documentatie eist EGRED 2. Niet als aanbeveling, maar als basis voor het reglementair inzetten van UAV's in de civiele bescherming. De documentatie moet navolgbaar, volledig en gestandaardiseerd zijn. Papier kan dat - maar het kan niet ondersteunen. Het rekent niet, het herinnert je nergens aan, het is niet daar waar de piloot staat.
+
+Een smartphone wel. Die heb je op zak, hij werkt offline en kan rekenen. Weergegevens tonen, checklists bijhouden, procedures opzoeken, SORA-waarden berekenen - alles direct bij de UAV, niet in het voertuig. Niet als vervanging van het proces, maar als tool die het proces naar de plek brengt waar het nodig is. Een Progressive Web App (PWA) - dus een applicatie die in de browser draait, aanvoelt als een gewone app en ook offline werkt.
+
+> Papieren documentatie in de materiaalwagen kan geen windsnelheid op 120 meter hoogte interpoleren.
+
+Wat als precies dat - documentatie, berekening, checklists, procedures - allemaal op de smartphone zou draaien? Offline, direct op de inzetlocatie?
+
+## Van papieren lijst naar PWA: wat de app kan
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="Offline PWA voor drone-inzetten in de civiele bescherming"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+De app heet "UAV Einsatzverwaltung". Geen spreadsheet, geen PDF-formulier - een Progressive Web App die direct in de browser draait en op elke inzettablet werkt.
+
+Het verloop volgt wat er tijdens een inzet echt gebeurt. Vier fases, gebaseerd op het EGRED-schema:
+
+### 1. Inzetgegevens vastleggen
+
+Locatie via gps of handmatige invoer. Droneselectie uit vooraf ingestelde profielen - op dit moment de DJI Matrice 350 RTK en de DJI Matrice 200, elk met hun eigen grenswaarden. Grootte van de crew, inzetopdracht, en een interactieve kaart met tekentools: de locatie wordt als cirkelmarker gezet, het zoekgebied als polygoon ingetekend.
+
+<Figure src={einsatzkarte} alt="Inzetkaart met ingetekend zoekgebied (blauwe polygoon) en locatiemarker (rood) op de Weseler Heide" caption="Interactieve inzetkaart: locatie en zoekgebied worden direct in de app ingetekend."/>
+
+### 2. Preflightcontrole - het hart van de app
+
+Hier gebeurt wat op papier nooit werkte: geautomatiseerde omgevingsanalyse in realtime.
+
+**Weer**: de app haalt actuele gegevens op bij Open-Meteo - wind, windstoten, temperatuur, neerslag, zicht, luchtvochtigheid, luchtdruk, dauwpunt. Elke waarde krijgt een stoplichtbeoordeling: groen, geel, rood - afgezet tegen de specifieke grenswaarden van de gekozen drone. De windsnelheid wordt geïnterpoleerd naar de werkelijke vlieghoogte, op basis van meetgegevens op 10m, 80m, 120m en 180m. Geen onderbuikgevoel meer over of "de wind daarboven wel erger zal zijn".
+
+<Figure src={wetterbewertung} alt="Weerbeoordeling met stoplichtkleuren: wind en windstoten rood, temperatuur geel, overige parameters groen. Daaronder METAR-representativiteit en aanbevelingen." caption="Automatische weerbeoordeling met stoplichtlogica - afgezet tegen de grenswaarden van de DJI Matrice 350 RTK."/>
+
+**Geomagnetisme**: de K-index van NOAA SWPC laat zien of geomagnetische storingen het kompas van de drone kunnen beïnvloeden. Klinkt exotisch, maar is een reëel risico - vooral bij de Matrice-serie.
+
+**Omgeving**: via OpenStreetMap en de Overpass-API controleert de app automatisch wat zich in het inzetgebied bevindt. Luchtruimen, wegen, spoorlijnen, hoogspanningsleidingen, ziekenhuizen, natuurgebieden. Alles wat je anders handmatig op een kaart zou moeten zoeken.
+
+**SORA-risicobeoordeling**: grondrisico (GRC) plus luchtruimrisico (ARC) leveren samen het SAIL op - het Specific Assurance and Integrity Level. De app berekent dat automatisch uit de vastgelegde gegevens. Wat eerst een diagram was dat ik handmatig moest doorlopen, is nu één klik.
+
+Daar komen nog technische checklists voor de drone zelf bij. Propellers, accu's, firmware, camera - punt voor punt.
+
+### 3. Vluchten en afronding
+
+De laatste twee fases maken de cirkel rond: elke vlucht wordt apart gedocumenteerd (starttijd, landingstijd, bijzonderheden), daarna genereert de app een volledig PDF-rapport - alle weergegevens, checklists, vluchttijden, kaarten in één document. Dat is wat uiteindelijk in het inzetdossier belandt.
+
+<Figure src={pdfBericht} alt="Eerste pagina van het gegenereerde UAV-missierapport met inzetnaam, locatie, datum en dronetype" caption="Het gegenereerde PDF-missierapport - het digitale equivalent van de papieren documentatie."/>
+
+Belangrijk voor de praktijk: een inzet kan meerdere locaties hebben. Hoogwater met drie verkenningspunten? Eén inzet, drie segmenten, elk met een eigen preflightcontrole en eigen vluchten.
+
+### Procedures direct in de app
+
+Alle normal-, contingency- en emergency-procedures staan in de app. Niet als PDF-bijlage, maar als navigeerbare checklists.
+
+Een paar voorbeelden:
+
+- **N1 "Vóór de start"**: "Check Controlled Ground ingericht" - "Call Out: CLEAR PROP!"
+- **C4.2 "Bemand luchtvaartuig"**: "Call Out: ONBEKEND LUCHTVAARTUIG!" → landing inzetten
+- **E1 "Terminatie"**: "Call Out: CRASH! CRASH! CRASH!"
+
+Wie onder stress de juiste procedure moet vinden, scrollt niet door een handboek van 30 pagina's. De procedures N1 tot N6, C0 tot C6 en E1 tot E3 plus noodplannen (ERP) zijn allemaal maar één tik weg.
+
+<Callout type="tip">
+  **Zo installeer je de PWA op je inzettablet:** open [uav.iuk-ue.de](https://uav.iuk-ue.de) in de browser, tik op het browsermenu (drie puntjes of het deelsymbool) en kies "Toevoegen aan startscherm". De app draait dan als een native applicatie - inclusief offline gebruik.
+</Callout>
+
+Tot zover de features vanuit gebruikersperspectief. Maar een app die weergegevens ophaalt, gps gebruikt en PDF's genereert - heeft die geen dikke backend nodig? Spoiler: nee.
+
+## Geen backend, geen probleem: local-first als ontwerpkeuze
+
+Een BOS-eenheid die op vrijwilligers draait, heeft geen budget voor serverinfrastructuur. Geen beheerder die databases bijhoudt. En geen zin in cookiebanners, AVG-verwerkingsregisters en cloudabonnementen. Dus: geen backend.
+
+Dat klinkt als een beperking. Maar dat is het niet - het is een architectuurkeuze.
+
+### Alles leeft in de browser
+
+Alle inzetgegevens, formulierinvoer en kaartoverlays worden in localStorage opgeslagen. Geen server, geen database, geen accounts. De browser is de database. Een service worker zorgt ervoor dat de app ook zonder mobiel netwerk werkt - na het eerste laden werkt alles offline.
+
+Voor niet-developers betekent dat: link openen, klaar. Geen inlog, geen "server niet bereikbaar", geen "werk de app bij". Voor developers: de caching-architectuur is gelaagd, en elke laag heeft haar eigen strategie.
+
+<Accordion title="Tech stack in detail">
+
+| Technologie | Versie | Doel |
+|---|---|---|
+| [React](https://react.dev/) | 19 | UI-framework |
+| [TypeScript](https://www.typescriptlang.org/) | 5.9 (strict) | Typeveiligheid |
+| [Vite](https://vite.dev/) | 8 | Buildtool en devserver |
+| [Tailwind CSS](https://tailwindcss.com/) | 4 | Utility-first styling |
+| [React Router](https://reactrouter.com/) | 7 | Client-side routing |
+| [TanStack Query](https://tanstack.com/query) | 5 | Server-state en caching |
+| [React Leaflet](https://react-leaflet.js.org/) | 5 | Kaartintegratie |
+| [Leaflet Geoman](https://geoman.io/) | - | Tekentools |
+| [jsPDF](https://github.com/parallax/jsPDF) | - | PDF-generatie |
+| [React Compiler](https://react.dev/learn/react-compiler) | - | Auto-memoization |
+| [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) | - | PWA met Workbox-service-worker |
+| [Sentry](https://sentry.io/) | - | Error tracking |
+
+</Accordion>
+
+### Cachinglagen
+
+Niet elk API-antwoord wordt hetzelfde behandeld. Weergegevens verouderen binnen minuten, kaarttegels blijven maandenlang geldig, omgevingsgegevens veranderen zelden. De strategie per datatype:
+
+| Gegevens | Strategie | Houdbaarheid |
+|---|---|---|
+| Weer (Open-Meteo) | NetworkFirst | 10 minuten |
+| K-index (NOAA) | NetworkFirst | 1 uur |
+| Kaarttegels (OSM) | CacheFirst | 7 dagen |
+| Omgeving (Overpass) | localStorage | 8 uur |
+| Inzetgegevens | localStorage | 56u actief / 24u afgesloten |
+
+TanStack Query regelt het state management voor alle API-calls en bewaart de query-caches in localStorage - zo overleven gecachete weergegevens zelfs een herstart van de browser. De service worker via Workbox onderschept netwerkrequests en levert afhankelijk van de strategie het gecachete of het verse antwoord.
+
+### De bewuste trade-off
+
+Gegevens leven alleen op het apparaat. Geen sync tussen tablet en smartphone. Actieve inzetten worden na 56 uur automatisch verwijderd, afgesloten inzetten na 24 uur. Dat is geen vergissing - een inzet is een inzet, geen archief. Het PDF-rapport is het archief.
+
+En de app is een PWA: installeerbaar als een native app, maar zonder afhankelijkheid van een store. Een link is genoeg. Geen Apple Developer-account, geen Google Play-review. Update deployen, en bij de volgende keer openen heeft iedereen de nieuwe versie.
+
+Waarom niet gewoon een normale app? Omdat elk alternatief nadelen heeft die in het vrijwilligerswerk zwaar wegen:
+
+| | Native app | Cloud-app | PWA local-first |
+|---|---|---|---|
+| Installatie | App Store | Geen | Link / startscherm |
+| Offline | Ja | Nee | Ja (na eerste keer laden) |
+| Server nodig | Nee | Ja | Nee |
+| Updates | Store-review | Direct | Direct |
+| Kosten | Developerlicentie | Server + DB | Hosting (statisch) |
+| Privacy | Lokaal | Cloud | Lokaal |
+
+> Vrijwilligers hebben geen cloudabonnementen nodig. Ze hebben tools nodig die werken als het mobiele netwerk het niet doet.
+
+Maar hoe bouw je zo'n app? Met React, TypeScript, service workers, kaarten, PDF-generatie, offline caching - allemaal tegelijk? Het antwoord: met AI. Maar niet zoals je misschien denkt.
+
+## Wat de AI heeft gebouwd - en wat niet
+
+Claude Code was mijn codingpartner voor dit project. Ik wist wat er uiteindelijk uit moest komen - de requirements hebben we samen uitgewerkt, maar het doelbeeld kwam van mij. De taakverdeling was duidelijk - en ze was niet toevallig.
+
+### Wat de AI heeft geleverd
+
+De AI kon binnen minuten het technische geraamte bouwen - interface, kaarten, offline-functionaliteit, PDF-generatie. Voor elk van die technologieën had ik documentatie moeten lezen, voorbeelden moeten zoeken en boilerplate moeten schrijven. Responsive design? Prompt. Registratie van de service worker? Prompt. Kaarttegels die offline werken? Prompt.
+
+Dat de weer-API windwaarden op meerdere hoogtes levert en de AI zelfstandig een interpolatie naar de werkelijke vlieghoogte heeft gebouwd - dat hoefde ik niet uit te leggen. Dat is het deel waar AI-codingtools goed in zijn: technische implementatie met bekende patterns.
+
+<Accordion title="Welke technologieën de AI heeft geïmplementeerd">
+De technische breedte is indrukwekkend: React-componenten, Tailwind-layout, API-integratie met Open-Meteo en Overpass, caching via TanStack Query en service worker, PWA-setup met Workbox, PDF-generatie met jsPDF, kaartintegratie met Leaflet. Dat alles tegelijk, in één codebase, met consistente TypeScript-types.
+</Accordion>
+
+### Wat de AI niet wist
+
+En hier wordt het interessant. De AI had geen idee van:
+
+- **EGRED-fases** en hun volgorde - dat een drone-inzet van inzetgegevens via preflightcontrole en vluchten tot de afronding een vast verloop volgt
+- **SORA-methodiek** - hoe Ground Risk Class, Air Risk Class en SAIL samenhangen en berekend worden
+- **Contingency- en emergency-procedures** - meer dan 15 procedures met specifieke call-outs, rollen (RPIC, RP, grondpersoneel) en escalatiepaden
+- **Weergrenswaarden per dronemodel** - die heb ik aangeleverd via de handleiding van de drone, de AI heeft de relevante waarden er zelf uitgehaald
+- **Inzetstructuur** - dat een inzet meerdere segmenten met verschillende locaties kan hebben
+- **Vaktermen** - "Controlled Ground", "Flight Geography", "Contingency Volume", het verschil tussen RPIC en RP
+
+Geen prompt ter wereld had die informatie opgeleverd. Die zit in bedrijfshandboeken, SORA-documenten en inzetervaring. De AI kan procedures implementeren - maar niet verzinnen.
+
+<Callout type="warning">
+Door AI gegenereerde code is maar zo goed als de inhoudelijke requirements die erin gaan. Zonder domeinkennis ontbreekt het de code niet aan techniek, maar aan substantie.
+</Callout>
+
+### De echte taakverdeling
+
+**Mens**: domeinkennis, architectuurkeuzes (geen backend, alles offline), inhoudelijke requirements, grenswaarden, procedures, validatie van de resultaten.
+
+**AI**: implementatiesnelheid, technische breedte over de hele stack - React, TypeScript, Tailwind, service worker, PDF-generatie, kaartintegratie - alles parallel, alles consistent.
+
+Dat is geen taakverdeling tussen "denken" en "typen". Beide kanten leveren substantie. Maar de AI levert alleen substantie op het terrein waar bekende oplossingen voor bekende problemen bestaan. Het vakdomein - de specifieke regels, de specifieke procedures, de specifieke grenswaarden - moet een mens meebrengen.
+
+### Geen vibe coding
+
+In 2026 wordt er veel gediscussieerd over vibe coding. "Bouw een drone-app voor me" als prompt levert een mooie UI met verzonnen gegevens op. Geen echte procedures. Geen correcte grenswaarden. Geen valide SORA-berekening. Niets waar iemand bij een echte inzet op zou kunnen vertrouwen.
+
+Wat wel werkt: "Implementeer deze contingency-procedure. Fase C4.2 betekent: grondpersoneel meldt een bemand luchtvaartuig, de RPIC zet de landing in volgens N6. Escalatie naar E1 volgt bij controleverlies." Dat is een specificatie. En specificaties kan de AI omzetten.
+
+<LinkCard url="/nl/blog/tools-sind-keine-prompts"/>
+
+Dezelfde logica als in de vorige posts: de AI is een krachtige tool - maar tools vervangen geen begrip. Bij een drone-app in de rampenbestrijding is "fout" geen slechte UX, maar een veiligheidsrisico.
+
+> Vibe coding houdt op waar domeinkennis begint. De AI kan procedures implementeren, maar niet verzinnen.
+
+## Papier vervangen betekent processen begrijpen
+
+Deze app is geen technologieproject. React, PWA, AI - dat zijn tools. Het eigenlijke werk zit ergens anders: in de processen die op de papieren checklists staan. Die begrijpen, structureren en dan digitaal vastleggen - dat is het werk.
+
+Digitalisering zonder procesbegrip levert digitaal papier op. Een PDF op de tablet is geen verbetering ten opzichte van een vel in de materiaalwagen. Pas als ik begrijp *waarom* een stap bestaat, *wie* hem uitvoert en *wat* er gebeurt als hij misgaat - pas dan kan ik hem zinvol digitaliseren.
+
+De app wordt op dit moment gebruikt door een echte BOS-eenheid in de civiele bescherming. De feedback stroomt terug in de procedures, de procedures stromen terug in de code. En omdat andere eenheden voor dezelfde uitdagingen staan, is het project open source - iedereen kan het gebruiken, aanpassen en eigen checklists toevoegen.
+
+<ProjectCard
+  title="UAV Einsatzverwaltung"
+  description="Offline PWA voor drone-inzetten in de civiele bescherming - open source op GitHub"
+  appUrl="https://uav.iuk-ue.de"
+  githubUrl="https://github.com/rubenvitt/uav-checklists"
+/>
+
+<LinkCard url="https://www.lba.de/DE/Drohnen/BOS/Bev%C3%B6lkerungsschutz/Bev%C3%B6lkerungsschutz_node.html"/>
+
+### De brug naar software-architectuur
+
+Als je de vorige posts op deze blog kent, valt je nu vast iets op. In de softwarewereld bestaan concepten die onder andere namen precies dezelfde problemen oplossen - en de parallellen zijn treffend:
+
+**EGRED-checklists zijn contracts** - dus bindende afspraken over wat een systeem wel en niet moet doen. Gedefinieerde procedures met duidelijke voorwaarden, rollen en escalatiepaden.
+
+**SORA is een policy engine** - een regelset die automatisch beslist. GRC plus ARC levert SAIL op - input erin, risiconiveau eruit. Geen beoordelingsruimte, geen "het zal wel goed gaan".
+
+**Weerbeoordeling is een eval** - een gestructureerde toets aan gedefinieerde criteria. Meetwaarden tegen grenswaarden houden, stoplichtkleuren toekennen, beslissingen afleiden.
+
+**Noodprocedures zijn escalatiepaden** - getrapte responsplannen met duidelijke triggers. C0 leidt tot E1, E1 kan E3 in gang zetten. Elk niveau heeft eigen regels en verantwoordelijkheden.
+
+De concepten zijn hetzelfde. Het domein is een ander. En precies dat maakt ze overdraagbaar - of het nu om een agent-systeem gaat of om een materiaalwagen.
+
+> De beste digitale tools ontstaan niet uit technologie, maar uit procesbegrip - of het nu in de materiaalwagen is of in het agent-systeem.

@@ -1,0 +1,430 @@
+---
+title: "De l'incident au test de régression : comment les erreurs de production rejoignent votre jeu d'evals"
+description: "Une suite d'evals qui ne grandit pas avec les incidents rétrécit par rapport à la réalité. À quoi ressemble concrètement la boucle postmortem-vers-eval - de l'ID de trace jusqu'au champ obligatoire dans le template de postmortem."
+date: 2026-05-13
+tags: ["AI Engineering", "Evals", "Observability", "Incident Response", "Compliance"]
+image: ../../blog/_images/incident-zu-regressionstest/hero.png
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+> Une suite d'evals qui ne grandit pas avec les incidents rétrécit par rapport à la réalité.
+
+À la fin du post sur le rollout, il y avait une note de bas de page : *« Prendre au sérieux les incidents de production comme dataset de test. Du post-mortem à l'eval. Mais c'est un autre post. »* Le voici, ce post.
+
+Imaginez la situation : tous les gates étaient au vert. Eval pré-merge au vert. Shadow au vert. Canary au vert. Deux semaines après le rollout à 100 %, un utilisateur signale : « Mon compte a disparu, je voulais juste me désabonner des mails marketing. » Dans la trace, c'est limpide : l'utilisateur écrit « Merci de désactiver les mails marketing à mon adresse », l'agent appelle directement `delete_account(user_id=...)` - au lieu de `unsubscribe_marketing(email=...)`. Le tool call passe sans accroc, `success: true`. L'agent répond : « J'ai bien traité votre demande. » Trois jours plus tard, l'utilisateur veut consulter l'historique de ses factures - parti avec le compte. Un échec de routage sur un tool destructif, déclenché par une formulation anodine - exactement le cas qu'aucune eval existante ne teste, parce que personne ne l'avait formulé avant.
+
+Que se passe-t-il ensuite, en général ? Hotfix dans le prompt, ticket fermé, retour aux affaires courantes. Ce qui *devrait* se passer : d'abord le test, ensuite le fix - exactement comme pour les bugs classiques. Sinon, le même échec se reproduit à la prochaine mise à jour du modèle, au prochain refactoring du prompt, au prochain changement de schéma de tool. Une suite qui n'intègre pas ces cas les oublie - et les échecs oubliés reviennent.
+
+<LinkCard url="/fr/blog/ai-rollout-canary-shadow"/>
+
+<Callout type="info">
+Dans les autres posts de cette série, un refund-agent sert d'exemple fil rouge - ici, je passe volontairement à un agent self-service pour les paramètres de compte. La boucle se voit le plus clairement quand la classe d'échec n'est pas celle avec laquelle on illustre habituellement les evals. Le routage vers un tool destructif est exactement ce genre de classe : irréversible, facile à reproduire, difficile à intercepter avec un jeu d'evals construit à l'avance.
+</Callout>
+
+## Pourquoi les systèmes d'IA stagnent sans boucle d'incidents
+
+Les jeux d'evals sont des mondes sur mesure. La production est une distribution à longue traîne.
+
+C'est là que ça se fissure. Quand je construis une suite d'evals, je la construis à partir de ce que je peux imaginer : happy paths, quelques edge cases délibérés, peut-être une poignée de prompts adversariaux sortis de l'atelier de red team. Ça couvre le milieu de la distribution. Les bords - les échecs vraiment bizarres, ceux qui coûtent cher - nous ne les voyons que lorsque de vrais utilisateurs se confrontent au système.
+
+Les tests synthétiques couvrent le connu. Les incidents réels révèlent l'inconnu. Il faut les deux. Mais un seul grandit tout seul.
+
+### Un vieux pattern, un nouveau contexte
+
+L'idée n'est pas neuve. Martin Fowler l'a formulée en 2005 pour des codebases classiques :
+
+> « The usual reaction of a team using self-testing code is to first write a test that exposes the bug, and only then to try to fix it. »
+
+<LinkCard url="https://martinfowler.com/bliki/SelfTestingCode.html"/>
+
+La raison : pour qu'un bug, une fois corrigé, le reste. De cette discipline est née la formule populaire « every bug becomes a test case ». Fowler ne l'écrit pas mot pour mot - mais l'attitude derrière, si : chaque bug n'est pas seulement une défaillance du code, c'est aussi une défaillance de la suite de tests.
+
+C'est précisément cette attitude qui manque dans beaucoup de setups d'evals IA. Il y a une suite. Elle tourne dans la CI. Elle est verte. Et elle vieillit tranquillement dans son coin, pendant que la production, elle, enchaîne depuis longtemps de nouveaux failure modes.
+
+### Ce que la pratique dit depuis longtemps
+
+Hamel Husain le résume parfaitement : « remove all friction from the process of looking at data. » Ce n'est pas une recommandation, c'est un prérequis. Qui ne regarde pas les vraies traces ne voit pas la longue traîne. Et ce que je ne vois pas, je ne peux pas le faire entrer dans mon jeu d'evals.
+
+Anthropic décrit le pattern dans [Demystifying Evals for AI Agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) comme le cycle de vie d'une eval individuelle : les capability evals « graduate to become a regression suite » dès qu'un comportement fonctionne de manière fiable. La suite devient le bouclier de ce qui a déjà fonctionné un jour. C'est la logique de Fowler, avec un autre vocabulaire.
+
+### Trois classes qu'aucun jeu d'evals ne prévoit
+
+Il existe au moins trois failure modes qui manquent structurellement dans une suite d'evals construite de façon purement synthétique :
+
+- **Tool description drift.** Une tool description MCP change après approbation, ou ne s'affiche pas de la même façon pour le modèle et pour l'utilisateur au moment de l'approbation. Je l'ai détaillé dans le [post sur la sécurité des tools](/fr/blog/tools-sind-keine-prompts). Du point de vue de la suite d'evals, c'est un failure mode auquel personne ne pense avant qu'il se produise.
+- **False success sur des échecs de tool.** L'agent confirme une réservation d'hôtel alors que `create_reservation` a renvoyé une 503. Le client se présente au check-in, le système ne le connaît pas. Qui teste par défaut le cas « le tool répond n'importe quoi, mais le modèle fait comme si tout allait bien » ?
+- **Des trous dans la base de connaissances, que le modèle comble par des hallucinations.** Le bot de support de Cursor [« Sam »](https://www.helpscout.com/blog/ai-curse-of-cursor/) a halluciné en avril 2025 une politique de connexion sur un seul appareil qui n'a jamais existé - avec pour conséquence des utilisateurs qui ont résilié leurs abonnements. Dans le jeu d'evals, personne n'aurait jamais formulé cette question. Jusqu'à ce qu'un vrai utilisateur la pose.
+
+Le point commun : chacun de ces cas est, *après coup*, trivial à couler dans un test. Avant, personne n'y pense. C'est exactement pour ça que la suite a besoin d'un canal qui ramène la production vers le repo. Les auteurs d'Applied LLMs - Yan, Husain, Bischof, Frye, Liu, Shankar - en font une condition minimale : *« When we spot a new issue, we can immediately write an assertion or eval around it. »*
+
+<LinkCard url="https://www.oreilly.com/radar/what-we-learned-from-a-year-of-building-with-llms-part-ii/"/>
+
+Sans ce canal, il se passe ce qui est toujours arrivé aux suites logicielles sans tests de régression sur les bugs : à chaque release, elles mesurent un peu moins de ce qui casse réellement.
+
+> Les tests synthétiques vieillissent. Les tests issus d'incidents aussi - mais au moins, ils grandissent avec.
+
+À quoi ressemble le chemin d'un postmortem à un test de régression concret, en sept étapes : c'est l'objet du chapitre suivant.
+
+## La boucle postmortem-vers-eval
+
+Quand un incident est discuté à n'en plus finir dans le chat de l'équipe, enterré sous un hotfix et oublié le vendredi, c'est le prochain utilisateur qui paie. La boucle que je présente ici est la discipline qui empêche ça. Eugene Yan décrit ce rythme comme de l'Eval-Driven Development - Observe, Annotate, Hypothesize, Experiment, Measure - et c'est exactement ce cycle que nous appliquons ici aux incidents de production.
+
+<LinkCard url="https://eugeneyan.com/writing/eval-process/"/>
+
+```
+Incident → Figer la trace → Failure mode → Attente → Sanitize → Suite → Fix
+```
+
+Sept étapes. Elles s'appuient les unes sur les autres. Si vous en sautez une, la suivante s'effondre. En fil rouge, l'exemple du compte de l'intro : l'utilisateur voulait se désabonner des mails marketing, l'agent a supprimé le compte.
+
+### 1. Incident détecté - **d'où vient le signal ?**
+
+Peu importe d'où : une sampling eval s'affole, un drift detector montre un décalage dans la distribution des tool calls, un ticket de support atterrit dans la file, un utilisateur poste une capture d'écran. Le déclencheur importe peu. Ce qui compte, c'est un ID de trace. Sans lui, l'incident n'existe que comme anecdote, et les anecdotes n'atterrissent pas dans la suite.
+
+Dans l'exemple du compte : un utilisateur écrit « Mon compte a disparu, je voulais juste me désabonner des mails marketing ». Le support ouvre la trace correspondante - l'ID de conversation concorde.
+
+### 2. Figer la trace - **qu'est-ce qui reproduit le cas ?**
+
+C'est maintenant que le stack d'observability montre ce qu'il vaut. Prendre un snapshot : la trace complète, la version du prompt, le pin du modèle, le snapshot de la tool description, les outputs des tools, le system prompt, les hits du retrieval. Tout ce qui permettra encore de reproduire le cas dans deux semaines. Qui remet ça à « on regarde demain » n'aura plus rien à regarder demain, parce que le prompt aura entre-temps été déployé et le modèle mis à jour automatiquement.
+
+<LinkCard url="/fr/blog/observability-ai-features"/>
+
+Dans l'exemple : la trace montre le message utilisateur « Merci de désactiver les mails marketing à mon adresse », suivi directement du tool call `delete_account(user_id=...) → { "success": true }`. Output de l'assistant : « J'ai bien traité votre demande. » Structurellement le mauvais tool, techniquement réussi, irréversible. Faux de façon reproductible.
+
+### 3. Nommer le failure mode - **qu'est-ce qui est cassé, exactement ?**
+
+« L'agent était bizarre » n'est pas un failure mode. « Tool destructif appelé alors que l'intention de l'utilisateur était réversible » en est un. Un failure mode est une désignation courte et catégorielle, qu'on retrouve dans la suite sous forme de tag - par exemple `routing/destructive-on-soft-intent`, `false-success-on-tool-failure`, `tool-misuse-on-restricted-action`.
+
+Dès que le failure mode a un nom, vous pouvez le chercher, l'agréger et rattacher en quelques secondes la prochaine trace similaire. Pas avant. Gardez un vocabulaire cohérent dans tous les tests - sinon la suite ne sera plus agrégeable plus tard.
+
+### 4. Formuler l'attente - **qu'aurait-il dû se passer ?**
+
+Pas d'attente, pas de test. Pas de test, pas de boucle. La question n'est pas « est-ce que c'était bien ? », mais « comment, exactement, le système aurait-il dû se comporter ? ». Quels tool calls, dans quel ordre ? Quelle forme de réponse ? Refus ou escalade ?
+
+Dans l'exemple : face au message « désactiver les mails marketing », l'agent doit (a) appeler `unsubscribe_marketing` au lieu de `delete_account`, (b) à la moindre ambiguïté entre une action réversible et une action destructive, poser une question plutôt que deviner, et (c) ne jamais déclencher de tool destructif sans confirmation explicite de l'utilisateur - même si celui-ci a apparemment demandé l'action. Trois conditions vérifiables, toutes dérivables de la trace. C'est ça, la spécification de l'eval.
+
+### 5. Sanitize - **qu'est-ce qui doit sortir, qu'est-ce qui reste ?**
+
+Les traces de production contiennent des PII : e-mails, numéros de commande, parfois des données de paiement. Tout ça n'a rien à faire dans une suite de tests que n'importe quel engineer peut lire dans le repo. Réduction au minimum : remplacez les champs identifiants par des champs synthétiques, conservez la structure et les caractéristiques de l'edge case. Une chaîne vide à un endroit pertinent reste une chaîne vide. Un ID de commande cassé reste structurellement cassé.
+
+Règle empirique : le point de données sanitisé doit toujours déclencher l'erreur. Si le test passe soudain au vert avec des données factices, vous avez retiré l'essentiel.
+
+### 6. L'écrire dans la suite - **quel grader s'applique ?**
+
+C'est là que l'incident devient un point de données. Tags : `incident:<ticket-id>`, `failure-mode:<name>`, éventuellement `severity:<...>`. Sans tags, vous ne retrouverez pas ce test dans six mois.
+
+Puis vient la question du grader : code-based, LLM-as-Judge ou workflow eval ? Règle empirique : fidélité dans l'usage des tools → grader en code (déterministe, bon marché, rapide). Ton, qualité des refus, façon d'expliquer → LLM-as-Judge avec une rubric précise. Comportement multi-step sur plusieurs tours → workflow eval qui évalue la trace entière.
+
+Dans le cas du compte : le grader en code vérifie le choix du tool (`assert tool_calls[0].name in {"unsubscribe_marketing", "ask_clarification"} and "delete_account" not in tool_calls`). Le judge LLM vérifie si, en cas d'ambiguïté, une question pertinente a été posée et si le ton correspond à l'intention de l'utilisateur. Deux graders, un point de données.
+
+<LinkCard url="/fr/blog/ai-evals-ci-pipeline"/>
+
+### 7. Développer le fix - **avec le test comme gate**
+
+Le test est maintenant rouge. Bien. C'est seulement maintenant qu'on corrige. Les options qui s'imposent ici :
+
+- **Durcir le prompt** : liste explicite des tools destructifs (`delete_*`, `cancel_*`) avec obligation de demander confirmation en cas d'intention ambiguë
+- **Confirmation gate** : les actions irréversibles exigent un second seuil - une confirmation explicite de l'utilisateur, pas juste un « oui, avec plaisir » venu du modèle
+- **Tool pin / hash de schéma** : protège contre le tool description drift en tant que classe d'échec
+- **Check déterministe de l'output** : un post-processor qui ne laisse même pas passer les tool calls destructifs sans confirmation préalable
+
+La combinaison que vous choisissez dépend du failure mode. Une seule chose compte : le test passe au vert parce que le système empêche le bug de façon reproductible - pas parce que le bug ne se déclenche plus par hasard. C'est exactement ce que veulent dire les auteurs d'Applied LLMs avec « spot a new issue, write the assertion immediately » - tout de suite, pas plus tard.
+
+> Résoudre l'incident sans adapter la suite, c'est acheter du temps à crédit.
+
+La boucle se referme quand le test vert tourne dans le prochain run de CI - et dans celui d'après, et dans le centième. Chaque incident qui suit ce chemin laisse dans le système un morceau de savoir permanent.
+
+## Ce qui fait une bonne eval d'incident
+
+La boucle du chapitre précédent produit des tests. Chaque incident en devient un. Et c'est précisément là que commence le problème suivant : si chaque incident atterrit par réflexe dans la suite, elle étouffe sous son propre poids. Tests flaky, doublons, tests fantômes que plus personne ne comprend. Une eval d'incident qui rate son objectif est pire que pas d'eval du tout - elle brûle la confiance dans la suite.
+
+Qu'est-ce qui permet à un test d'incident de survivre ? Six propriétés que je passe en revue pour chaque test avant qu'il soit mergé.
+
+- **Reproductible** : les inputs sont épinglés - la trace complète, pas seulement le prompt utilisateur. ID du modèle avec sa version, snapshot du tool (schéma et implémentation au moment de l'incident), seed si possible. Qui regarde ce test dans six mois doit pouvoir reconstituer le monde de l'incident sans fouiller dans de vieux logs.
+- **Spécifique** : le test vérifie le failure mode, pas la formulation exacte de l'output. Exemple : si l'incident était « l'agent appelle `delete_user` sans confirmation », l'eval teste la séquence de tool calls et l'absence de l'étape de confirmation - pas le libellé de la réponse. Sinon l'eval devient flaky dès que le modèle devient plus poli ou qu'une patch release décale légèrement le style.
+- **Attente explicite** : le pass/fail doit être mesurable. « Ça a l'air bizarre » n'est pas un test. Soit un check déterministe (pattern de tool calls, mot-clé de refus, validité du schéma), soit un LLM-as-Judge avec une rubric claire. Si je ne peux pas écrire l'attente en deux phrases, c'est que le failure mode n'est pas encore compris.
+- **Tagué** : catégorie de failure mode, ID d'incident, date, sévérité. Ça sent la bureaucratie, mais c'est la condition pour que la suite reste analysable. Quels failure modes s'accumulent ? Quelle classe de sévérité concentre le plus de régressions ? Sans tags, la suite est un cimetière.
+- **Cycle de vie** : quand un test d'incident a-t-il le droit de sortir ? Rarement. Seulement avec une justification dans le commit : feature dépréciée, failure mode rendu structurellement impossible (par exemple tool supprimé), ou remplacé par une eval plus complète. « Le test est flaky » n'est pas une raison - dans ce cas, c'est le test qui est mal écrit, pas l'incident qui est sans importance. Les auteurs d'Applied LLMs font de l'inverse une obligation : « ensure that holdout datasets are current and reflect the most recent types of user interactions ». Tenir à jour veut dire : compléter, pas faire le ménage.
+- **Pas de snapshot de la réponse** : les snapshot tests ne fonctionnent pas avec des outputs stochastiques. Même avec un seed, la réponse bouge à la prochaine mise à jour du modèle. Ce qui fonctionne : un snapshot de la séquence de tool calls (assez déterministe), un snapshot de la structure de la trace (quelles étapes dans quel ordre), et un judge basé sur une rubric pour la qualité de la réponse. Le test vérifie la forme, pas le libellé.
+
+> Un test d'incident qui ne vérifie qu'une string d'output tombe dès que le modèle devient plus poli.
+
+### Trois variantes du même incident
+
+Ça ne devient concret que lorsqu'on teste trois fois le même échec, de trois façons différentes. Hypothèse : un agent de support a refusé de donner à un utilisateur les conditions de résiliation, avec la phrase « Je n'ai pas le droit de répondre à cette question » - alors que l'information est publique. Le bug, c'était le refus, pas la réponse.
+
+- **Trop étroit** : `assert response == "Voici vos conditions de résiliation : ..."`. Première eval contre le système corrigé : vert. Deuxième semaine : rouge, parce que le modèle commence maintenant par « Bien sûr, avec plaisir ! ». Le test mesure le style, pas le comportement. Après trois runs flaky, il sort de la CI - et la garantie de non-régression avec lui.
+- **Trop large** : `assert len(response) > 0`. N'attrape pas le refus. N'attrape rien. C'est une façade. Ce genre de test naît quand quelqu'un voulait « faire un truc vite fait » et que personne n'a fait de review.
+- **Juste ce qu'il faut** : trois checks combinés. (1) La trace des tool calls doit contenir `lookup_cancellation_terms` - l'agent doit réellement avoir vérifié. (2) La réponse ne doit contenir aucun marqueur de refus (liste issue du postmortem). (3) Un judge LLM avec la rubric « La réponse répond-elle à la question concrète tout en restant empathique ? » - avec une justification dans l'output, pour que les régressions soient débuggables.
+
+Le troisième test survit aux mises à jour du modèle, parce qu'il cible le failure mode - pas la forme qu'il avait à l'époque. C'est exactement la différence entre une suite qui grandit avec la réalité et une suite qui la met en conserve.
+
+## PII, sécurité et le réflexe protection des données
+
+Au plus tard à ce stade, l'objection arrive. Le plus souvent du côté juridique, parfois de notre propre instinct :
+
+> « On ne peut quand même pas mettre des données de production dans le jeu de tests. »
+
+C'est vrai. Et ce n'est pas ce que nous allons faire. Le réflexe est juste - la conclusion « alors pas de tests d'incident » est fausse.
+
+<Callout type="warning">
+Les traces de production n'ont jamais leur place telles quelles dans le repo. Le cas de test, ce n'est pas la vraie trace, c'est la structure d'échec qu'il met au jour.
+</Callout>
+
+Une trace de production est une matière première. Nous en extrayons ce qui constitue l'échec : routage, séquence de tools, résultat du tool, hypothèse erronée du modèle. Ce qui n'a *pas* sa place dans le cas de test : `customer_id`, numéros de commande, adresses e-mail, adresses IP, adresses postales, texte libre des messages utilisateurs. Le test vérifie un comportement, pas un jeu de données.
+
+### Trois stratégies qui fonctionnent en pratique
+
+- **Redaction dans le pipeline de traces.** Les PII sont masquées avant même que le backend de traces ne les voie. Avec Langfuse via le hook `mask=` côté client, avec Weave via `postprocess_inputs` sur le décorateur `@weave.op`. L'avantage : le backend ne reçoit jamais les données en clair - le masquage s'exécute côté client, avant l'envoi.
+- **Datasets synthétiques à partir de patterns d'échec.** De la trace (anonymisée), nous distillons le schéma : quel tool call avec quels paramètres, quel résultat de tool, quelle réaction du modèle. Nous en tirons un cas de test avec des données de démo - ou nous le régénérons de façon synthétique. La détection automatique de PII couvre les entités habituelles (`PERSON`, `EMAIL_ADDRESS`, `PHONE_NUMBER`, `LOCATION`, `US_SSN`) et les remplace par des placeholders.
+- **Repo d'evals avec droits restreints.** Même après redaction, un jeu d'evals né de vrais échecs a un autre niveau de sensibilité que le code principal. Repo à part, liste d'accès à part, processus de review à part. Qui n'a pas le droit de lire une trace de production ne voit pas non plus le cas de test.
+
+<CodeTabs labels={["Langfuse (Python)", "Weave (Python)"]}>
+
+```python
+from langfuse import Langfuse
+
+def mask(data):
+    if isinstance(data, str) and data.startswith("SECRET_"):
+        return "REDACTED"
+    if isinstance(data, dict):
+        return {k: mask(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [mask(x) for x in data]
+    return data
+
+langfuse = Langfuse(mask=mask)
+```
+
+```python
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
+
+analyzer, anonymizer = AnalyzerEngine(), AnonymizerEngine()
+
+def redact(inputs):
+    r = analyzer.analyze(text=inputs["text_block"],
+        entities=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+        language="en")
+    inputs["text_block"] = anonymizer.anonymize(
+        text=inputs["text_block"], analyzer_results=r).text
+    return inputs
+
+# Inside a weave.Model subclass:
+@weave.op(postprocess_inputs=redact)
+async def predict(self, text_block: str): ...
+```
+
+</CodeTabs>
+
+### De la trace du compte au cas de test
+
+Concrètement : face à « Merci de désactiver les mails marketing », l'agent self-service a appelé `delete_account` au lieu de `unsubscribe_marketing`. La trace originale contient `user_id=usr_8a72f...`, une vraie adresse mail, l'IP, le fingerprint du navigateur et le message complet de l'utilisateur, signé de son vrai nom à la fin.
+
+Le cas de test ne contient rien de tout ça. Il contient :
+
+- `user_id="user_demo_001"`, `email="demo@example.test"`
+- le message utilisateur sous forme sanitisée : « Merci de désactiver les mails marketing à mon adresse. »
+- le catalogue de tools disponible (`unsubscribe_marketing`, `delete_account`, `ask_clarification`)
+- l'assertion : face à une intention douce et ambiguë, l'agent n'a pas le droit d'appeler un tool destructif ; il doit choisir `unsubscribe_marketing` ou demander une précision
+
+Structure du message, catalogue de tools, ambiguïté, assertion - tout ce qui reproduit le failure mode - reste intact. Le vrai utilisateur, lui, est sorti.
+
+> Une structure d'échec, ce ne sont pas des données de production. Qui confond les deux ne construit ni tests ni protection des données.
+
+### Le levier compliance que cette boucle actionne au passage
+
+Qui exploite un système à haut risque au sens de l'AI Act européen construit cette boucle de toute façon - consciemment ou non. L'article 72 exige de *« actively and systematically collect, document and analyse relevant data ... on the performance of high-risk AI systems throughout their lifetime »*. C'est exactement le canal qui ramène la production vers le jeu d'evals. Un chemin documenté du postmortem au test, c'est du post-market monitoring en code.
+
+Et quand un Serious Incident survient : l'article 73 fixe un délai standard de 15 jours, 2 jours en cas d'infraction de grande ampleur ou de perturbation d'une infrastructure critique, 10 jours en cas de décès d'une personne. Pendant ce laps de temps, nous ne voulons plus courir après les preuves - nous voulons les avoir. Le cas de test anonymisé, avec ID de trace, hypothèse, fix et date, fait partie de la chaîne de preuves.
+
+<Accordion title="Les articles de l'AI Act européen que la boucle couvre concrètement">
+
+- **Art. 9 - Risk Management** : la boucle incident-vers-test est une mesure continue de risk mitigation sur tout le cycle de vie.
+- **Art. 12 - Record-Keeping** : les IDs de trace, les IDs de test et les références de postmortem sont exactement les logs générés automatiquement qu'exige l'article.
+- **Art. 17 - Quality Management** : un chemin documenté de l'incident au test de régression fait partie du QMS.
+- **Art. 72, par. 2 - Post-Market Monitoring** : *« actively and systematically collect, document and analyse relevant data ... on the performance of high-risk AI systems throughout their lifetime »* - la boucle *est* ce système.
+- **Art. 73 - Reporting of Serious Incidents** : obligation de signalement en cas de Serious Incident (15 jours en standard, 2 jours en cas d'infraction de grande ampleur ou de perturbation d'une infrastructure critique, 10 jours en cas de décès). Le cas de test avec le lien vers le postmortem fait partie des preuves.
+
+</Accordion>
+
+Puisqu'il faut le faire de toute façon, autant le faire de manière à ce que ça serve - plutôt que de l'expédier en passant, comme une façade de compliance.
+
+## Tooling : ce qui soutient le workflow
+
+La boucle ne dépend pas d'un outil. Mais qui recolle à la main « trace → annotation → dataset » à chaque sprint brûle du temps qui devrait aller à l'analyse des failure modes. Un bon nombre de plateformes intègrent désormais exactement cette mécanique directement dans leur UI. En voici six en accéléré, pour que vous reconnaissiez le pattern lors de votre prochaine évaluation d'outils.
+
+- **[LangSmith](https://docs.langchain.com/langsmith/annotation-queues)** : Annotation Queues. Depuis la vue de la trace, un « Add to Annotation Queue », depuis la table des runs plusieurs d'un coup - ou filtrés via une automation. Les annotateurs notent en single ou en pairwise selon une rubric, corrigent si besoin l'input et l'output, et cliquent sur « Add to Dataset ». En option, la queue est câblée dès sa création sur un dataset par défaut, et le dernier clic disparaît.
+- **[Braintrust](https://www.braintrust.dev/docs/guides/datasets)** : Logs → Datasets en un clic. Sélectionner des spans dans la vue Logs, « + Dataset », terminé. L'input du span devient l'input du dataset, l'output du span devient `expected`. Chaque modification est versionnée ; les expériences s'épinglent à une version donnée. Le champ `origin` relie chaque ligne du dataset au span source - la traçabilité vers la production est ancrée dans la structure, pas seulement dans la sémantique.
+- **Phoenix (Arize)** : l'équivalent open source, avec le même pattern. Les annotations sont un label ou un score sur un span ; des spans individuels ou des ensembles de spans filtrés sont versés dans le dataset via « add to dataset ». L'annotation se fait par l'UI, le SDK ou un judge LLM - les trois passent par la même interface, auto-hébergeable.
+- **Humanloop** : des datasets à partir de logs de production filtrés. Filtrer les logs par version de prompt, multi-select, « Add to Dataset », nouveau ou existant. Chaque modification crée une version immuable - le run d'eval que vous lancez aujourd'hui sera encore reproductible demain, même si quelqu'un a ajouté des tests entre-temps.
+- **Langfuse et Weave** : les deux construisent le chemin couche de masquage comprise - trace avec hooks PII, puis pipeline d'eval sur le dataset masqué. Qui veut la boucle et le mapping compliance du chapitre précédent dans un seul stack trouve ici le chemin le plus court.
+- **OpenAI Evals** : pas d'UI de traces, mais le format cible. JSONL, une ligne par cas, champ obligatoire `input`, plus `ideal` pour les match templates (égalité pour `Match`, sous-chaîne pour `Includes`) :
+
+```jsonl
+{"input": "What is the capital of France?", "ideal": "Paris"}
+{"input": "Who wrote Romeo and Juliet?", "ideal": ["William Shakespeare", "Shakespeare"]}
+```
+
+Quelle que soit la plateforme avec laquelle vous faites la curation : à la fin, les tests devraient pouvoir être exportés dans ce format. C'est le plus petit dénominateur commun de toutes les suites d'evals - et le chemin du retour si vous changez d'outillage.
+
+Presque toutes construisent la même boucle : sélectionner la trace, annoter, verser dans le dataset, versionner. L'ordre n'a rien d'un hasard - dans l'autre sens, vous ne ferez pas entrer proprement des données de production dans un jeu de tests.
+
+<Accordion title="Mini-implémentation : schéma JSONL et loader Vitest">
+```typescript
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { runAgent } from "../src/agent";
+
+const cases = readdirSync("evals/cases/incidents")
+  .filter((f) => f.endsWith(".jsonl"))
+  .flatMap((f) =>
+    readFileSync(`evals/cases/incidents/${f}`, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => ({ file: f, ...JSON.parse(line) })),
+  );
+
+describe("Incident regressions", () => {
+  for (const c of cases) {
+    it(`${c.file}: ${c.input.slice(0, 40)}`, async () => {
+      const out = await runAgent(c.input);
+      const ideals = Array.isArray(c.ideal) ? c.ideal : [c.ideal];
+      expect(ideals.some((i) => out.includes(i))).toBe(true);
+    });
+  }
+});
+```
+
+Le loader fait ici un match par sous-chaîne (ce qui correspond au template `Includes` d'OpenAI Evals, pas à `Match`) - avec des outputs LLM stochastiques, c'est le choix par défaut le plus robuste. C'est le point de départ. Ce n'est que lorsque l'annotation devient le goulot d'étranglement - pas le loader - que le passage à une plateforme vaut le coup.
+</Accordion>
+
+Qu'est-ce que ça implique pour le choix de l'outil ? Qui annote 50 incidents par trimestre et coordonne une équipe de dix reviewers profite des queues, du pinning et des versions immuables. Une équipe engineering de trois personnes avec deux incidents par mois n'en a pas besoin - le pattern du snippet ci-dessus suffit : un repo avec `evals/cases/incidents/<id>.jsonl` plus un loader Vitest tout simple. La boucle ne s'améliore pas avec des outils plus chers - elle s'améliore avec de la discipline dans l'annotation.
+
+> L'outillage passe à l'échelle avec le volume, pas avec l'ambition.
+
+## Modèle opérationnel : qui s'en charge, quand, à quelle fréquence
+
+Ce qui fait respecter l'ambition, c'est le rythme. Une suite ne grandit pas parce qu'un outil le permet - elle grandit parce que quelqu'un en est responsable, noir sur blanc. Sans rythme fixe, la boucle finit sur la même pile que « on fera des postmortems quand on aura le temps ». L'équipe sait ce qui se passe alors : rien.
+
+Si vous intégrez la boucle dans un setup réel, il vous faut trois rythmes. Chacun avec un déclencheur, un output et un owner.
+
+<Callout type="tip">
+Une mesure à fort levier pour un effort minuscule : rendez obligatoire le champ **Eval-Case-ID** dans le template de postmortem. Aucun postmortem clos sans, soit un nouveau cas d'eval lié, soit une courte justification écrite expliquant pourquoi il n'en faut pas. Vous forcez ainsi la boucle dans le workflow d'incident existant - sans nouveau processus, sans nouvelle réunion.
+</Callout>
+
+### Par incident : chaque postmortem écrit un test
+
+- **Déclencheur** : un incident a été corrigé, le postmortem commence.
+- **Output** : un cas d'eval dans la suite de régression. Ou une justification documentée expliquant pourquoi l'échec n'est pas assez reproductible pour un test.
+- **Owner** : la personne qui écrit le postmortem - en général l'on-call.
+
+L'ordre compte : d'abord le test qui met l'échec en évidence, ensuite le fix - ou au moins les deux dans la même PR. Qui corrige d'abord et écrit un test « quand il aura le temps » n'y arrive jamais. Un bug corrigé donne l'impression d'être réglé. Le test qui le fige donne l'impression d'un travail en plus. C'est pour ça qu'il doit être obligatoire.
+
+> Un postmortem sans nouveau cas de test, c'est une page de journal intime, pas une amélioration.
+
+### Par semaine : triage des échecs de production ouverts
+
+- **Déclencheur** : un créneau fixe de 30 à 60 minutes, une fois par semaine dans l'agenda.
+- **Output** : les échecs issus de la sampling eval et des tickets de support passent par un triage rapide. Chaque entrée reçoit l'un de trois labels : *nouveau test*, *trop faible pour la suite*, *déjà couvert*.
+- **Owner** : en rotation, en round-robin dans l'équipe, pas uniquement l'AI lead.
+
+Le but de ce rendez-vous n'est pas l'exhaustivité. Il s'agit de passer en revue les échecs ouverts de la semaine tant que tout le monde s'en souvient encore. Ce qui n'est pas classé cette semaine revient la semaine suivante trois fois plus gros - et plus personne ne se souvient des détails.
+
+### Par trimestre : revue de la suite
+
+- **Déclencheur** : fin de trimestre, avec l'équipe IA et le product owner de la feature.
+- **Output** : trois listes. Quels tests sont obsolètes (feature dépréciée, failure mode structurellement impossible) ? Quels failure modes s'accumulent (ça devient le backlog d'investigation du trimestre suivant) ? Où manque-t-il des tests (quels use cases n'ont presque aucune couverture) ?
+- **Owner** : l'équipe IA anime, l'équipe feature valide.
+
+La revue trimestrielle est le seul rendez-vous où des tests ont le droit de sortir. Pas au feeling, mais sur la base de cette liste, avec une justification dans le commit.
+
+### La responsabilité revient à l'équipe feature, pas à l'équipe IA
+
+L'équipe qui exploite la feature écrit les tests - pas une équipe d'evals centrale. L'on-call voit l'incident, l'on-call connaît le failure mode mieux que quiconque, l'on-call écrit le test. Applied LLMs formule exactement ça comme condition d'une suite vivante : cette attitude doit être ancrée dans l'organisation, en intégrant l'annotation des inputs et outputs à la rotation d'on-call.
+
+L'équipe IA construit l'infrastructure, relit la qualité des tests, aide pour le format. Mais elle ne remplace pas la connaissance métier de l'équipe qui a eu l'échec sous les yeux.
+
+### Anti-pattern : le champion des evals
+
+Dans chaque équipe, il y a une personne qui comprend très bien « le truc des evals » et qui aime s'en occuper. Si vous ne faites rien pour l'éviter, toute la maintenance de la suite retombe sur elle. Ça marche un moment - jusqu'à ce qu'elle tombe malade, change d'équipe ou fasse un burn-out. Alors personne d'autre ne connaît la structure, personne n'ose toucher à un test, et la suite se fossilise exactement dans l'état où le champion l'a laissée.
+
+Un bus factor de 1 n'est pas un modèle opérationnel. Trois heuristiques pour l'éviter : du pairing pour l'écriture de chaque test. Un triage tournant plutôt que des owners fixes. La revue trimestrielle avec toute l'équipe, pas en 1:1 entre le champion et le lead.
+
+<Accordion title="Template de postmortem avec champ eval obligatoire">
+
+```markdown
+# Postmortem : <titre court>
+
+- **Trigger** : Qu'est-ce qui a déclenché l'incident ? (input utilisateur, mise à jour du modèle, changement de tool, ...)
+- **Trace-ID** : <lien vers la trace complète dans l'outil d'observability>
+- **Failure-Mode** : Quelle catégorie ? (refus, hallucination, tool misuse, format drift, ...)
+- **Eval-Case-ID** : <lien vers le nouveau cas d'eval dans la suite de régression>
+  - *Si vide : justification expliquant pourquoi aucun cas d'eval n'est possible - sinon la clôture est bloquée.*
+- **Fix** : Qu'est-ce qui a été changé ? (prompt, schéma de tool, retrieval, modèle, ...)
+- **Étape de rollout** : Canary / Staged / Full
+- **Owner** : <feature-team>
+```
+
+</Accordion>
+
+## Les objections classiques
+
+Qui présente la boucle pour la première fois à une équipe récolte une série d'objections qui varient à peine d'une entreprise à l'autre. La plupart sont légitimes - mais elles mènent rarement à « on n'en a pas besoin », plutôt à « il nous en faut une version plus petite ». Voici les six qui reviennent, chacune avec une réponse que vous pouvez formuler vous-même.
+
+### « Notre jeu d'evals va devenir trop gros pour rester maintenable. »
+
+Ici, la taille est l'objectif, pas le défaut. Une suite qui, après un an d'exploitation, est aussi mince qu'au premier jour n'a pas vu la réalité. La maintenabilité, nous la réglons avec des tags et des sous-suites : `regression`, `tool-contract`, `routing`, `pii-redaction`. En pré-merge ne tourne que la sélection critique, en nightly tout tourne - et le run coûteux est coûteux précisément parce qu'il vaut quelque chose.
+
+### « Les données de production n'ont rien à faire dans le repo. »
+
+Exact. Et elles n'y vont pas. C'est justement pour ça qu'il existe la redaction dans le pipeline de traces et des tests synthétiques qui ne conservent que la structure d'échec - c'était le sujet du chapitre sur les PII. Le fichier du cas de test connaît `customer_id="cust_demo_001"`, pas le vrai utilisateur. Qui lit « pas de données de production dans le repo » comme « pas de tests d'incident » a fondu deux choses distinctes en une seule.
+
+### « On a déjà du mal à faire les postmortems, et maintenant il faudrait un test en plus ? »
+
+Le test est l'output du postmortem. Pas un artefact supplémentaire à côté, mais ce qui reste du postmortem une fois la réunion terminée. Si un postmortem ne produit pas de test reproductible, il n'a rien produit - ce n'était qu'une réunion, pas un postmortem. Le champ obligatoire dans le template est la forme de discipline la moins chère qui fonctionne ici.
+
+### « Avec des systèmes non déterministes, “reproduire” est de toute façon difficile. »
+
+Ce qui est reproductible, ce n'est pas l'output exact - ce sont le déclencheur et le failure mode attendu. Le test ne demande pas « est-ce que la même chose sort, token pour token », il demande « est-ce que la classe d'échec se produit encore ». Au lieu d'un run unique, nous utilisons un taux de réussite sur plusieurs runs et définissons un seuil : 8 sur 10 au vert veut dire vert, 2 sur 10 au vert veut dire rouge. Ce qui est flaky est flaky - détourner le regard n'y change rien. Le non-déterminisme est un argument pour plus de statistiques dans l'eval, pas pour moins d'eval.
+
+### « Nous n'avons pas de sampling eval, donc pas d'incidents. »
+
+Si, ils arrivent. Par les tickets de support, les escalades des sales, le CTO en direct et ce fameux message venu de l'extérieur. Ce n'est pas du sampling au sens technique, mais c'est du signal de production - et c'est exactement ce signal qui doit alimenter la boucle avant de s'enliser dans le système de tickets. Tant qu'il n'y a pas de vraie sampling eval, la boîte mail du support, c'est l'eval. Un tag dans le système de tickets, un champ obligatoire « Failure mode » à la fermeture, une réunion de triage hebdomadaire avec ownership des evals. Pour démarrer, il ne faut pas plus de mécanique que ça.
+
+### « C'est de la façade de compliance. »
+
+Ce serait le cas si la boucle n'existait que pour préparer les audits. Ici, c'est l'inverse : la boucle est la substance - l'amélioration continue de la suite face à de vrais failure modes - et la preuve de compliance tombe en prime. Comme montré dans le chapitre sur les PII, le chemin couvre exactement ce qu'exigent les articles 72/73 de l'AI Act européen. La façade, ce serait documenter le résultat sans faire tourner la boucle.
+
+> Qui a un « oui, mais » au sujet de la suite n'a généralement pas de problème avec la suite, mais avec le postmortem.
+
+## La suite respire avec la réalité
+
+Une bonne suite d'evals n'est pas un artefact du lancement du projet. C'est un inventaire vivant de ce qui a déjà cassé une fois - et donc de ce qui n'a pas le droit de casser à nouveau. Elle respire avec la réalité, parce que la réalité ne se plie pas à nos plans de test. Chaque incident que nous prenons au sérieux la rend un peu plus grande et un peu plus précise.
+
+Voilà qui fait le lien avec les posts précédents de la série. Aucun ne suffit à lui seul - ensemble, ils forment un modèle opérationnel :
+
+- **[Post sur l'architecture](/fr/blog/ai-systems-architecture)** : donne au système la structure qui rend l'output du modèle testable et observable.
+- **[Post sur le pipeline d'evals](/fr/blog/ai-evals-ci-pipeline)** : définit le jeu qui tourne dans la CI contre chaque changement.
+- **[Les tools ne sont pas des prompts](/fr/blog/tools-sind-keine-prompts)** : verrouille toute une classe de bugs de dérive qu'aucun test synthétique ne voit jamais.
+- **[Human-in-the-Loop](/fr/blog/human-in-the-loop)** : arrête les actions irréversibles au gate d'approbation, avant que l'agent ne les exécute.
+- **[Post sur l'observability](/fr/blog/observability-ai-features)** : fournit les traces sans lesquelles un échec reste invisible.
+- **[Post sur le rollout](/fr/blog/ai-rollout-canary-shadow)** : intercepte les régressions avant qu'elles ne touchent 100 % des utilisateurs.
+- **Ce post** : fait du jeu un système vivant qui grandit à chaque série de postmortems.
+
+<LinkCard url="/fr/blog/ai-systems-architecture"/>
+<LinkCard url="/fr/blog/human-in-the-loop"/>
+<LinkCard url="/fr/blog/ai-rollout-canary-shadow"/>
+
+Les briques n'agissent qu'ensemble. Le chemin incident-vers-test est le seul d'entre elles qui rend les autres meilleures avec le temps, au lieu de les laisser vieillir.
+
+Tout type de changement doit passer par cette boucle. Un refactoring du code de l'agent. Un system prompt modifié. Un nouveau modèle, parce que l'ancien a été retiré. Une tool description MCP qu'un vendor a reformulée en douce. Un dataset réindexé pour le RAG. Si un seul de ces changements part en production sans passer par la suite, la suite n'a pas rempli sa mission - et elle redevient une façade.
+
+Et puis il y a un autre levier, que ce post ne couvre plus : au lieu de protéger l'agent de `delete_account` dans le centième test, nous pourrions tout simplement ne pas lui mettre ce tool entre les mains à cet endroit. Quand le flow est imposé comme structure et que le modèle ne décide qu'à des points clairement délimités, des classes entières d'échecs de routage disparaissent - et plus personne n'a besoin du centième test. Mais c'est un autre post.
+
+> L'espoir n'est pas une stratégie. Une suite qui grandit à chaque incident, si.

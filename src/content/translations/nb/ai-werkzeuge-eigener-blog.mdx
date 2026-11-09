@@ -1,0 +1,356 @@
+---
+title: "AI-verktøy for min egen blogg: podcast-pipeline, språkvask og skillsene bak"
+description: "Hvordan bloggen min bruker de samme AI-prinsippene som jeg beskrev i de tre forrige innleggene - med automatisert podcastgenerering og AI-støttet språkvask."
+date: 2026-03-29
+tags: ["ai", "blog", "meta", "software-engineering"]
+draft: false
+ai: generated
+---
+
+import Callout from '../../../components/widgets/Callout.astro';
+import LinkCard from '../../../components/widgets/LinkCard.astro';
+import Accordion from '../../../components/widgets/Accordion.astro';
+import CodeTabs from '../../../components/widgets/CodeTabs.astro';
+
+I tre innlegg har vi snakket om prinsipper. Contracts i stedet for fritekst. Evals i stedet for håp. Verktøysikkerhet i stedet for «det går sikkert bra». Alt sammen med utgangspunkt i en refund-agent som behandler refusjoner - langt unna mitt eget skrivebord.
+
+<LinkCard url="/nb/blog/ai-systems-architecture" />
+
+<LinkCard url="/nb/blog/ai-evals-ci-pipeline" />
+
+<LinkCard url="/nb/blog/tools-sind-keine-prompts" />
+
+Og nå plot-twisten: De samme prinsippene sitter i denne bloggen.
+
+Innlegget du leser akkurat nå, har fått språkvask av en AI - av en spesialisert språkvask-skill med egen stilprofil og strukturert feedback. Og hvis du heller vil lytte enn lese: Play-knappen er der oppe. Podcasten ble generert helautomatisk fra artikkelteksten - dialogmanus, stemmer, lyd, feed.
+
+Flere innlegg har podcast nå. Hver tekst går gjennom AI-språkvask. Ingen av delene skjer manuelt, men via domenespesifikke Claude Code-skills - gjenbrukbare, versjonerte verktøy med definert input og output, som kan kalles som slash command rett i Claude Code.
+
+Er bloggen min et AI-system nå? Nei. Ingen brukere sender forespørsler til en modell. Ingen agent tar beslutninger om produktlogikk i runtime. Men de samme engineering-prinsippene som jeg har beskrevet for AI-features i produksjonsapplikasjoner, sitter i workflowen bak. En stilprofil som contract. Vurderingskategorier som rubrics. En pipeline med eksternt API, feilhåndtering og definert output-format.
+
+Nedenfor ser vi på to features: **podcast-pipelinen**, som lager en komplett podcast-feed av et MDX-blogginnlegg via dialoggenerering og ElevenLabs. Og **språkvask-skillen**, som sjekker tekster mot en dokumentert stilprofil før de publiseres. Begge viser hvordan prinsippene fra de forrige innleggene ser ut i praksis når de ikke havner i en demo-app, men i min egen verktøykasse.
+
+## Podcast-pipelinen: fra MDX til RSS-feed
+
+Flere innlegg har nå en lydversjon. Ingen manuell innlesing, ingen studio, ingen podcast-hosting. I stedet: en Claude Code-skill, et API, et Python-skript og litt Astro-limkode. Fra Markdown til avspillbar podcast på under fem minutter.
+
+Men la oss ta det steg for steg.
+
+### Oversikt over pipelinen
+
+Workflowen ser slik ut:
+
+**Blogginnlegg** → **Dialogmanus** (Claude) → **Lyd** (ElevenLabs Text-to-Dialogue) → **MP3 + transkripsjon** → **Frontmatter** → **RSS-feed** → **Spiller**
+
+Hvert steg har tydelig input og output. Manuset er en tekstfil med speaker turns. Lyden er en MP3. Metadataene havner i frontmatter. RSS-feeden genereres ved build. Spilleren leser alt fra frontmatter - ingen magi, ingen skjulte avhengigheter.
+
+### Dialoggenerering
+
+Blog-podcast-skillen leser et innlegg, trekker ut strukturen og kjernetesene - og genererer ut fra dem en samtale på tysk mellom to personer. Programlederne heter Alex og Lara.
+
+Det som ikke skal komme ut av det: et intervju. Ikke noe «Det er et kjempegodt poeng, Alex!» - men en ekte diskusjon. Begge bidrar med perspektiver, stiller spørsmål, bygger videre på hverandre. Det høres trivielt ut, men utgjør forskjellen mellom «AI-generert» og «det ville jeg faktisk hørt på».
+
+Noen regler som ligger i skillen:
+
+- **Ingen intervjustruktur** - ekte diskusjon, av og til uenighet
+- **Fagbegreper forblir engelske** - Contract, Eval, Tool-Call, akkurat som i bloggen
+- **Emotional cues med måte** - `[ettertenksom]`, `[ler]`, men maks 1-2 per minutt, ellers tipper det over i det teatralske
+- **Fast struktur**: intro med hook (~10 %) → hoveddel (~70 %) → oppsummering (~10 %) → avslutning (~10 %)
+
+Resultatet er en tekstfil i et enkelt format:
+
+```
+Alex: Dialoglinje her
+Lara: Dialoglinje her
+Alex: [ettertenksom] Enda en linje...
+```
+
+Ikke noe komplekst markup-språk, ikke JSON. Lett å lese, lett å redigere. Liker jeg ikke en formulering, endrer jeg linjen og genererer lyden på nytt.
+
+### Lyd via ElevenLabs
+
+Til lydgenereringen bruker jeg ElevenLabs Text-to-Dialogue API med Eleven v3-modellen - ifølge ElevenLabs den mest ekspressive TTS-modellen, 74+ språk, uttrykkelig ikke ment for sanntid, men for offline-generering av høy kvalitet. Akkurat det jeg trenger.
+
+<LinkCard url="https://elevenlabs.io/docs/overview/capabilities/text-to-dialogue" />
+
+API-kallet er overraskende enkelt: En array med `{text, voice_id}`-objekter inn, MP3 ut. Python-skriptet parser dialogfilen, mapper programlederne til voice-ID-er og sender alt av gårde.
+
+<Accordion title="ElevenLabs API-kall (generate_audio.py)">
+```python
+import urllib.request
+import json
+
+API_URL = "https://api.elevenlabs.io/v1/text-to-dialogue"
+
+VOICES = {
+    "Alex": "<voiceid 1>",
+    "Lara": "<voiceid 1>",
+}
+
+def send_chunk(chunk, api_key):
+    payload = json.dumps({
+        "inputs": chunk,  # [{text, voice_id}, ...]
+        "model_id": "eleven_v3",
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+```
+</Accordion>
+
+Eneste knep: API-et har en tegngrense per request. Derfor deles teksten automatisk opp i chunks ved ca. 4500 tegn - MP3-delene som kommer ut, settes sammen etterpå.
+
+Kostnad? Regner jeg med pay-per-use, ville jeg havnet på ca. 3-6 dollar per episode for en typisk blogginnlegg-podcast på 10-20 minutter.
+
+<Accordion title="Teknisk snublestein: MP3-header-problemet">
+Når dialogen er for lang for ett enkelt API-kall, deles den opp i chunks. MP3-delene som kommer ut, settes sammen ved å konkatenere bytene - og det er nettopp der problemet ligger: Hver chunk har sine egne Xing/Info-headere med frame counts som ikke stemmer lenger etter sammenslåingen. Nettleseren viser feil varighet, og spoling fungerer ikke ordentlig.
+
+Fiksen er en enkel re-encode med ffmpeg:
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libmp3lame -b:a 128k output.mp3
+```
+
+Skriptet `scripts/fix-podcast-mp3s.sh` gjør akkurat det for alle MP3-er i `public/audio/`-mappen. Kjør det én gang, problemet er løst.
+</Accordion>
+
+### Astro-integrasjon
+
+For at bloggen skal vite at et innlegg har en podcast, trengs det nøyaktig ett felt i frontmatter:
+
+<CodeTabs labels={["Med podcast", "Uten podcast"]}>
+```yaml
+---
+title: "Mitt blogginnlegg"
+description: "Beskrivelse"
+date: 2026-03-27
+tags: ["ai"]
+podcast:
+  audioFile: /audio/my-post.mp3
+  transcript: /audio/my-post.txt
+  duration: "21:08"
+---
+```
+```yaml
+---
+title: "Mitt blogginnlegg"
+description: "Beskrivelse"
+date: 2026-03-27
+tags: ["ai"]
+---
+```
+</CodeTabs>
+
+Schemaet i `content.config.ts` definerer `podcast` som et valgfritt objekt med `audioFile`, `transcript` og `duration`. Ingen innlegg trenger å ha en podcast - men har det en, får det spilleren automatisk.
+
+PodcastPlayer-komponenten har en del med seg: waveform-visualisering, hastighetskontroll (1x/1.25x/1.5x/2x), hoppeknapper (±15s), en RSS-knapp, en transkripsjon som kan foldes ut, og støtte for Media Session API - altså kontroller på låseskjermen på mobilen. Det høres ut som mye, men det var nødvendig for at lyttingen ikke skulle føles som et kompromiss.
+
+RSS-feeden under `/podcast.xml` genereres ved Astro-build, komplett med iTunes-tagger. Vil du, kan du dra feeden inn i hvilken som helst podcast-app - Apple Podcasts, Overcast, Pocket Casts. Et blogginnlegg er en contract - vil du behandle det automatisert, trenger du et schema. Det gjelder for lyd akkurat som for evals.
+
+### Alternativene sammenlignet
+
+Hvorfor ikke bare bruke NotebookLM? Det er jo gratis, genererer podcaster med ett klikk og høres overbevisende ut.
+
+Fordi «høres overbevisende ut» og «er korrekt» er to forskjellige ting. En studie fra University of Pittsburgh (presentert på AGU 2025) undersøkte NotebookLM-genererte podcaster systematisk - og fant unøyaktigheter i hver eneste testede oppsummering, med en hallusinasjonsrate på ~13 %. Det lumske: Feilene var knapt synlige for ikke-eksperter.
+
+<Callout type="warning">
+Genererte podcaster høres ofte overbevisende ut, selv når innholdet er feil. Det gjør dem farligere enn output som åpenbart er feil. Publiserer du generert lydinnhold, må du sjekke innholdet mot kilden - uansett verktøy.
+</Callout>
+
+I tillegg: NotebookLM har ikke noe API og gir ingen kontroll over stemmer eller dialogstruktur. Det er en black box - fin for å få en rask oversikt, ubrukelig for en reproduserbar workflow.
+
+<LinkCard url="https://github.com/souzatharsis/podcastfy" />
+
+På den andre siden står Podcastfy - et open source Python-prosjekt med støtte for flere TTS-backends (ElevenLabs, Google, Edge, OpenAI). Full kontroll, men også fullt oppsett.
+
+Jeg ser tre nivåer:
+
+1. **Zero Control** - NotebookLM, ElevenLabs GenFM: Ett klikk, ingen innflytelse. Fint for å prøve ut.
+2. **Low Control** - ElevenLabs Create Podcast API: Programmatisk tilgang, men dialoggenereringen tar ElevenLabs seg av.
+3. **Full Control** - Text-to-Dialogue API + eget skript: Du skriver dialogen selv (eller lar den genereres) og kontrollerer hver speaker turn, hver stemme, hver pause.
+
+Mitt oppsett havner i kategori 3. Jeg kontrollerer dialogmanuset, stemmene, strukturen, publiseringen. Det krever mer innsats enn ett klikk i NotebookLM - men jeg vet hva som kommer ut.
+
+> NotebookLM genererer podcaster. Skillen min genererer *mine* podcaster - med mine stemmer, mitt format, min pipeline.
+
+Pipelinen lager podcasten. Men hvem sørger for at kildeteksten - selve blogginnlegget - holder mål? Det er nettopp det neste avsnittet handler om.
+
+## AI-språkvaskeren: sikre tekstkvaliteten uten å miste stilen
+
+Har du noen gang latt ChatGPT «forbedre» en tekst, kjenner du resultatet: grammatisk feilfritt, stilistisk dødt. Kantene er borte, rytmen er borte, igjen står en tekst som ikke låter som noe. Eller som alt på en gang.
+
+Det er ingen tilfeldighet. En studie fra Cornell og University of Washington (CHI 2025) målte dette eksperimentelt: Uten AI-hjelp kunne en ML-klassifikator skille tekster fra ulike forfattere med 82,9 % nøyaktighet. Så snart forfatterne brukte AI-skriveforslag, falt nøyaktigheten til 60 % - et målbart tap av stilistisk særpreg.
+
+<LinkCard url="https://arxiv.org/abs/2409.11360" />
+
+Uavhengig av dette: I en undersøkelse fra Society of Authors UK (2024) uttrykte 86 % av de spurte forfatterne bekymring for at stilen deres blir etterlignet eller utvannet av AI. Bekymringen er berettiget - men problemet er ikke modellen. Problemet er at det mangler en contract for kvalitet.
+
+### Stilprofilen som contract
+
+Språkvask-skillen min kjenner skrivestilen min. Ikke vagt, ikke som en følelse - men som en eksplisitt, dokumentert profil. Bevisste stilgrep blir gjenkjent som det de er, ikke markert som feil.
+
+Stilprofilen er contracten - akkurat som et JSON-schema definerer outputen til en LLM, definerer stilprofilen kvalitetskriteriene for teksten. Uten denne contracten optimaliserer enhver språkmodell mot gjennomsnittet. Med contract optimaliserer den mot *min* standard. Løsningen på stil-homogenisering er ikke en bedre modell, men en bedre contract.
+
+### Rubricsene: fem kategorier, strukturerte funn
+
+Har du lest evals-innlegget, kjenner du igjen mønsteret med en gang. Der definerte vi rubrics - vurderingskategorier med scores, for å vurdere LLM-output systematisk. Språkvaskeren gjør nøyaktig det samme, bare på naturlig språk:
+
+1. **Språk og korrekthet** - grammatikk, rettskriving, tegnsetting
+2. **Stil og tone** - passer teksten til den definerte stilprofilen?
+3. **Struktur og oppbygging** - logisk flyt, avsnittslengder, overskriftshierarki
+4. **Leserføring** - overganger, rød tråd, aktivering av leseren
+5. **Faglig konsistens** - stemmer begreper, referanser, tekniske påstander?
+
+Hvert funn får en severity: **kritisk** (må fikses), **anbefalt** (bør fikses), **valgfritt** (smakssak). I tillegg et linjenummer, et sitat fra teksten og et konkret forbedringsforslag. Funn-ID-ene - F-001, F-002 og så videre - gjør rapporten maskinlesbar. De kan sendes videre direkte som arbeidsinstruks.
+
+<Accordion title="Eksempel: utdrag fra en språkvaskrapport">
+
+**F-001** | Severity: kritisk | Linje 42
+> «Evalene kjøres i CI/CD-pipelinet.»
+
+*Problem:* Feil kjønn - «pipeline» er hankjønn.
+*Forslag:* «Evalene kjøres i CI/CD-pipelinen.»
+
+---
+
+**F-002** | Severity: anbefalt | Linje 78
+> «Dette er et svært viktig aspekt som man bør ta hensyn til.»
+
+*Problem:* Upersonlig, distansert - passer ikke til stilprofilen (direkte jeg-form, korte setninger).
+*Forslag:* «Det er akkurat det som utgjør forskjellen.»
+
+---
+
+**F-003** | Severity: valgfritt | Linje 115
+> «Orchestratoren koordinerer de enkelte agentene.»
+
+*Problem:* Inkonsekvent flertallsform - resten av teksten bruker «agents» uten norsk flertall.
+*Forslag:* Hold deg konsekvent til «agents» eller «agenter». Teksten så langt bruker «agents».
+
+</Accordion>
+
+Parallellen til evals er ingen tilfeldighet - den er arkitektur. Kategoriene *er* rubrics. Severity-nivåene *er* scores. Den strukturerte rapporten *er* et eval-resultat. Har du bygget et eval-rammeverk for LLM-output, har du allerede tankesettet for språkvask - det er bare domenet som skifter.
+
+> Språkvaskeren er en eval på naturlig språk. Rubricsene heter bare noe annet.
+
+### Hva språkvaskeren ikke gjør
+
+Språkvaskeren retter feil, den skriver ikke om. «Du er språkvasker, ikke medforfatter» - det står ordrett i skillen. Når jeg bevisst formulerer en setning kort og hakkete, er det stil. Når jeg bytter perspektiv midt i et avsnitt, er det med vilje. En god språkvasker ser forskjellen. En dårlig glatter ut alt.
+
+Overkorrigering er det motsatte av kvalitetssikring. Det er stilødeleggelse med gode intensjoner. Derfor trenger språkvaskeren contracten - så den vet hva den *ikke* skal røre. Akkurat det problemet Cornell-studien beskriver: Uten en eksplisitt stilprofil driver all AI-støtte mot gjennomsnittet.
+
+## Skills som utviklerverktøy: arkitekturen bak
+
+Podcast-skillen genererer lyd fra et blogginnlegg. Språkvask-skillen sjekker språk og stil mot en dokumentert stilprofil. Begge kjører som slash commands rett i Claude Code - `/blog-podcast`, `/blog-lektorat`. Men hva ligger bak? Og hvorfor er en skill mer enn en oppblåst prompt?
+
+### Hva er en skill?
+
+En skill er en Markdown-fil med YAML-frontmatter og strukturerte instruksjoner. Den ligger i prosjektmappen under `.claude/skills/<name>/SKILL.md` og blir oppdaget i runtime - endringer virker umiddelbart, ingen restart, ingen rebuild.
+
+Frontmatter definerer skillens contract:
+
+```yaml
+name: blog-podcast
+description: "Lager en podcastdialog fra et blogginnlegg..."
+```
+
+`name` blir til slash command. `description` avgjør når Claude foreslår skillen - den er både trigger og scope-definisjon. Alt som står under i Markdown, er selve instruksjonene: workflow-steg, formatkrav, feilhåndtering.
+
+Skills kan lese og skrive filer, kjøre Bash-skript, kalle eksterne API-er og bruke MCP-tools. De er ikke passive tekstbiter - de orkestrerer ekte prosesser.
+
+Og økosystemet vokser: [anthropics/skills](https://github.com/anthropics/skills)-repoet på GitHub har raskt blitt det sentrale stedet for community-skills.
+
+<LinkCard url="https://code.claude.com/docs/en/skills" />
+
+### Hvorfor ikke bare en prompt?
+
+Jeg kunne limt inn den samme teksten som prompt i chatten. Det fungerer - én gang. Forskjellen ligger i alt som kommer etterpå:
+
+**Gjenbrukbarhet.** En skill skrives én gang og kan alltid kalles. Ingen copy-paste fra en notat-app, ingen «Vent, hvordan var workflowen for podcasten igjen?».
+
+**Versjonering.** En SKILL.md er en fil - den *kan* versjoneres, diffes og reviewes. Prompts på utklippstavlen har ingen endringshistorikk.
+
+**Komposisjon.** Podcast-skillen refererer til et Python-skript for lydgenereringen. Språkvask-skillen laster referanseinnlegg som stilsammenligning. Skills kan bruke andre filer i repoet - maler, konfigurasjoner, hjelpeskript.
+
+**Tool-tilgang.** En prompt kan generere tekst. En skill kan kjøre `bash`, kalle API-er med `WebFetch` og samhandle med eksterne systemer via MCP-tools.
+
+**Kodet domenekunnskap.** ElevenLabs-voice-ID-ene, forfatterens stilprofil, språkvaskerens fem vurderingskategorier, frontmatter-schemaet for podcast-metadata - alt ligger i skillen, ikke i hodet mitt eller i en notat-app.
+
+> En skill er en prompt med hukommelse, versjonering og tool-tilgang. Det er det som utgjør forskjellen.
+
+### Anatomien til de to skillsene
+
+Det de to skillsene viser spesielt godt: samme arkitektur, helt ulik virkning.
+
+<Accordion title="Blog-podcast-skill - SKILL.md (utdrag)">
+
+```yaml
+name: blog-podcast
+description: "Lager en podcastdialog fra et blogginnlegg
+  på rubeen.dev. To programledere diskuterer innholdet i
+  artikkelen i en naturlig samtale på tysk."
+```
+
+**Input:** Et blogginnlegg (MDX-fil)
+
+**Prosess:** Les innlegget → generer dialogmanus (Alex/Lara, speaker turns, emotional cues) → kall Python-skriptet → ElevenLabs API → skriv filer → oppdater frontmatter
+
+**Output:** MP3-lydfil + transkripsjonsfil + frontmatter-oppdatering i innlegget
+
+**Sideeffekter:** Eksternt API (ElevenLabs TTS), filsystem (fem filer skrives eller oppdateres)
+
+</Accordion>
+
+<Accordion title="Blog-språkvask-skill - SKILL.md (utdrag)">
+
+```yaml
+name: blog-lektorat
+description: "Profesjonell språkvask av tyskspråklige
+  tech-blogginnlegg på rubeen.dev. Sjekker språk, stil,
+  struktur, leserføring og fagbegreper mot forfatterens
+  etablerte stil."
+```
+
+**Input:** Et blogginnlegg (MDX-fil) + 2-3 referanseinnlegg som stilsammenligning
+
+**Prosess:** Les innlegget → les referanseinnleggene → last stilprofilen → analyse i fem kategorier → skriv strukturert rapport
+
+**Output:** Markdown-rapport med nummererte funn (`_lektorat-[slug].md`)
+
+**Sideeffekter:** Bare filsystem (én fil skrives)
+
+</Accordion>
+
+Begge skillsene følger det samme mønsteret: definert input, tydelig beskrevet prosess, spesifisert output. Podcast-skillen har flere sideeffekter - eksternt API, flere filer, mutasjon av frontmatter. Språkvask-skillen er selvstendig: Den leser, analyserer og skriver en rapport. Ingen eksterne avhengigheter.
+
+### Contracten i skillen
+
+Har du lest de forrige innleggene i denne serien, kjenner du igjen mønsteret: contracts first.
+
+Frontmatter i SKILL.md ER contracten: `name` definerer kallet, `description` scopet. Markdown-kroppen definerer workflowen, formatkravene, feilhåndteringen. Ekstra felt som `allowed-tools` kan i tillegg begrense tillatelsene - least privilege, også for skills.
+
+Podcast-skillen har en dialog-contract: Alex og Lara som programledere, speaker turns som format, emotional cues med begrenset hyppighet, en firefasestruktur (intro, hoveddel, oppsummering, avslutning). Språkvask-skillen har en rapport-contract: fem vurderingskategorier, nummererte funn-ID-er (F-001, F-002...), tre alvorlighetsgrader, obligatoriske felt per funn (linje, sitat, problem, forslag).
+
+Dette er ikke løse retningslinjer. Det er spesifikasjoner jeg kan sjekke resultatet mot. JSON-schema for API-output, stilprofil for tekstkvalitet, SKILL.md-frontmatter for skill-oppførsel - mekanismen er en annen, prinsippet er det samme: Definer contracten før du genererer outputen.
+
+## Prinsippene gjelder overalt
+
+I fire innlegg har det handlet om prinsipper for AI-systemer i produksjon. Contracts definerer grensesnittet mellom deterministisk kode og en ikke-deterministisk modell. Evals gjør kvalitet målbar i stedet for å bare påstå den. Tools trenger scope, idempotens og bevissthet om sideeffekter, fordi et feil kall ødelegger mer enn et dårlig svar.
+
+Og så dette innlegget: en statisk blogg, ingen produksjonsplattform med tusenvis av brukere. Likevel følger podcast-pipelinen en fast contract - fra dialog-schemaet via API-integrasjonen til RSS-feeden. Språkvaskeren vurderer mot rubrics, ikke etter magefølelse. Skillsene har et definert scope, tydelige inputs og outputs, og sideeffektene deres er kjente.
+
+Det er ingen tilfeldighet. Prinsippene dukker ikke opp fordi bloggen er et AI-system - de dukker opp fordi de gjelder universelt. Contract før prompt. Måling før mening. Scope før frihet.
+
+Innledningsvis spurte jeg: Er bloggen min et AI-system? Svaret er fortsatt nei. Men tankesettet bak er det samme. Og det er akkurat det som skiller «jeg bruker AI» fra «jeg bruker AI systematisk». Skillsene blir bedre for hvert innlegg, stilprofilen vokser, pipelinen blir mer robust. Det er iterativ forbedring - akkurat som i ethvert annet engineering-prosjekt.
+
+> Bygger du AI-features for andre, bør du bruke de samme prinsippene på din egen workflow. Ikke fordi det er nødvendig, men fordi det fungerer.
