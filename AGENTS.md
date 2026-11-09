@@ -53,6 +53,14 @@ Das Frontmatter-Feld `ai` steuert den Transparenzhinweis nach Art. 50 KI-VO — 
 
 Keine manuellen Transparenz-Callouts in Posts — das Feld ist die einzige Quelle.
 
+### Sprachen
+
+Deutsch ist das Original (ohne Präfix). Übersetzungen: en, fr, nl, sv, nb unter `/<code>/`, dazu `pott` (Ruhrdeutsch, Spaß-Fassung: noindex, kein hreflang, nicht in Sitemap und Feeds). Übersetzte Posts liegen in `src/content/translations/<code>/<slug>.mdx` (Collection `translations`, gleicher Slug wie das Original, `ai: generated`). Nach dem Anlegen `node scripts/localize-translations.mjs` laufen lassen, das schreibt Importe, Bildpfade und interne `/blog/`-Links um. Ein Post ohne Übersetzung erscheint in der Sprache einfach nicht.
+
+UI-Texte: `src/lib/i18n.ts` (de, en) und `src/lib/i18n-locales.ts` (übrige); Komponenten holen die Sprache über `getLocale(Astro.url)`. Seiten für alle Sprachen kommen aus `src/components/pages/*`, die Routen unter `src/pages/[lang]/` sind dünne Hüllen. Projekte und Talks gibt es nur auf Deutsch.
+
+Sprachwahl: Inline-Skript in `BaseLayout.astro`. Gespeicherte Wahl (`localStorage.locale`, gesetzt im `LanguageSwitcher`) schlägt Browser-Sprache; automatisch nur beim Einstieg von außen und nie für Crawler.
+
 ### Layouts
 
 - `BaseLayout.astro` — HTML-Shell mit Dark-Mode (3-State: system/light/dark via `data-theme`), Fonts (Bricolage Grotesque + Atkinson Hyperlegible Next/Mono), Pagefind Search Modal, Image Zoom, externe Links auto `target="_blank"`

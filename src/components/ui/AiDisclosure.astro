@@ -3,6 +3,7 @@
 // der Seite. Art. 50 Abs. 5 verlangt "klar und eindeutig, spaetestens zum Zeitpunkt der ersten
 // Wahrnehmung" — das leistet AiMarker in der Metazeile oben, der hierher verlinkt.
 import {AI_TRANSPARENCY_PAGE, EDITORIAL_RESPONSIBILITY} from '../../lib/site';
+import {getLocale, localePath, useTranslations} from '../../lib/i18n';
 
 interface Props {
     level: 'generated' | 'assisted' | 'none';
@@ -13,25 +14,29 @@ interface Props {
 }
 
 const {level, subject, note} = Astro.props;
+const locale = getLocale(Astro.url);
+const t = useTranslations(locale);
+// Übersetzte Seiten: Übersetzung durch KI immer kennzeichnen, egal wie das Original entstand.
+const translated = locale !== 'de' ? t('ai.translatedText') : null;
 
 const config = {
     generated: {
-        label: 'Mit KI erstellt',
+        label: t('ai.generated'),
         text: subject
             ? `Der Text ${subject} wurde mit generativer KI erzeugt.`
-            : 'Text und Bilder dieses Artikels wurden mit generativer KI erzeugt.',
+            : t('ai.generatedText'),
     },
     assisted: {
-        label: 'Mit KI-Unterstützung',
+        label: t('ai.assisted'),
         text: subject
             ? `Der Text ${subject} wurde mit generativer KI überarbeitet, etwa für Lektorat und Recherche.`
-            : 'Dieser Artikel wurde mit generativer KI überarbeitet, etwa für Lektorat und Recherche.',
+            : t('ai.assistedText'),
     },
     none: null,
 };
 
 const c = config[level];
-const text = c && note ? `${c.text} ${note}` : c?.text;
+const text = [c?.text, translated, note].filter(Boolean).join(' ');
 ---
 
 {c && (
@@ -42,14 +47,14 @@ const text = c && note ? `${c.text} ${note}` : c?.text;
     >
         <aside
             role="note"
-            aria-label="Transparenzhinweis zu KI-generierten Inhalten"
+            aria-label={t('ai.ariaLabel')}
             class="border-t border-(--color-border) pt-5"
         >
             <p class="text-[0.875rem] leading-relaxed text-(--color-text-secondary)">
                 <strong class="mb-1 block font-mono text-[0.8125rem] font-bold tracking-[0.04em] text-(--color-text-secondary) uppercase">{c.label}</strong>
-                {text} Redaktionelle Verantwortung: {EDITORIAL_RESPONSIBILITY}.{' '}
-                <a href={AI_TRANSPARENCY_PAGE.path} class="text-(--color-accent) underline underline-offset-[3px] hover:text-(--color-accent-hover)">
-                    Wie dieser Blog KI einsetzt
+                {text} {t('ai.responsibility')}: {EDITORIAL_RESPONSIBILITY}.{' '}
+                <a href={localePath(locale, AI_TRANSPARENCY_PAGE.path)} class="text-(--color-accent) underline underline-offset-[3px] hover:text-(--color-accent-hover)">
+                    {t('ai.howThisBlog')}
                 </a>
             </p>
         </aside>

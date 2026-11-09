@@ -1,0 +1,29 @@
+---
+import {render} from 'astro:content';
+import BlogPost from '../../layouts/BlogPost.astro';
+import { alternatesFor } from '../../lib/i18n';
+import { getPostLocales, postSlug, type Post } from '../../lib/posts';
+
+interface Props {
+    post: Post;
+}
+
+const {post} = Astro.props;
+const slug = postSlug(post);
+const locales = (await getPostLocales()).get(slug) ?? [];
+const {Content} = await render(post);
+---
+
+<BlogPost
+        title={post.data.title}
+        description={post.data.description}
+        date={post.data.date}
+        updatedDate={post.data.updatedDate}
+        tags={post.data.tags}
+        image={post.data.image}
+        podcast={post.data.podcast}
+        ai={post.data.ai}
+        alternates={alternatesFor(`/blog/${slug}`, locales)}
+>
+    <Content/>
+</BlogPost>

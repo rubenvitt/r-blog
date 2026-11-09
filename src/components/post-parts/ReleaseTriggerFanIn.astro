@@ -5,16 +5,161 @@
 // Reuses .rollout-diagram wrapper styling and zoom infrastructure from
 // RolloutPipeline.astro (loaded globally when RolloutPipeline is imported
 // elsewhere on the page).
+import { getLocale } from '../../lib/i18n';
 
 interface Props {
 	caption?: string;
 }
 
 const { caption } = Astro.props;
+
+const strings = {
+	de: {
+		enlarge: 'Diagramm vergrößern',
+		title: 'Release-Trigger für AI-Features',
+		desc: 'Sechs Quellen können das Verhalten in Production verändern: nur Code-Commit läuft durch ein CI-Gate, die anderen fünf Trigger umgehen jede Prüfung.',
+		heading: 'Release-Trigger: ein Gate, sechs Pfade',
+		subheading: 'Code geht durchs Gate. Fünf weitere Trigger ändern Production ungebremst.',
+		codeCommit: 'Code-Commit',
+		promptEdit: 'Prompt-Edit',
+		modelUpdate: 'Modell-Update',
+		providerSide: 'Provider-seitig',
+		systemPrompt: 'System-Prompt',
+		vendorPatch: 'Hersteller-Patch',
+		toolDrift: 'MCP-Tool-Drift',
+		descChanged: 'Description geändert',
+		ragIndex: 'RAG-Index',
+		production: 'Production',
+		changedBehavior: 'verändertes Verhalten',
+		legendGated: 'durch CI Gate',
+		legendUngated: 'ohne Gate, ohne Deploy-Signal',
+	},
+	en: {
+		enlarge: 'Enlarge diagram',
+		title: 'Release triggers for AI features',
+		desc: 'Six sources can change behavior in production: only the code commit runs through a CI gate, the other five triggers bypass every check.',
+		heading: 'Release triggers: one gate, six paths',
+		subheading: 'Code goes through the gate. Five more triggers change production unchecked.',
+		codeCommit: 'Code commit',
+		promptEdit: 'Prompt edit',
+		modelUpdate: 'Model update',
+		providerSide: 'provider-side',
+		systemPrompt: 'System prompt',
+		vendorPatch: 'vendor patch',
+		toolDrift: 'MCP tool drift',
+		descChanged: 'description changed',
+		ragIndex: 'RAG index',
+		production: 'Production',
+		changedBehavior: 'changed behavior',
+		legendGated: 'through CI gate',
+		legendUngated: 'no gate, no deploy signal',
+	},
+	fr: {
+		enlarge: 'Agrandir le diagramme',
+		title: 'Déclencheurs de release pour les features IA',
+		desc: "Six sources peuvent modifier le comportement en production : seul le commit de code passe par un gate CI, les cinq autres déclencheurs contournent toute vérification.",
+		heading: 'Déclencheurs de release : un gate, six chemins',
+		subheading: 'Le code passe par le gate. Cinq autres déclencheurs modifient la production sans frein.',
+		codeCommit: 'Commit de code',
+		promptEdit: 'Prompt modifié',
+		modelUpdate: 'MAJ du modèle',
+		providerSide: 'côté fournisseur',
+		systemPrompt: 'System prompt',
+		vendorPatch: 'patch éditeur',
+		toolDrift: 'Drift tool MCP',
+		descChanged: 'description modifiée',
+		ragIndex: 'Index RAG',
+		production: 'Production',
+		changedBehavior: 'comportement modifié',
+		legendGated: 'via le gate CI',
+		legendUngated: 'sans gate, sans signal de déploiement',
+	},
+	nl: {
+		enlarge: 'Diagram vergroten',
+		title: 'Release-triggers voor AI-features',
+		desc: 'Zes bronnen kunnen het gedrag in productie veranderen: alleen de code-commit loopt door een CI-gate, de andere vijf triggers omzeilen elke controle.',
+		heading: 'Release-triggers: één gate, zes paden',
+		subheading: 'Code gaat door de gate. Vijf andere triggers veranderen productie ongeremd.',
+		codeCommit: 'Code-commit',
+		promptEdit: 'Prompt-edit',
+		modelUpdate: 'Modelupdate',
+		providerSide: 'bij de provider',
+		systemPrompt: 'Systeemprompt',
+		vendorPatch: 'leverancierspatch',
+		toolDrift: 'MCP-tool-drift',
+		descChanged: 'description gewijzigd',
+		ragIndex: 'RAG-index',
+		production: 'Production',
+		changedBehavior: 'gewijzigd gedrag',
+		legendGated: 'door CI-gate',
+		legendUngated: 'zonder gate, zonder deploy-signaal',
+	},
+	sv: {
+		enlarge: 'Förstora diagrammet',
+		title: 'Release-triggers för AI-features',
+		desc: 'Sex källor kan förändra beteendet i produktion: bara kod-commit går igenom en CI-gate, de andra fem triggerna kringgår all kontroll.',
+		heading: 'Release-triggers: en gate, sex vägar',
+		subheading: 'Koden går genom gaten. Fem andra triggers ändrar produktionen obromsat.',
+		codeCommit: 'Kod-commit',
+		promptEdit: 'Prompt-ändring',
+		modelUpdate: 'Modelluppdatering',
+		providerSide: 'hos leverantören',
+		systemPrompt: 'Systemprompt',
+		vendorPatch: 'leverantörspatch',
+		toolDrift: 'MCP-tool-drift',
+		descChanged: 'description ändrad',
+		ragIndex: 'RAG-index',
+		production: 'Production',
+		changedBehavior: 'ändrat beteende',
+		legendGated: 'genom CI-gate',
+		legendUngated: 'utan gate, utan deploy-signal',
+	},
+	nb: {
+		enlarge: 'Forstørr diagrammet',
+		title: 'Release-triggere for AI-funksjoner',
+		desc: 'Seks kilder kan endre oppførselen i produksjon: bare kode-commit går gjennom en CI-gate, de fem andre triggerne omgår all kontroll.',
+		heading: 'Release-triggere: én gate, seks veier',
+		subheading: 'Koden går gjennom gaten. Fem andre triggere endrer produksjon uten brems.',
+		codeCommit: 'Kode-commit',
+		promptEdit: 'Prompt-endring',
+		modelUpdate: 'Modelloppdatering',
+		providerSide: 'hos leverandøren',
+		systemPrompt: 'Systemprompt',
+		vendorPatch: 'leverandørpatch',
+		toolDrift: 'MCP-tool-drift',
+		descChanged: 'description endret',
+		ragIndex: 'RAG-indeks',
+		production: 'Production',
+		changedBehavior: 'endret oppførsel',
+		legendGated: 'gjennom CI-gate',
+		legendUngated: 'uten gate, uten deploy-signal',
+	},
+	pott: {
+		enlarge: 'Diagramm größer machen',
+		title: 'Release-Trigger für AI-Features',
+		desc: 'Sechs Quellen können dat Verhalten in Production verändern: nur der Code-Commit geht durch ein CI-Gate, die anderen fünf Trigger umgehen jede Prüfung.',
+		heading: 'Release-Trigger: ein Gate, sechs Wege. Na prima.',
+		subheading: 'Code geht durchs Gate. Fünf andere Trigger ballern ungebremst in Production.',
+		codeCommit: 'Code-Commit',
+		promptEdit: 'Prompt-Edit',
+		modelUpdate: 'Modell-Update',
+		providerSide: 'beim Provider',
+		systemPrompt: 'System-Prompt',
+		vendorPatch: 'Hersteller-Patch',
+		toolDrift: 'MCP-Tool-Drift',
+		descChanged: 'Description geändert',
+		ragIndex: 'RAG-Index',
+		production: 'Production',
+		changedBehavior: 'macht getz wat anderes',
+		legendGated: 'durchs CI Gate',
+		legendUngated: 'ohne Gate, ohne Deploy-Signal, einfach so',
+	},
+};
+const s = strings[getLocale(Astro.url)];
 ---
 
 <figure class="not-prose rollout-figure my-8">
-	<button class="rollout-diagram" type="button" aria-label="Diagramm vergrößern">
+	<button class="rollout-diagram" type="button" aria-label={s.enlarge}>
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 1100 500"
@@ -22,10 +167,9 @@ const { caption } = Astro.props;
 			aria-labelledby="trigger-title trigger-desc"
 			preserveAspectRatio="xMidYMid meet"
 		>
-			<title id="trigger-title">Release-Trigger für AI-Features</title>
+			<title id="trigger-title">{s.title}</title>
 			<desc id="trigger-desc">
-				Sechs Quellen können das Verhalten in Production verändern: nur Code-Commit
-				läuft durch ein CI-Gate, die anderen fünf Trigger umgehen jede Prüfung.
+				{s.desc}
 			</desc>
 
 			<defs>
@@ -53,40 +197,40 @@ const { caption } = Astro.props;
 				</marker>
 			</defs>
 
-			<text class="title" x="40" y="34">Release-Trigger: ein Gate, sechs Pfade</text>
+			<text class="title" x="40" y="34">{s.heading}</text>
 			<text class="sublabel" x="40" y="56"
-				>Code geht durchs Gate. Fünf weitere Trigger ändern Production ungebremst.</text
+				>{s.subheading}</text
 			>
 
 			<!-- Trigger row -->
 			<g transform="translate(20, 90)">
 				<rect class="card card-success" x="0" y="0" width="160" height="74" rx="10"></rect>
-				<text class="label" x="80" y="36" text-anchor="middle">Code-Commit</text>
+				<text class="label" x="80" y="36" text-anchor="middle">{s.codeCommit}</text>
 				<text class="sublabel" x="80" y="56" text-anchor="middle">PR + Eval</text>
 			</g>
 			<g transform="translate(195, 90)">
 				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
-				<text class="label" x="80" y="36" text-anchor="middle">Prompt-Edit</text>
+				<text class="label" x="80" y="36" text-anchor="middle">{s.promptEdit}</text>
 				<text class="sublabel" x="80" y="56" text-anchor="middle">CMS / Admin-UI</text>
 			</g>
 			<g transform="translate(370, 90)">
 				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
-				<text class="label" x="80" y="36" text-anchor="middle">Modell-Update</text>
-				<text class="sublabel" x="80" y="56" text-anchor="middle">Provider-seitig</text>
+				<text class="label" x="80" y="36" text-anchor="middle">{s.modelUpdate}</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">{s.providerSide}</text>
 			</g>
 			<g transform="translate(545, 90)">
 				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
-				<text class="label" x="80" y="36" text-anchor="middle">System-Prompt</text>
-				<text class="sublabel" x="80" y="56" text-anchor="middle">Hersteller-Patch</text>
+				<text class="label" x="80" y="36" text-anchor="middle">{s.systemPrompt}</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">{s.vendorPatch}</text>
 			</g>
 			<g transform="translate(720, 90)">
 				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
-				<text class="label" x="80" y="36" text-anchor="middle">MCP-Tool-Drift</text>
-				<text class="sublabel" x="80" y="56" text-anchor="middle">Description geändert</text>
+				<text class="label" x="80" y="36" text-anchor="middle">{s.toolDrift}</text>
+				<text class="sublabel" x="80" y="56" text-anchor="middle">{s.descChanged}</text>
 			</g>
 			<g transform="translate(895, 90)">
 				<rect class="card card-danger" x="0" y="0" width="160" height="74" rx="10"></rect>
-				<text class="label" x="80" y="36" text-anchor="middle">RAG-Index</text>
+				<text class="label" x="80" y="36" text-anchor="middle">{s.ragIndex}</text>
 				<text class="sublabel" x="80" y="56" text-anchor="middle">Rebuild / Re-Embed</text>
 			</g>
 
@@ -160,9 +304,9 @@ const { caption } = Astro.props;
 			<!-- Production -->
 			<g transform="translate(440, 390)">
 				<rect class="card card-accent" x="0" y="0" width="220" height="74" rx="12"></rect>
-				<text class="label" x="110" y="36" text-anchor="middle">Production</text>
+				<text class="label" x="110" y="36" text-anchor="middle">{s.production}</text>
 				<text class="sublabel" x="110" y="56" text-anchor="middle"
-					>verändertes Verhalten</text
+					>{s.changedBehavior}</text
 				>
 			</g>
 
@@ -177,7 +321,7 @@ const { caption } = Astro.props;
 					class="stroke-success"
 					stroke-width="2"
 				></line>
-				<text class="sublabel" x="44" y="22">durch CI Gate</text>
+				<text class="sublabel" x="44" y="22">{s.legendGated}</text>
 				<line
 					x1="14"
 					y1="34"
@@ -187,7 +331,7 @@ const { caption } = Astro.props;
 					stroke-width="2"
 					stroke-dasharray="4 3"
 				></line>
-				<text class="sublabel" x="44" y="38">ohne Gate, ohne Deploy-Signal</text>
+				<text class="sublabel" x="44" y="38">{s.legendUngated}</text>
 			</g>
 		</svg>
 		<span class="zoom-hint" aria-hidden="true">

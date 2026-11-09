@@ -4,16 +4,189 @@
 //
 // Reuses .rollout-diagram wrapper styling and zoom infrastructure from
 // RolloutPipeline.astro.
+import { getLocale } from '../../lib/i18n';
 
 interface Props {
 	caption?: string;
 }
 
 const { caption } = Astro.props;
+
+const strings = {
+	de: {
+		enlarge: 'Diagramm vergrößern',
+		title: 'Shadow Run: Champion und Challenger',
+		desc: 'Eingehender Request wird vom Proxy an Champion und Challenger gespiegelt. Champion antwortet dem Nutzer, Challenger landet im Vergleich. Vier Metriken werden verglichen: Tool-Call-Divergenz, Antwort-Qualität, Token-Kosten, Latenz.',
+		heading: 'Shadow Run: Champion bedient, Challenger lernt mit',
+		subheading: 'Beide Versionen verarbeiten denselben Request. Nur eine antwortet dem Nutzer.',
+		requestSub: 'vom Nutzer',
+		proxySub: 'spiegelt Traffic',
+		championLabel: 'Aktuelle Version',
+		championSub: 'antwortet dem Nutzer',
+		challengerLabel: 'Neue Version',
+		challengerSub: 'Output ins Log, kein Nutzer',
+		user: 'Nutzer',
+		userSub: 'erhält Antwort',
+		compareTag: 'VERGLEICH · GELOGGTE PAARE',
+		metrics: 'Metriken',
+		divergence: 'Tool-Call-Divergenz',
+		quality: 'Antwort-Qualität (LLM-Judge)',
+		cost: 'Token-Kosten pro Operation',
+		latency: 'Latenz p95 / p99',
+		outcome: '→ Promotion oder Rollback',
+		note1: '⚠ Schreibende Tools brauchen Sandbox, Mock',
+		note2: 'oder Intent-Vergleich - sonst doppelte Side-Effects.',
+	},
+	en: {
+		enlarge: 'Enlarge diagram',
+		title: 'Shadow run: champion and challenger',
+		desc: 'An incoming request is mirrored by the proxy to champion and challenger. The champion answers the user, the challenger ends up in the comparison. Four metrics are compared: tool-call divergence, answer quality, token cost, latency.',
+		heading: 'Shadow run: champion serves, challenger tags along',
+		subheading: 'Both versions process the same request. Only one answers the user.',
+		requestSub: 'from the user',
+		proxySub: 'mirrors traffic',
+		championLabel: 'Current version',
+		championSub: 'answers the user',
+		challengerLabel: 'New version',
+		challengerSub: 'Output to log, no user',
+		user: 'User',
+		userSub: 'gets the answer',
+		compareTag: 'COMPARISON · LOGGED PAIRS',
+		metrics: 'Metrics',
+		divergence: 'Tool-call divergence',
+		quality: 'Answer quality (LLM judge)',
+		cost: 'Token cost per operation',
+		latency: 'Latency p95 / p99',
+		outcome: '→ Promotion or rollback',
+		note1: '⚠ Writing tools need a sandbox, mock',
+		note2: 'or intent comparison - else duplicate side effects.',
+	},
+	fr: {
+		enlarge: 'Agrandir le diagramme',
+		title: 'Shadow Run : Champion et Challenger',
+		desc: "Le proxy duplique chaque requête entrante vers le Champion et le Challenger. Le Champion répond à l'utilisateur, le Challenger part dans la comparaison. Quatre métriques sont comparées : divergence des tool calls, qualité des réponses, coût en tokens, latence.",
+		heading: 'Shadow Run : le Champion sert, le Challenger apprend',
+		subheading: "Les deux versions traitent la même requête. Une seule répond à l'utilisateur.",
+		requestSub: "de l'utilisateur",
+		proxySub: 'duplique le trafic',
+		championLabel: 'Version actuelle',
+		championSub: "répond à l'utilisateur",
+		challengerLabel: 'Nouvelle version',
+		challengerSub: "Loggé, pas d'utilisateur",
+		user: 'Utilisateur',
+		userSub: 'reçoit la réponse',
+		compareTag: 'COMPARAISON · PAIRES LOGGÉES',
+		metrics: 'Métriques',
+		divergence: 'Divergence des tool calls',
+		quality: 'Qualité réponse (LLM judge)',
+		cost: 'Coût en tokens par opération',
+		latency: 'Latence p95 / p99',
+		outcome: '→ Promotion ou rollback',
+		note1: '⚠ Les tools en écriture exigent sandbox, mock',
+		note2: "ou comparaison d'intent - sinon side effects doublés.",
+	},
+	nl: {
+		enlarge: 'Diagram vergroten',
+		title: 'Shadow run: champion en challenger',
+		desc: 'Een binnenkomende request wordt door de proxy naar champion en challenger gespiegeld. De champion antwoordt de gebruiker, de challenger belandt in de vergelijking. Vier metrics worden vergeleken: tool-call-divergentie, antwoordkwaliteit, tokenkosten, latentie.',
+		heading: 'Shadow run: champion bedient, challenger leert mee',
+		subheading: 'Beide versies verwerken dezelfde request. Maar één antwoordt de gebruiker.',
+		requestSub: 'van de gebruiker',
+		proxySub: 'spiegelt traffic',
+		championLabel: 'Huidige versie',
+		championSub: 'antwoordt de gebruiker',
+		challengerLabel: 'Nieuwe versie',
+		challengerSub: 'Gelogd, geen gebruiker',
+		user: 'Gebruiker',
+		userSub: 'krijgt antwoord',
+		compareTag: 'VERGELIJKING · GELOGDE PAREN',
+		metrics: 'Metrics',
+		divergence: 'Tool-call-divergentie',
+		quality: 'Antwoordkwaliteit (LLM-judge)',
+		cost: 'Tokenkosten per operatie',
+		latency: 'Latentie p95 / p99',
+		outcome: '→ Promotie of rollback',
+		note1: '⚠ Schrijvende tools vragen sandbox, mock',
+		note2: 'of intent-vergelijking - anders dubbele side-effects.',
+	},
+	sv: {
+		enlarge: 'Förstora diagrammet',
+		title: 'Shadow run: champion och challenger',
+		desc: 'En inkommande request speglas av proxyn till champion och challenger. Championen svarar användaren, challengern hamnar i jämförelsen. Fyra metriker jämförs: tool-call-divergens, svarskvalitet, tokenkostnad, latens.',
+		heading: 'Shadow run: championen betjänar, challengern lär sig',
+		subheading: 'Båda versionerna bearbetar samma request. Bara en svarar användaren.',
+		requestSub: 'från användaren',
+		proxySub: 'speglar trafik',
+		championLabel: 'Nuvarande version',
+		championSub: 'svarar användaren',
+		challengerLabel: 'Ny version',
+		challengerSub: 'Loggas, ingen användare',
+		user: 'Användare',
+		userSub: 'får svaret',
+		compareTag: 'JÄMFÖRELSE · LOGGADE PAR',
+		metrics: 'Metriker',
+		divergence: 'Tool-call-divergens',
+		quality: 'Svarskvalitet (LLM-judge)',
+		cost: 'Tokenkostnad per operation',
+		latency: 'Latens p95 / p99',
+		outcome: '→ Promotion eller rollback',
+		note1: '⚠ Skrivande tools kräver sandbox, mock',
+		note2: 'eller intent-jämförelse – annars dubbla side effects.',
+	},
+	nb: {
+		enlarge: 'Forstørr diagrammet',
+		title: 'Shadow run: champion og challenger',
+		desc: 'En innkommende request speiles av proxyen til champion og challenger. Championen svarer brukeren, challengeren havner i sammenligningen. Fire metrikker sammenlignes: tool-call-divergens, svarkvalitet, tokenkostnad, latens.',
+		heading: 'Shadow run: championen betjener, challengeren lærer',
+		subheading: 'Begge versjonene behandler samme request. Bare én svarer brukeren.',
+		requestSub: 'fra brukeren',
+		proxySub: 'speiler trafikk',
+		championLabel: 'Nåværende versjon',
+		championSub: 'svarer brukeren',
+		challengerLabel: 'Ny versjon',
+		challengerSub: 'Logges, ingen bruker',
+		user: 'Bruker',
+		userSub: 'får svaret',
+		compareTag: 'SAMMENLIGNING · LOGGEDE PAR',
+		metrics: 'Metrikker',
+		divergence: 'Tool-call-divergens',
+		quality: 'Svarkvalitet (LLM-judge)',
+		cost: 'Tokenkostnad per operasjon',
+		latency: 'Latens p95 / p99',
+		outcome: '→ Promotion eller rollback',
+		note1: '⚠ Skrivende tools krever sandbox, mock',
+		note2: 'eller intent-sammenligning - ellers doble side effects.',
+	},
+	pott: {
+		enlarge: 'Diagramm größer machen',
+		title: 'Shadow Run: Champion und Challenger',
+		desc: 'Der Proxy spiegelt jeden Request an Champion und Challenger. Champion antwortet dem Nutzer, Challenger kommt inne Vergleich. Vier Metriken werden verglichen: Tool-Call-Divergenz, Antwort-Qualität, Token-Kosten, Latenz.',
+		heading: 'Shadow Run: Champion malocht, Challenger guckt zu',
+		subheading: 'Beide Versionen kriegen denselben Request. Nur eine antwortet dem Nutzer.',
+		requestSub: 'vom Nutzer',
+		proxySub: 'spiegelt Traffic',
+		championLabel: 'Aktuelle Version',
+		championSub: 'antwortet dem Nutzer',
+		challengerLabel: 'Neue Version',
+		challengerSub: 'Output ins Log, kein Mensch',
+		user: 'Nutzer',
+		userSub: 'kricht Antwort',
+		compareTag: 'VERGLEICH · GELOGGTE PAARE',
+		metrics: 'Metriken',
+		divergence: 'Tool-Call-Divergenz',
+		quality: 'Antwort-Qualität (LLM-Judge)',
+		cost: 'Token-Kosten pro Vorgang',
+		latency: 'Latenz p95 / p99',
+		outcome: '→ Promotion oder Rollback',
+		note1: '⚠ Schreibende Tools brauchen Sandbox, Mock',
+		note2: 'oder Intent-Vergleich - sonst knallt et doppelt.',
+	},
+};
+const s = strings[getLocale(Astro.url)];
 ---
 
 <figure class="not-prose rollout-figure my-8">
-	<button class="rollout-diagram" type="button" aria-label="Diagramm vergrößern">
+	<button class="rollout-diagram" type="button" aria-label={s.enlarge}>
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 1100 460"
@@ -21,11 +194,9 @@ const { caption } = Astro.props;
 			aria-labelledby="champ-title champ-desc"
 			preserveAspectRatio="xMidYMid meet"
 		>
-			<title id="champ-title">Shadow Run: Champion und Challenger</title>
+			<title id="champ-title">{s.title}</title>
 			<desc id="champ-desc">
-				Eingehender Request wird vom Proxy an Champion und Challenger gespiegelt.
-				Champion antwortet dem Nutzer, Challenger landet im Vergleich. Vier Metriken
-				werden verglichen: Tool-Call-Divergenz, Antwort-Qualität, Token-Kosten, Latenz.
+				{s.desc}
 			</desc>
 
 			<defs>
@@ -64,32 +235,32 @@ const { caption } = Astro.props;
 				</marker>
 			</defs>
 
-			<text class="title" x="40" y="34">Shadow Run: Champion bedient, Challenger lernt mit</text>
+			<text class="title" x="40" y="34">{s.heading}</text>
 			<text class="sublabel" x="40" y="56"
-				>Beide Versionen verarbeiten denselben Request. Nur eine antwortet dem Nutzer.</text
+				>{s.subheading}</text
 			>
 
 			<!-- Request -->
 			<g transform="translate(20, 195)">
 				<rect class="card" x="0" y="0" width="130" height="74" rx="10"></rect>
 				<text class="label" x="65" y="36" text-anchor="middle">Request</text>
-				<text class="sublabel" x="65" y="56" text-anchor="middle">vom Nutzer</text>
+				<text class="sublabel" x="65" y="56" text-anchor="middle">{s.requestSub}</text>
 			</g>
 
 			<!-- Proxy -->
 			<g transform="translate(195, 195)">
 				<rect class="card card-accent" x="0" y="0" width="130" height="74" rx="10"></rect>
 				<text class="label" x="65" y="36" text-anchor="middle">Proxy</text>
-				<text class="sublabel" x="65" y="56" text-anchor="middle">spiegelt Traffic</text>
+				<text class="sublabel" x="65" y="56" text-anchor="middle">{s.proxySub}</text>
 			</g>
 
 			<!-- Champion (top branch) -->
 			<g transform="translate(385, 110)">
 				<text class="gate-tag" x="0" y="-8">CHAMPION · LIVE</text>
 				<rect class="card card-accent" x="0" y="0" width="180" height="78" rx="10"></rect>
-				<text class="label" x="90" y="36" text-anchor="middle">Aktuelle Version</text>
+				<text class="label" x="90" y="36" text-anchor="middle">{s.championLabel}</text>
 				<text class="sublabel" x="90" y="56" text-anchor="middle"
-					>antwortet dem Nutzer</text
+					>{s.championSub}</text
 				>
 			</g>
 
@@ -97,9 +268,9 @@ const { caption } = Astro.props;
 			<g transform="translate(385, 290)">
 				<text class="gate-tag gate-tag-info" x="0" y="-8">CHALLENGER · SHADOW</text>
 				<rect class="card card-info" x="0" y="0" width="180" height="78" rx="10"></rect>
-				<text class="label" x="90" y="36" text-anchor="middle">Neue Version</text>
+				<text class="label" x="90" y="36" text-anchor="middle">{s.challengerLabel}</text>
 				<text class="sublabel" x="90" y="56" text-anchor="middle"
-					>Output ins Log, kein Nutzer</text
+					>{s.challengerSub}</text
 				>
 			</g>
 
@@ -142,8 +313,8 @@ const { caption } = Astro.props;
 			></path>
 			<g transform="translate(660, 110)">
 				<rect class="card-soft" x="0" y="0" width="120" height="78" rx="10"></rect>
-				<text class="label" x="60" y="36" text-anchor="middle">Nutzer</text>
-				<text class="sublabel" x="60" y="56" text-anchor="middle">erhält Antwort</text>
+				<text class="label" x="60" y="36" text-anchor="middle">{s.user}</text>
+				<text class="sublabel" x="60" y="56" text-anchor="middle">{s.userSub}</text>
 			</g>
 
 			<!-- Champion → Compare (dashed, "for comparison") -->
@@ -168,34 +339,34 @@ const { caption } = Astro.props;
 			<!-- Compare / Metrics box -->
 			<g transform="translate(820, 130)">
 				<rect class="card-compare" x="0" y="0" width="260" height="240" rx="12"></rect>
-				<text class="gate-tag" x="16" y="22">VERGLEICH · GELOGGTE PAARE</text>
-				<text class="label" x="16" y="50">Metriken</text>
+				<text class="gate-tag" x="16" y="22">{s.compareTag}</text>
+				<text class="label" x="16" y="50">{s.metrics}</text>
 
 				<g transform="translate(16, 70)">
 					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
-					<text class="metric" x="20" y="14">Tool-Call-Divergenz</text>
+					<text class="metric" x="20" y="14">{s.divergence}</text>
 				</g>
 				<g transform="translate(16, 105)">
 					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
-					<text class="metric" x="20" y="14">Antwort-Qualität (LLM-Judge)</text>
+					<text class="metric" x="20" y="14">{s.quality}</text>
 				</g>
 				<g transform="translate(16, 140)">
 					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
-					<text class="metric" x="20" y="14">Token-Kosten pro Operation</text>
+					<text class="metric" x="20" y="14">{s.cost}</text>
 				</g>
 				<g transform="translate(16, 175)">
 					<circle cx="6" cy="10" r="3" class="fill-info"></circle>
-					<text class="metric" x="20" y="14">Latenz p95 / p99</text>
+					<text class="metric" x="20" y="14">{s.latency}</text>
 				</g>
 
-				<text class="sublabel" x="16" y="220">→ Promotion oder Rollback</text>
+				<text class="sublabel" x="16" y="220">{s.outcome}</text>
 			</g>
 
 			<!-- Note about side-effects -->
 			<g transform="translate(385, 392)">
 				<rect class="note-bg" x="0" y="0" width="395" height="44" rx="8"></rect>
-				<text class="note" x="14" y="18">⚠ Schreibende Tools brauchen Sandbox, Mock</text>
-				<text class="note" x="14" y="34">oder Intent-Vergleich - sonst doppelte Side-Effects.</text>
+				<text class="note" x="14" y="18">{s.note1}</text>
+				<text class="note" x="14" y="34">{s.note2}</text>
 			</g>
 		</svg>
 		<span class="zoom-hint" aria-hidden="true">

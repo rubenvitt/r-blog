@@ -4,6 +4,7 @@ import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
 import SearchModal from '../components/ui/SearchModal.astro';
 import { DEFAULT_SITE_DESCRIPTION } from '../lib/site';
+import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES, getLocale, localePath, type Alternates } from '../lib/i18n';
 
 interface Props {
     title: string;
@@ -11,14 +12,26 @@ interface Props {
     image?: string;
     imageWidth?: number;
     imageHeight?: number;
+    /** URLs dieser Seite in anderen Sprachen (inkl. der aktuellen). Fehlt = nur diese Sprache. */
+    alternates?: Alternates;
 }
 
+const locale = getLocale(Astro.url);
 const {title, description = DEFAULT_SITE_DESCRIPTION, image, imageWidth, imageHeight} = Astro.props;
+// Gleiche Form wie die Canonical-URL (Verzeichnis mit Slash).
+const withSlash = (path: string) => (path.endsWith('/') ? path : `${path}/`);
+const alternates: Alternates = Object.fromEntries(
+    Object.entries({...Astro.props.alternates, [locale]: Astro.url.pathname}).map(([l, path]) => [l, withSlash(path!)]),
+);
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const info = LOCALE_INFO[locale];
+// Suchmaschinen bekommen nur echte Sprachfassungen, nicht die Spaß-Fassung.
+const hreflangs = LOCALES.filter((l) => LOCALE_INFO[l].hreflang && alternates[l]);
+const rssPath = localePath(locale === 'pott' ? DEFAULT_LOCALE : locale, '/rss.xml');
 ---
 
 <!doctype html>
-<html lang="de" class="antialiased">
+<html lang={info.htmlLang} class="antialiased">
 <head>
     <meta charset="utf-8"/>
     <!-- Tell the browser up front that both schemes exist, so its default canvas
@@ -53,6 +66,33 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     })();
     </script>
 
+    <!-- Sprache: gespeicherte Wahl > Browser-Sprache. Läuft vor dem ersten Paint, damit nichts
+         flackert. Automatisch nur beim Einstieg von außen und nie für Crawler, sonst sähe
+         Googlebot (en-US) jede deutsche Seite als Weiterleitung. -->
+    <script is:inline define:vars={{alternates, currentLocale: locale}}>
+    (function () {
+        var auto = ['de', 'en', 'fr', 'nl', 'sv', 'nb'];
+        function detect() {
+            var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+            for (var i = 0; i < langs.length; i++) {
+                var base = String(langs[i]).toLowerCase().split('-')[0];
+                if (base === 'no' || base === 'nn') base = 'nb';
+                if (auto.indexOf(base) !== -1) return base;
+            }
+            return 'en';
+        }
+        window.__detectLocale = detect;
+        var target = null;
+        try { target = localStorage.getItem('locale'); } catch (e) {}
+        if (!target) {
+            if (/bot|crawl|spider|slurp|preview|lighthouse|headless/i.test(navigator.userAgent)) return;
+            try { if (document.referrer && new URL(document.referrer).origin === location.origin) return; } catch (e) {}
+            target = detect();
+        }
+        if (target !== currentLocale && alternates[target]) location.replace(alternates[target] + location.search + location.hash);
+    })();
+    </script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/>
@@ -60,8 +100,13 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <link rel="icon" href="/favicon.ico" sizes="any"/>
     <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
     <link rel="sitemap" href="/sitemap-index.xml"/>
-    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml"/>
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href={rssPath}/>
     <link rel="canonical" href={canonicalURL}/>
+    {hreflangs.length > 1 && hreflangs.map((l) => (
+        <link rel="alternate" hreflang={LOCALE_INFO[l].hreflang} href={new URL(alternates[l]!, Astro.site)}/>
+    ))}
+    {hreflangs.length > 1 && alternates.de && <link rel="alternate" hreflang="x-default" href={new URL(alternates.de, Astro.site)}/>}
+    {locale === 'pott' && <meta name="robots" content="noindex"/>}
 
     <title>{title}</title>
     <meta name="description" content={description}/>
@@ -70,6 +115,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <!-- Open Graph -->
     <meta property="og:type" content={image ? "article" : "website"}/>
     <meta property="og:url" content={canonicalURL}/>
+    <meta property="og:locale" content={info.ogLocale}/>
     <meta property="og:title" content={title}/>
     <meta property="og:description" content={description}/>
     {image && <meta property="og:image" content={new URL(image, Astro.site)}/>}
@@ -92,7 +138,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 </head>
 <body class="bg-(--color-bg) text-(--color-text) min-h-screen flex flex-col">
-<Header/>
+<Header alternates={alternates}/>
 <main class="flex-1">
     <slot/>
 </main>

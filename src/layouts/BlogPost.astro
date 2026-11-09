@@ -6,6 +6,7 @@ import ReadingProgress from '../components/ui/ReadingProgress.astro';
 import PodcastPlayer from '../components/widgets/PodcastPlayer.astro';
 import AiDisclosure from '../components/ui/AiDisclosure.astro';
 import AiMarker from '../components/ui/AiMarker.astro';
+import { getLocale, useTranslations, type Alternates } from '../lib/i18n';
 
 interface Props {
     title: string;
@@ -16,9 +17,11 @@ interface Props {
     image?: ImageMetadata;
     podcast?: {audioFile: string; transcript?: string};
     ai?: 'generated' | 'assisted' | 'none';
+    alternates?: Alternates;
 }
 
-const {title, description, date, updatedDate, tags = [], image, podcast, ai = 'generated'} = Astro.props;
+const {title, description, date, updatedDate, tags = [], image, podcast, ai = 'generated', alternates} = Astro.props;
+const t = useTranslations(getLocale(Astro.url));
 
 const formattedDate = date.toISOString().slice(0, 10);
 const formattedUpdatedDate = updatedDate?.toISOString().slice(0, 10);
@@ -29,7 +32,7 @@ const words = content.split(/\s+/).length;
 const readingTime = Math.max(1, Math.ceil(words / 200));
 ---
 
-<BaseLayout title={`${title} — rubeen.dev`} description={description} image={image?.src} imageWidth={image?.width} imageHeight={image?.height}>
+<BaseLayout title={`${title} — rubeen.dev`} description={description} image={image?.src} imageWidth={image?.width} imageHeight={image?.height} alternates={alternates}>
     <ReadingProgress readingTime={readingTime} />
     <!-- Hero Header -->
     {image ? (
@@ -60,11 +63,11 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
                     <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.8125rem] tracking-[0.02em] text-white/65">
                         <time datetime={date.toISOString()}>{formattedDate}</time>
                         <span>&middot;</span>
-                        <span>{readingTime} min Lesezeit</span>
+                        <span>{readingTime} {t('post.readingTime')}</span>
                         {formattedUpdatedDate && (
                             <>
                                 <span>&middot;</span>
-                                <span>Aktualisiert {formattedUpdatedDate}</span>
+                                <span>{t('post.updated')} {formattedUpdatedDate}</span>
                             </>
                         )}
                         {ai !== 'none' && (
@@ -83,11 +86,11 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
                 <div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
                     <time datetime={date.toISOString()}>{formattedDate}</time>
                     <span class="text-(--color-border-strong)">&middot;</span>
-                    <span>{readingTime} min Lesezeit</span>
+                    <span>{readingTime} {t('post.readingTime')}</span>
                     {formattedUpdatedDate && (
                         <>
                             <span class="text-(--color-border-strong)">&middot;</span>
-                            <span>Aktualisiert {formattedUpdatedDate}</span>
+                            <span>{t('post.updated')} {formattedUpdatedDate}</span>
                         </>
                     )}
                     {ai !== 'none' && (
@@ -118,7 +121,7 @@ const readingTime = Math.max(1, Math.ceil(words / 200));
         <div class="mx-auto max-w-(--content-width) px-6 pt-8">
             <PodcastPlayer audioFile={podcast.audioFile} transcript={podcast.transcript} title={title} />
             <p class="mt-2 text-xs text-(--color-text-muted)">
-                Dialog und Stimmen dieser Audio-Fassung sind vollständig KI-generiert.
+                {t('post.podcastNote')}
             </p>
         </div>
     )}

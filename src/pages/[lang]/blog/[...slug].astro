@@ -1,0 +1,19 @@
+---
+import PostPage from '../../../components/pages/PostPage.astro';
+import { TRANSLATED_LOCALES } from '../../../lib/i18n';
+import { getPosts, postSlug } from '../../../lib/posts';
+
+export async function getStaticPaths() {
+    const paths = [];
+    for (const lang of TRANSLATED_LOCALES) {
+        for (const post of await getPosts(lang)) {
+            paths.push({params: {lang, slug: postSlug(post)}, props: {post}});
+        }
+    }
+    return paths;
+}
+
+const {post} = Astro.props;
+---
+
+<PostPage post={post}/>

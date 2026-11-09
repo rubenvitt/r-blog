@@ -2,13 +2,137 @@
 // Interaktive Demo: Approval-Panel als State-Machine (gemockt, keine KI).
 // ausstehend -> in Bestätigung (Begründung erzwungen) -> freigegeben.
 // Demonstriert Cognitive Forcing gegen Rubber-Stamping.
+import { getLocale } from '../../lib/i18n';
+
+const strings = {
+    de: {
+        header: 'Freigabe erforderlich · Tool-Call',
+        risk: 'high-risk · irreversibel',
+        pending: 'Dieser Schritt verändert das Schema unwiderruflich.',
+        review: 'Prüfen & freigeben',
+        question: 'Womit hast du das geprüft?',
+        required: '(Pflicht)',
+        placeholder: 'z.B. Backup von 14:02 verifiziert, Spalte seit v3 ungenutzt',
+        approve: 'Freigeben',
+        cancel: 'Abbrechen',
+        noReason: 'Ohne Begründung kein Freigeben.',
+        approved: 'Freigegeben von dir',
+        wouldRun: 'Der Tool-Call würde jetzt laufen - hier nur angedeutet, keine echte Migration.',
+        reset: 'Zurücksetzen',
+        quoteOpen: '„',
+        quoteClose: '"',
+    },
+    en: {
+        header: 'Approval required · Tool call',
+        risk: 'high-risk · irreversible',
+        pending: 'This step changes the schema irreversibly.',
+        review: 'Review & approve',
+        question: 'How did you check this?',
+        required: '(required)',
+        placeholder: 'e.g. verified the 14:02 backup, column unused since v3',
+        approve: 'Approve',
+        cancel: 'Cancel',
+        noReason: 'No reason, no approval.',
+        approved: 'Approved by you',
+        wouldRun: 'The tool call would run now - only hinted at here, no real migration.',
+        reset: 'Reset',
+        quoteOpen: '"',
+        quoteClose: '"',
+    },
+    fr: {
+        header: 'Validation requise · Tool call',
+        risk: 'high-risk · irréversible',
+        pending: 'Cette étape modifie le schéma de façon irréversible.',
+        review: 'Vérifier & valider',
+        question: "Comment l'avez-vous vérifié ?",
+        required: '(obligatoire)',
+        placeholder: 'p. ex. backup de 14:02 vérifié, colonne inutilisée depuis la v3',
+        approve: 'Valider',
+        cancel: 'Annuler',
+        noReason: 'Pas de justification, pas de validation.',
+        approved: 'Validé par vous',
+        wouldRun: "Le tool call s'exécuterait maintenant - simplement esquissé ici, aucune vraie migration.",
+        reset: 'Réinitialiser',
+        quoteOpen: '« ',
+        quoteClose: ' »',
+    },
+    nl: {
+        header: 'Goedkeuring vereist · Tool-call',
+        risk: 'high-risk · onomkeerbaar',
+        pending: 'Deze stap verandert het schema onherroepelijk.',
+        review: 'Controleren & goedkeuren',
+        question: 'Waarmee heb je dit gecontroleerd?',
+        required: '(verplicht)',
+        placeholder: 'bijv. back-up van 14:02 geverifieerd, kolom sinds v3 ongebruikt',
+        approve: 'Goedkeuren',
+        cancel: 'Annuleren',
+        noReason: 'Geen motivering, geen goedkeuring.',
+        approved: 'Goedgekeurd door jou',
+        wouldRun: 'De tool-call zou nu draaien - hier alleen aangeduid, geen echte migratie.',
+        reset: 'Resetten',
+        quoteOpen: '"',
+        quoteClose: '"',
+    },
+    sv: {
+        header: 'Godkännande krävs · Tool-call',
+        risk: 'high-risk · oåterkallelig',
+        pending: 'Det här steget ändrar schemat oåterkalleligt.',
+        review: 'Granska & godkänn',
+        question: 'Hur har du kontrollerat det?',
+        required: '(obligatoriskt)',
+        placeholder: 't.ex. backup från 14:02 verifierad, kolumnen oanvänd sedan v3',
+        approve: 'Godkänn',
+        cancel: 'Avbryt',
+        noReason: 'Ingen motivering, inget godkännande.',
+        approved: 'Godkänt av dig',
+        wouldRun: 'Tool-callet skulle köras nu – här bara antytt, ingen riktig migration.',
+        reset: 'Återställ',
+        quoteOpen: '”',
+        quoteClose: '”',
+    },
+    nb: {
+        header: 'Godkjenning kreves · Tool-call',
+        risk: 'high-risk · irreversibel',
+        pending: 'Dette steget endrer skjemaet ugjenkallelig.',
+        review: 'Sjekk & godkjenn',
+        question: 'Hvordan har du sjekket dette?',
+        required: '(påkrevd)',
+        placeholder: 'f.eks. backup fra 14:02 verifisert, kolonnen ubrukt siden v3',
+        approve: 'Godkjenn',
+        cancel: 'Avbryt',
+        noReason: 'Ingen begrunnelse, ingen godkjenning.',
+        approved: 'Godkjent av deg',
+        wouldRun: 'Tool-callet ville kjørt nå - her bare antydet, ingen ekte migrering.',
+        reset: 'Tilbakestill',
+        quoteOpen: '«',
+        quoteClose: '»',
+    },
+    pott: {
+        header: 'Freigabe nötig · Tool-Call',
+        risk: 'high-risk · dat bleibt so',
+        pending: 'Dieser Schritt ändert dat Schema, und zwar für immer.',
+        review: 'Prüfen & freigeben',
+        question: 'Wie hasse dat geprüft?',
+        required: '(muss)',
+        placeholder: 'z.B. Backup von 14:02 gecheckt, Spalte seit v3 tot',
+        approve: 'Freigeben',
+        cancel: 'Lass ma',
+        noReason: 'Ohne Begründung gibbet keine Freigabe.',
+        approved: 'Freigegeben von dir',
+        wouldRun: 'Getz würde der Tool-Call laufen - hier nur angedeutet, keine echte Migration.',
+        reset: 'Nomma von vorne',
+        quoteOpen: '„',
+        quoteClose: '"',
+    },
+};
+const s = strings[getLocale(Astro.url)];
 ---
 
-<div class="not-prose my-6 demo-approval overflow-hidden rounded-xl border border-(--color-border)">
+<div class="not-prose my-6 demo-approval overflow-hidden rounded-xl border border-(--color-border)" data-quote-open={s.quoteOpen} data-quote-close={s.quoteClose}>
     <div class="flex items-center justify-between gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-4 py-2.5">
-        <span class="text-xs font-medium text-(--color-text-muted)">Freigabe erforderlich · Tool-Call</span>
+        <span class="text-xs font-medium text-(--color-text-muted)">{s.header}</span>
         <span class="rounded-full bg-red-500/12 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:bg-red-400/15 dark:text-red-400">
-            high-risk · irreversibel
+            {s.risk}
         </span>
     </div>
 
@@ -23,42 +147,42 @@
             <!-- pending -->
             <div data-view="pending" class="flex items-center justify-between gap-3">
                 <span class="text-sm text-(--color-text-secondary)">
-                    Dieser Schritt verändert das Schema unwiderruflich.
+                    {s.pending}
                 </span>
                 <button type="button" class="demo-ap-review shrink-0 rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white">
-                    Prüfen &amp; freigeben
+                    {s.review}
                 </button>
             </div>
 
             <!-- confirming -->
             <div data-view="confirming" style="display:none">
                 <label class="block text-xs font-medium text-(--color-text)">
-                    Womit hast du das geprüft? <span class="text-(--color-text-muted)">(Pflicht)</span>
+                    {s.question} <span class="text-(--color-text-muted)">{s.required}</span>
                 </label>
-                <textarea class="demo-ap-reason mt-1.5 w-full resize-none rounded-md border border-(--color-border) bg-(--color-bg) px-2 py-1.5 text-sm text-(--color-text) outline-none focus:border-(--color-accent)" rows="2" placeholder="z.B. Backup von 14:02 verifiziert, Spalte seit v3 ungenutzt"></textarea>
+                <textarea class="demo-ap-reason mt-1.5 w-full resize-none rounded-md border border-(--color-border) bg-(--color-bg) px-2 py-1.5 text-sm text-(--color-text) outline-none focus:border-(--color-accent)" rows="2" placeholder={s.placeholder}></textarea>
                 <div class="mt-2 flex items-center gap-2">
                     <button type="button" class="demo-ap-confirm rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white opacity-50" disabled>
-                        Freigeben
+                        {s.approve}
                     </button>
                     <button type="button" class="demo-ap-cancel rounded-md border border-(--color-border) px-3 py-1.5 text-xs font-medium text-(--color-text-muted)">
-                        Abbrechen
+                        {s.cancel}
                     </button>
-                    <span class="text-[11px] text-(--color-text-muted)">Ohne Begründung kein Freigeben.</span>
+                    <span class="text-[11px] text-(--color-text-muted)">{s.noReason}</span>
                 </div>
             </div>
 
             <!-- approved -->
             <div data-view="approved" style="display:none">
                 <div class="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                    <span aria-hidden="true">✓</span> Freigegeben von dir
+                    <span aria-hidden="true">✓</span> {s.approved}
                 </div>
                 <p class="demo-ap-shown-reason mt-1 text-xs text-(--color-text-secondary)"></p>
                 <div class="mt-2 flex items-center gap-2">
                     <span class="text-[11px] text-(--color-text-muted)">
-                        Der Tool-Call würde jetzt laufen - hier nur angedeutet, keine echte Migration.
+                        {s.wouldRun}
                     </span>
                     <button type="button" class="demo-ap-reset rounded-md border border-(--color-border) px-2 py-0.5 text-[11px] font-medium text-(--color-text-muted)">
-                        Zurücksetzen
+                        {s.reset}
                     </button>
                 </div>
             </div>
@@ -107,7 +231,7 @@
         });
         confirmBtn.addEventListener('click', function () {
             if (confirmBtn.disabled) return;
-            if (shownReason && reason) shownReason.textContent = '„' + reason.value.trim() + '"';
+            if (shownReason && reason) shownReason.textContent = root.dataset.quoteOpen + reason.value.trim() + root.dataset.quoteClose;
             show('approved');
         });
         if (resetBtn)
