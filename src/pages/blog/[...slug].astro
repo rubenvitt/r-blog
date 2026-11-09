@@ -1,9 +1,9 @@
 ---
-import {getCollection, render} from 'astro:content';
-import BlogPost from '../../layouts/BlogPost.astro';
+import PostPage from '../../components/pages/PostPage.astro';
+import { getPosts } from '../../lib/posts';
 
 export async function getStaticPaths() {
-    const posts = await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft);
+    const posts = await getPosts('de');
 
     const paths = [];
     for (const post of posts) {
@@ -26,19 +26,6 @@ const {post, redirectTo} = Astro.props;
 if (redirectTo) {
     return Astro.redirect(redirectTo, 301);
 }
-
-const {Content} = await render(post);
 ---
 
-<BlogPost
-        title={post.data.title}
-        description={post.data.description}
-        date={post.data.date}
-        updatedDate={post.data.updatedDate}
-        tags={post.data.tags}
-        image={post.data.image}
-        podcast={post.data.podcast}
-        ai={post.data.ai}
->
-    <Content/>
-</BlogPost>
+<PostPage post={post}/>

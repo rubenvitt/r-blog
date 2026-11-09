@@ -1,0 +1,10 @@
+---
+import TransparencyPage from '../../components/pages/TransparencyPage.astro';
+import { TRANSLATED_LOCALES } from '../../lib/i18n';
+
+export function getStaticPaths() {
+    return TRANSLATED_LOCALES.map((lang) => ({params: {lang}}));
+}
+---
+
+<TransparencyPage/>

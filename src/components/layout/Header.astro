@@ -1,22 +1,32 @@
 ---
 import { Image } from 'astro:assets';
 import logo from '../../assets/logo.png';
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import { getLocale, localePath, stripLocale, useTranslations, type Alternates } from '../../lib/i18n';
 
-const currentPath = Astro.url.pathname;
+interface Props {
+    alternates: Alternates;
+}
 
+const {alternates} = Astro.props;
+const locale = getLocale(Astro.url);
+const t = useTranslations(locale);
+const currentPath = stripLocale(Astro.url.pathname);
+
+// Projekte und Talks gibt es nur auf Deutsch, die Links führen in jeder Sprache dorthin.
 const navLinks = [
-    {href: '/', label: 'Blog'},
-    {href: '/projekte', label: 'Projekte'},
+    {href: '/', label: t('nav.blog')},
+    {href: '/projekte', label: t('nav.projects'), german: true},
     // Auf schmalen Displays fehlt der Platz für alle Links: Talks, Tags und Über mich bleiben über Startseite und Posts erreichbar.
-    {href: '/talks', label: 'Talks', hide: 'max-sm:hidden'},
-    {href: '/tags', label: 'Tags', hide: 'max-sm:hidden'},
-    {href: '/about', label: 'Über mich', hide: 'max-[400px]:hidden'},
+    {href: '/talks', label: t('nav.talks'), hide: 'max-sm:hidden', german: true},
+    {href: '/tags', label: t('nav.tags'), hide: 'max-sm:hidden'},
+    {href: '/about', label: t('nav.about'), hide: 'max-[400px]:hidden'},
 ];
 ---
 
 <header class="sticky top-0 z-50 border-b border-(--color-border) bg-(--color-bg)/85 backdrop-blur-lg">
     <nav class="mx-auto flex max-w-(--content-width-wide) items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <a href="/" class="group flex shrink-0 items-center gap-2 font-display text-lg sm:gap-2.5 sm:text-xl font-bold tracking-[-0.03em] text-(--color-text)" style="font-variation-settings: 'opsz' 24">
+        <a href={localePath(locale, '/')} class="group flex shrink-0 items-center gap-2 font-display text-lg sm:gap-2.5 sm:text-xl font-bold tracking-[-0.03em] text-(--color-text)" style="font-variation-settings: 'opsz' 24">
             <Image src={logo} alt="" width={32} height={32} class="h-8 w-8 rounded-full object-cover ring-2 ring-(--color-signal) ring-offset-2 ring-offset-(--color-bg)"/>
             <span>rubeen<span class="hidden font-medium text-(--color-text-secondary) min-[420px]:inline">.dev</span></span>
         </a>
@@ -28,7 +38,8 @@ const navLinks = [
                     : currentPath.startsWith(link.href);
                 return (
                     <a
-                            href={link.href}
+                            href={link.german ? link.href : localePath(locale, link.href)}
+                            hreflang={link.german && locale !== 'de' ? 'de' : undefined}
                             aria-current={isActive ? 'page' : undefined}
                             class:list={[
                                 link.hide,
@@ -46,7 +57,7 @@ const navLinks = [
             <button
                     id="search-trigger"
                     class="ml-0.5 grid h-8 w-8 shrink-0 place-items-center sm:ml-1 sm:h-9 sm:w-9 rounded-md border border-(--color-border) text-(--color-text-secondary) transition-colors hover:border-(--color-border-strong) hover:text-(--color-text)"
-                    aria-label="Suche"
+                    aria-label={t('header.search')}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                      stroke-linejoin="round">
@@ -58,7 +69,7 @@ const navLinks = [
             <button
                     id="theme-toggle"
                     class="ml-0.5 grid h-8 w-8 shrink-0 place-items-center sm:ml-1 sm:h-9 sm:w-9 rounded-md border border-(--color-border) text-(--color-text-secondary) transition-colors hover:border-(--color-border-strong) hover:text-(--color-text)"
-                    aria-label="Theme wechseln"
+                    aria-label={t('header.theme')}
             >
                 <svg class="icon-system" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
@@ -84,6 +95,7 @@ const navLinks = [
                 </svg>
             </button>
 
+            <LanguageSwitcher alternates={alternates}/>
         </div>
     </nav>
 </header>

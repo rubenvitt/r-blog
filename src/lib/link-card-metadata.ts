@@ -24,20 +24,26 @@ const staticPageMetadata = new Map<string, LinkCardMetadata>([
   ],
 ]);
 
-const blogMetadataPromise = getCollection('blog', ({ data }) => !data.draft).then((posts) => {
+// Deutsche Posts unter /blog/<id>, Übersetzungen unter /<sprache>/blog/<slug> (id = <sprache>/<slug>).
+const blogMetadataPromise = Promise.all([
+  getCollection('blog', ({ data }) => !data.draft),
+  getCollection('translations', ({ data }) => !data.draft),
+]).then(([posts, translations]) => {
   const blogMetadata = new Map<string, LinkCardMetadata>();
 
-  for (const post of posts) {
+  for (const post of [...posts, ...translations]) {
     const metadata: LinkCardMetadata = {
       title: post.data.title,
       description: post.data.description,
       image: post.data.image,
     };
+    const base = post.collection === 'blog' ? '/blog' : `/${post.id.split('/')[0]}/blog`;
+    const slug = post.collection === 'blog' ? post.id : post.id.slice(post.id.indexOf('/') + 1);
 
-    blogMetadata.set(normalizeInternalPath(`/blog/${post.id}`), metadata);
+    blogMetadata.set(normalizeInternalPath(`${base}/${slug}`), metadata);
 
     for (const alias of post.data.aliases) {
-      blogMetadata.set(normalizeInternalPath(`/blog/${alias}`), metadata);
+      blogMetadata.set(normalizeInternalPath(`${base}/${alias}`), metadata);
     }
   }
 

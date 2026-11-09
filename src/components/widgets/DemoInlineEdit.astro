@@ -2,26 +2,123 @@
 // Interaktive Demo: Inline-Edit eines generierten Plans (gemockt, keine KI).
 // Klick auf eine Zeile -> direkt editierbar. Demonstriert "Artefakt direkt
 // bearbeiten statt Re-Prompt". State lebt rein clientseitig.
-const steps = [
-    'Feature-Flag `new_auth` anlegen und auf 0% stellen',
-    'User-Model um das Feld `mfa_enabled` erweitern',
-    'Migration schreiben - erst nach dem Backup ausführen',
-    'Auth-Middleware auf das Flag umstellen',
-];
+import { getLocale } from '../../lib/i18n';
+
+const strings = {
+    de: {
+        steps: [
+            'Feature-Flag `new_auth` anlegen und auf 0% stellen',
+            'User-Model um das Feld `mfa_enabled` erweitern',
+            'Migration schreiben - erst nach dem Backup ausführen',
+            'Auth-Middleware auf das Flag umstellen',
+        ],
+        header: 'Umsetzungsplan · Editor',
+        hint: 'Klick zum Bearbeiten',
+        footer: 'Du editierst das Artefakt direkt - kein Re-Prompt, der Rest des Plans bleibt unangetastet.',
+        save: 'Speichern',
+        cancel: 'Abbrechen',
+        keys: 'Enter speichert · Esc bricht ab',
+    },
+    en: {
+        steps: [
+            'Create feature flag `new_auth` and set it to 0%',
+            'Extend the user model with the field `mfa_enabled`',
+            'Write the migration - run it only after the backup',
+            'Switch the auth middleware over to the flag',
+        ],
+        header: 'Implementation plan · Editor',
+        hint: 'Click to edit',
+        footer: "You edit the artifact directly - no re-prompt, the rest of the plan stays untouched.",
+        save: 'Save',
+        cancel: 'Cancel',
+        keys: 'Enter saves · Esc cancels',
+    },
+    fr: {
+        steps: [
+            'Créer le feature flag `new_auth` et le mettre à 0 %',
+            'Ajouter le champ `mfa_enabled` au modèle User',
+            "Écrire la migration - ne l'exécuter qu'après le backup",
+            "Basculer le middleware d'auth sur le flag",
+        ],
+        header: "Plan d'implémentation · Éditeur",
+        hint: 'Cliquez pour modifier',
+        footer: "Vous éditez directement l'artefact - pas de re-prompt, le reste du plan reste intact.",
+        save: 'Enregistrer',
+        cancel: 'Annuler',
+        keys: 'Entrée enregistre · Échap annule',
+    },
+    nl: {
+        steps: [
+            'Feature-flag `new_auth` aanmaken en op 0% zetten',
+            'User-model uitbreiden met het veld `mfa_enabled`',
+            'Migratie schrijven - pas na de back-up uitvoeren',
+            'Auth-middleware omzetten naar de flag',
+        ],
+        header: 'Implementatieplan · Editor',
+        hint: 'Klik om te bewerken',
+        footer: 'Je bewerkt het artefact direct - geen re-prompt, de rest van het plan blijft onaangeroerd.',
+        save: 'Opslaan',
+        cancel: 'Annuleren',
+        keys: 'Enter slaat op · Esc annuleert',
+    },
+    sv: {
+        steps: [
+            'Skapa feature-flaggan `new_auth` och sätt den till 0 %',
+            'Utöka user-modellen med fältet `mfa_enabled`',
+            'Skriv migrationen – kör den först efter backupen',
+            'Ställ om auth-middleware till flaggan',
+        ],
+        header: 'Implementeringsplan · Editor',
+        hint: 'Klicka för att redigera',
+        footer: 'Du redigerar artefakten direkt – ingen re-prompt, resten av planen förblir orörd.',
+        save: 'Spara',
+        cancel: 'Avbryt',
+        keys: 'Enter sparar · Esc avbryter',
+    },
+    nb: {
+        steps: [
+            'Opprett feature-flagget `new_auth` og sett det til 0 %',
+            'Utvid user-modellen med feltet `mfa_enabled`',
+            'Skriv migreringen - kjør den først etter backupen',
+            'Legg om auth-middleware til flagget',
+        ],
+        header: 'Gjennomføringsplan · Editor',
+        hint: 'Klikk for å redigere',
+        footer: 'Du redigerer artefaktet direkte - ingen re-prompt, resten av planen forblir urørt.',
+        save: 'Lagre',
+        cancel: 'Avbryt',
+        keys: 'Enter lagrer · Esc avbryter',
+    },
+    pott: {
+        steps: [
+            'Feature-Flag `new_auth` anlegen und auf 0% stellen',
+            'User-Model um dat Feld `mfa_enabled` erweitern',
+            'Migration schreiben - aber erst nachm Backup laufen lassen',
+            'Auth-Middleware auf dat Flag umstellen',
+        ],
+        header: 'Umsetzungsplan · Editor',
+        hint: 'Klick drauf, dann kannze dat ändern',
+        footer: 'Du editierst dat Artefakt direkt - kein Re-Prompt, der Rest vom Plan bleibt wie er is.',
+        save: 'Speichern',
+        cancel: 'Lass ma',
+        keys: 'Enter speichert · Esc bricht ab',
+    },
+};
+const s = strings[getLocale(Astro.url)];
 ---
 
-<div class="not-prose my-6 demo-inline-edit overflow-hidden rounded-xl border border-(--color-border)">
+<div class="not-prose my-6 demo-inline-edit overflow-hidden rounded-xl border border-(--color-border)" data-save={s.save} data-cancel={s.cancel} data-keys={s.keys}>
     <div class="flex items-center gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-4 py-2.5">
         <span class="flex gap-1.5">
             <span class="h-2.5 w-2.5 rounded-full bg-(--color-border)"></span>
             <span class="h-2.5 w-2.5 rounded-full bg-(--color-border)"></span>
             <span class="h-2.5 w-2.5 rounded-full bg-(--color-border)"></span>
         </span>
-        <span class="text-xs font-medium text-(--color-text-muted)">Umsetzungsplan · Editor</span>
+        <span class="text-xs font-medium text-(--color-text-muted)">{s.header}</span>
     </div>
 
     <div class="divide-y divide-(--color-border) bg-(--color-bg)">
-        {steps.map((text, i) => (
+        {s.steps.map((text, i) => (
             <div class="demo-step group flex items-start gap-3 px-4 py-3" data-step>
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-(--color-bg-secondary) text-xs font-medium text-(--color-text-muted)">
                     {i + 1}
@@ -31,7 +128,7 @@ const steps = [
                         {text}
                     </button>
                     <span class="demo-edit-hint mt-0.5 block text-[11px] text-(--color-text-muted) opacity-0 transition-opacity group-hover:opacity-100">
-                        Klick zum Bearbeiten
+                        {s.hint}
                     </span>
                 </div>
             </div>
@@ -39,7 +136,7 @@ const steps = [
     </div>
 
     <div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
-        Du editierst das Artefakt direkt - kein Re-Prompt, der Rest des Plans bleibt unangetastet.
+        {s.footer}
     </div>
 </div>
 
@@ -70,19 +167,19 @@ const steps = [
 
                 var save = document.createElement('button');
                 save.type = 'button';
-                save.textContent = 'Speichern';
+                save.textContent = root.dataset.save;
                 save.className =
                     'rounded-md bg-(--color-accent) px-2.5 py-1 text-xs font-medium text-white';
 
                 var cancel = document.createElement('button');
                 cancel.type = 'button';
-                cancel.textContent = 'Abbrechen';
+                cancel.textContent = root.dataset.cancel;
                 cancel.className =
                     'rounded-md border border-(--color-border) px-2.5 py-1 text-xs font-medium text-(--color-text-muted)';
 
                 var note = document.createElement('span');
                 note.className = 'text-[11px] text-(--color-text-muted)';
-                note.textContent = 'Enter speichert · Esc bricht ab';
+                note.textContent = root.dataset.keys;
 
                 actions.appendChild(save);
                 actions.appendChild(cancel);

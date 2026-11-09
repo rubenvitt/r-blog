@@ -1,16 +1,98 @@
 ---
 // Release Pipeline diagram for the "Release-Disziplin für AI-Features" post.
 // Inline SVG with theme-aware colors for light and dark mode. Click to zoom.
+import { getLocale } from '../../lib/i18n';
 
 interface Props {
 	caption?: string;
 }
 
 const { caption } = Astro.props;
+
+const strings = {
+	de: {
+		enlarge: 'Diagramm vergrößern',
+		title: 'Release Pipeline für AI-Features',
+		desc: 'Horizontaler Ablauf von Merge über PR-Eval, Shadow, Canary 1/5/25/100 Prozent bis Monitor, mit Rollback-Schleife.',
+		subtitle: 'Merge bis Production, vier Gates, ein Rollback-Pfad',
+		mergeSub: 'in main',
+		evalSub: 'Offline-Suite grün',
+		shadowSub: 'Traffic gespiegelt',
+		monitorSub: 'Guardrails live',
+		zoom: 'Herauszoomen|Hineinzoomen|Ansicht zurücksetzen|Schließen',
+	},
+	en: {
+		enlarge: 'Enlarge diagram',
+		title: 'Release pipeline for AI features',
+		desc: 'Horizontal flow from merge through PR eval, shadow, canary 1/5/25/100 percent to monitor, with a rollback loop.',
+		subtitle: 'Merge to production, four gates, one rollback path',
+		mergeSub: 'into main',
+		evalSub: 'Offline suite OK',
+		shadowSub: 'Mirrored traffic',
+		monitorSub: 'Guardrails live',
+		zoom: 'Zoom out|Zoom in|Reset view|Close',
+	},
+	fr: {
+		enlarge: 'Agrandir le diagramme',
+		title: 'Pipeline de release pour les features IA',
+		desc: 'Flux horizontal du merge au monitoring, en passant par le PR-Eval, le Shadow et le Canary à 1/5/25/100 pour cent, avec une boucle de rollback.',
+		subtitle: 'Du merge à la production : quatre gates, un chemin de rollback',
+		mergeSub: 'dans main',
+		evalSub: 'Suite offline OK',
+		shadowSub: 'Trafic dupliqué',
+		monitorSub: 'Guardrails live',
+		zoom: 'Dézoomer|Zoomer|Réinitialiser la vue|Fermer',
+	},
+	nl: {
+		enlarge: 'Diagram vergroten',
+		title: 'Release-pipeline voor AI-features',
+		desc: 'Horizontale flow van merge via PR-eval, shadow en canary 1/5/25/100 procent tot monitor, met rollback-lus.',
+		subtitle: 'Van merge tot productie, vier gates, één rollbackpad',
+		mergeSub: 'in main',
+		evalSub: 'Offline-suite OK',
+		shadowSub: 'Traffic gespiegeld',
+		monitorSub: 'Guardrails live',
+		zoom: 'Uitzoomen|Inzoomen|Weergave herstellen|Sluiten',
+	},
+	sv: {
+		enlarge: 'Förstora diagrammet',
+		title: 'Release-pipeline för AI-features',
+		desc: 'Horisontellt flöde från merge via PR-eval, shadow och canary 1/5/25/100 procent till monitor, med en rollback-slinga.',
+		subtitle: 'Från merge till produktion, fyra gates, en rollback-väg',
+		mergeSub: 'i main',
+		evalSub: 'Offlinesvit grön',
+		shadowSub: 'Speglad trafik',
+		monitorSub: 'Guardrails live',
+		zoom: 'Zooma ut|Zooma in|Återställ vy|Stäng',
+	},
+	nb: {
+		enlarge: 'Forstørr diagrammet',
+		title: 'Release-pipeline for AI-funksjoner',
+		desc: 'Horisontal flyt fra merge via PR-eval, shadow og canary 1/5/25/100 prosent til monitor, med en rollback-sløyfe.',
+		subtitle: 'Fra merge til produksjon, fire gates, én rollback-vei',
+		mergeSub: 'i main',
+		evalSub: 'Offline-suite OK',
+		shadowSub: 'Speilet trafikk',
+		monitorSub: 'Guardrails live',
+		zoom: 'Zoom ut|Zoom inn|Tilbakestill visning|Lukk',
+	},
+	pott: {
+		enlarge: 'Diagramm größer machen',
+		title: 'Release-Pipeline für AI-Features',
+		desc: 'Ablauf von links nach rechts: Merge, PR-Eval, Shadow, Canary 1/5/25/100 Prozent bis Monitor, mit Rollback-Schleife für wenn et klemmt.',
+		subtitle: 'Vom Merge bis Production: vier Gates, ein Rollback-Pfad, mehr brauchse nich',
+		mergeSub: 'inne main',
+		evalSub: 'Offline-Suite grün',
+		shadowSub: 'Traffic gespiegelt',
+		monitorSub: 'Guardrails an',
+		zoom: 'Rauszoomen|Reinzoomen|Zurück auf Anfang|Zumachen',
+	},
+};
+const s = strings[getLocale(Astro.url)];
 ---
 
 <figure class="not-prose rollout-figure my-8">
-	<button class="rollout-diagram" type="button" aria-label="Diagramm vergrößern">
+	<button class="rollout-diagram" type="button" aria-label={s.enlarge} data-rollout-zoom-labels={s.zoom}>
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 1200 500"
@@ -18,10 +100,9 @@ const { caption } = Astro.props;
 			aria-labelledby="rollout-title rollout-desc"
 			preserveAspectRatio="xMidYMid meet"
 		>
-			<title id="rollout-title">Release Pipeline für AI-Features</title>
+			<title id="rollout-title">{s.title}</title>
 			<desc id="rollout-desc">
-				Horizontaler Ablauf von Merge über PR-Eval, Shadow, Canary 1/5/25/100 Prozent bis Monitor,
-				mit Rollback-Schleife.
+				{s.desc}
 			</desc>
 
 			<defs>
@@ -68,8 +149,8 @@ const { caption } = Astro.props;
 				</filter>
 			</defs>
 
-			<text class="title" x="40" y="44">Release Pipeline für AI-Features</text>
-			<text class="sublabel" x="40" y="66">Merge bis Production, vier Gates, ein Rollback-Pfad</text>
+			<text class="title" x="40" y="44">{s.title}</text>
+			<text class="sublabel" x="40" y="66">{s.subtitle}</text>
 
 			<!-- Merge -->
 			<g transform="translate(40, 190)">
@@ -82,7 +163,7 @@ const { caption } = Astro.props;
 					<path d="M5,17 C 15,17 15,17 22,17"></path>
 				</g>
 				<text class="label" x="62" y="38">Merge</text>
-				<text class="sublabel" x="62" y="58">in main</text>
+				<text class="sublabel" x="62" y="58">{s.mergeSub}</text>
 			</g>
 
 			<line
@@ -111,7 +192,7 @@ const { caption } = Astro.props;
 					<path d="M5,16 L9,20 L15,11"></path>
 				</g>
 				<text class="label" x="44" y="46">PR-Eval</text>
-				<text class="sublabel" x="44" y="64">Offline-Suite grün</text>
+				<text class="sublabel" x="44" y="64">{s.evalSub}</text>
 			</g>
 
 			<line
@@ -133,7 +214,7 @@ const { caption } = Astro.props;
 					<rect x="5" y="1" width="16" height="14" rx="2"></rect>
 				</g>
 				<text class="label" x="46" y="46">Shadow</text>
-				<text class="sublabel" x="46" y="64">Traffic gespiegelt</text>
+				<text class="sublabel" x="46" y="64">{s.shadowSub}</text>
 			</g>
 
 			<line
@@ -244,7 +325,7 @@ const { caption } = Astro.props;
 					<circle cx="24" cy="10" r="2" class="fill-info"></circle>
 				</g>
 				<text class="label" x="46" y="46">Monitor</text>
-				<text class="sublabel" x="46" y="64">Guardrails live</text>
+				<text class="sublabel" x="46" y="64">{s.monitorSub}</text>
 			</g>
 
 			<!-- Rollback loop -->
@@ -346,15 +427,16 @@ const { caption } = Astro.props;
 
 			var controls = document.createElement('div');
 			controls.className = 'rollout-zoom-controls';
+			var labels = document.querySelector('[data-rollout-zoom-labels]').getAttribute('data-rollout-zoom-labels').split('|');
 			var levelEl = document.createElement('span');
 			levelEl.className = 'rollout-zoom-level';
 			levelEl.setAttribute('data-role', 'level');
 			levelEl.textContent = '100%';
-			controls.appendChild(makeBtn('out', 'Herauszoomen', '−'));
+			controls.appendChild(makeBtn('out', labels[0], '−'));
 			controls.appendChild(levelEl);
-			controls.appendChild(makeBtn('in', 'Hineinzoomen', '+'));
-			controls.appendChild(makeBtn('reset', 'Ansicht zurücksetzen', '⟲'));
-			controls.appendChild(makeBtn('close', 'Schließen', '×'));
+			controls.appendChild(makeBtn('in', labels[1], '+'));
+			controls.appendChild(makeBtn('reset', labels[2], '⟲'));
+			controls.appendChild(makeBtn('close', labels[3], '×'));
 			overlay.appendChild(controls);
 
 			document.body.appendChild(overlay);

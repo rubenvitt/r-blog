@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { EDITORIAL_RESPONSIBILITY } from '../../lib/site';
+import { alternatesFor, getLocale, localePath, useTranslations } from '../../lib/i18n';
+
+const locale = getLocale(Astro.url);
+const t = useTranslations(locale);
+const body = t('transparency.body', {
+    person: EDITORIAL_RESPONSIBILITY,
+    podcastPost: localePath(locale, '/blog/ai-werkzeuge-eigener-blog'),
+});
+---
+
+<BaseLayout title={t('transparency.title')} description={t('transparency.description')} alternates={alternatesFor('/ki-transparenz')}>
+    <div class="mx-auto max-w-(--content-width) px-6">
+        <section class="py-16">
+            <h1 class="text-3xl font-bold tracking-tight">{t('transparency.heading')}</h1>
+
+            <div class="transparency mt-8 space-y-6 leading-relaxed text-(--color-text-secondary)" set:html={body}/>
+        </section>
+    </div>
+</BaseLayout>
+
+<style>
+    .transparency :global(h2) {
+        padding-top: 1rem;
+        font-size: 1.25rem;
+        line-height: 1.75rem;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        color: var(--color-text);
+    }
+    .transparency :global(ul) {
+        list-style: disc;
+        padding-left: 1.25rem;
+    }
+    .transparency :global(li + li) {
+        margin-top: 0.5rem;
+    }
+    .transparency :global(strong) {
+        color: var(--color-text);
+    }
+    .transparency :global(a) {
+        color: var(--color-accent);
+    }
+    .transparency :global(a:hover) {
+        text-decoration: underline;
+    }
+</style>

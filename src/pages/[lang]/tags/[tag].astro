@@ -1,0 +1,17 @@
+---
+import TagPage from '../../../components/pages/TagPage.astro';
+import { TRANSLATED_LOCALES } from '../../../lib/i18n';
+import { getTagPaths } from '../../../lib/tags';
+
+export async function getStaticPaths() {
+    const paths = [];
+    for (const lang of TRANSLATED_LOCALES) {
+        for (const {tag, posts, locales} of await getTagPaths(lang)) {
+            paths.push({params: {lang, tag}, props: {tag, posts, locales}});
+        }
+    }
+    return paths;
+}
+---
+
+<TagPage tag={Astro.props.tag} posts={Astro.props.posts} locales={Astro.props.locales}/>

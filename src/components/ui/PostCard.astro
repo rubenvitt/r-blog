@@ -1,4 +1,6 @@
 ---
+import { getLocale, localePath, useTranslations } from '../../lib/i18n';
+
 // Eintrag wie im Einsatztagebuch: Datum in fester Spalte links, Eintrag rechts.
 interface Props {
     title: string;
@@ -13,7 +15,9 @@ interface Props {
 }
 
 const {title, description, date, tags, slug, podcastDuration, external} = Astro.props;
-const href = external ? external.url : `/blog/${slug}`;
+const locale = getLocale(Astro.url);
+const t = useTranslations(locale);
+const href = external ? external.url : localePath(locale, `/blog/${slug}`);
 
 const isoDate = date.toISOString().slice(0, 10);
 ---
@@ -31,7 +35,7 @@ const isoDate = date.toISOString().slice(0, 10);
         </p>
         {external && (
             <p class="mt-1 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary)">
-                <span class="text-(--color-signal-text)">■</span> erschienen bei {external.publisher}{external.coAuthors?.length ? `, mit ${external.coAuthors.join(', ')}` : ''}{external.language === 'en' ? ' · auf Englisch' : ''}
+                <span class="text-(--color-signal-text)">■</span> {t('card.publishedAt')} {external.publisher}{external.coAuthors?.length ? `, ${t('card.with')} ${external.coAuthors.join(', ')}` : ''}{external.language === 'en' && locale !== 'en' ? ` · ${t('card.inEnglish')}` : ''}
             </p>
         )}
         {(tags.length > 0 || podcastDuration) && (
@@ -43,7 +47,7 @@ const isoDate = date.toISOString().slice(0, 10);
                     </span>
                 )}
                 {tags.map((tag) => (
-                    <a href={`/tags/${tag}`} class="relative z-10 inline-flex items-center rounded-[2px] border border-(--color-border) px-2 py-0.5 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary) transition-colors hover:border-(--color-border-strong) hover:text-(--color-text)">
+                    <a href={localePath(locale, `/tags/${tag}`)} class="relative z-10 inline-flex items-center rounded-[2px] border border-(--color-border) px-2 py-0.5 font-mono text-[0.8125rem] tracking-[0.02em] text-(--color-text-secondary) transition-colors hover:border-(--color-border-strong) hover:text-(--color-text)">
                         <span class="text-(--color-signal-text)">#</span>{tag}
                     </a>
                 ))}

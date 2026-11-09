@@ -1,34 +1,165 @@
 ---
 // Interaktive Demo: Compare-View mit zwei Diff-Spielarten (gemockt, keine KI).
 // Toggle: Issue<->Plan (verschluckte Anforderung) und Behauptung<->System-State (False Success).
+import { getLocale } from '../../lib/i18n';
+
+const strings = {
+    de: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Behauptung ↔ System-State',
+        issueHead: 'Issue · Anforderung',
+        req1: 'Login per E-Mail + Passwort',
+        req2: 'MFA über TOTP',
+        req3: 'Rate-Limiting für Fehlversuche',
+        planHead: 'Generierter Plan',
+        plan1: 'Schritt: E-Mail/Passwort-Flow',
+        plan2: 'Schritt: TOTP-Setup + Verify',
+        missing: '— nicht im Plan —',
+        claimHead: 'Agent · Behauptung',
+        claim: '„Rückerstattung veranlasst, der Betrag ist in wenigen Tagen zurück."',
+        stateHead: 'Ledger · System-State',
+        stateBefore: 'Keine Transaktion zu',
+        stateAfter: ' gefunden. Saldo unverändert.',
+        footer: 'Links der Anspruch, rechts die Wirkung. Die Differenz fällt im Fließtext nicht auf - nebeneinander schon.',
+    },
+    en: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Claim ↔ System state',
+        issueHead: 'Issue · Requirement',
+        req1: 'Login via email + password',
+        req2: 'MFA via TOTP',
+        req3: 'Rate limiting for failed attempts',
+        planHead: 'Generated plan',
+        plan1: 'Step: email/password flow',
+        plan2: 'Step: TOTP setup + verify',
+        missing: '— not in the plan —',
+        claimHead: 'Agent · Claim',
+        claim: '"Refund issued, the money will be back in a few days."',
+        stateHead: 'Ledger · System state',
+        stateBefore: 'No transaction found for',
+        stateAfter: '. Balance unchanged.',
+        footer: "Claim on the left, effect on the right. The gap doesn't stand out in running text - side by side it does.",
+    },
+    fr: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Affirmation ↔ État système',
+        issueHead: 'Issue · Exigence',
+        req1: 'Login par e-mail + mot de passe',
+        req2: 'MFA via TOTP',
+        req3: 'Rate limiting des tentatives échouées',
+        planHead: 'Plan généré',
+        plan1: 'Étape : flow e-mail/mot de passe',
+        plan2: 'Étape : setup TOTP + vérification',
+        missing: '— absent du plan —',
+        claimHead: 'Agent · Affirmation',
+        claim: '« Remboursement lancé, le montant sera de retour dans quelques jours. »',
+        stateHead: 'Ledger · État système',
+        stateBefore: 'Aucune transaction trouvée pour',
+        stateAfter: '. Solde inchangé.',
+        footer: "À gauche la promesse, à droite l'effet. L'écart passe inaperçu dans un texte suivi - côte à côte, il saute aux yeux.",
+    },
+    nl: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Bewering ↔ System-state',
+        issueHead: 'Issue · Eis',
+        req1: 'Login via e-mail + wachtwoord',
+        req2: 'MFA via TOTP',
+        req3: 'Rate-limiting voor mislukte pogingen',
+        planHead: 'Gegenereerd plan',
+        plan1: 'Stap: e-mail/wachtwoord-flow',
+        plan2: 'Stap: TOTP-setup + verify',
+        missing: '— niet in het plan —',
+        claimHead: 'Agent · Bewering',
+        claim: '"Terugbetaling in gang gezet, het bedrag staat over een paar dagen terug."',
+        stateHead: 'Ledger · System-state',
+        stateBefore: 'Geen transactie gevonden voor',
+        stateAfter: '. Saldo ongewijzigd.',
+        footer: 'Links de claim, rechts het effect. In lopende tekst valt het verschil niet op - naast elkaar wel.',
+    },
+    sv: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Påstående ↔ Systemstate',
+        issueHead: 'Issue · Krav',
+        req1: 'Login med e-post + lösenord',
+        req2: 'MFA via TOTP',
+        req3: 'Rate limiting för misslyckade försök',
+        planHead: 'Genererad plan',
+        plan1: 'Steg: e-post/lösenord-flöde',
+        plan2: 'Steg: TOTP-setup + verify',
+        missing: '— inte i planen —',
+        claimHead: 'Agent · Påstående',
+        claim: '”Återbetalning genomförd, beloppet är tillbaka om några dagar.”',
+        stateHead: 'Ledger · Systemstate',
+        stateBefore: 'Ingen transaktion hittades för',
+        stateAfter: '. Saldot oförändrat.',
+        footer: 'Till vänster anspråket, till höger effekten. Skillnaden syns inte i löptext – sida vid sida gör den det.',
+    },
+    nb: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Påstand ↔ Systemtilstand',
+        issueHead: 'Issue · Krav',
+        req1: 'Innlogging med e-post + passord',
+        req2: 'MFA via TOTP',
+        req3: 'Rate limiting for mislykkede forsøk',
+        planHead: 'Generert plan',
+        plan1: 'Steg: e-post/passord-flyt',
+        plan2: 'Steg: TOTP-oppsett + verify',
+        missing: '— ikke i planen —',
+        claimHead: 'Agent · Påstand',
+        claim: '«Refusjon satt i gang, beløpet er tilbake om noen dager.»',
+        stateHead: 'Ledger · Systemtilstand',
+        stateBefore: 'Ingen transaksjon funnet for',
+        stateAfter: '. Saldo uendret.',
+        footer: 'Til venstre påstanden, til høyre virkningen. Forskjellen faller ikke i øynene i løpende tekst - side om side gjør den det.',
+    },
+    pott: {
+        tabIssue: 'Issue ↔ Plan',
+        tabState: 'Behauptung ↔ System-State',
+        issueHead: 'Issue · Anforderung',
+        req1: 'Login per E-Mail + Passwort',
+        req2: 'MFA über TOTP',
+        req3: 'Rate-Limiting für Fehlversuche',
+        planHead: 'Generierter Plan',
+        plan1: 'Schritt: E-Mail/Passwort-Flow',
+        plan2: 'Schritt: TOTP-Setup + Verify',
+        missing: '— is nich im Plan —',
+        claimHead: 'Agent · Behauptung',
+        claim: '„Erstattung is raus, dat Geld is in paar Tagen wieder da."',
+        stateHead: 'Ledger · System-State',
+        stateBefore: 'Keine Transaktion zu',
+        stateAfter: ' gefunden. Kontostand wie vorher.',
+        footer: 'Links wat versprochen wurde, rechts wat passiert is. Im Fließtext merkse dat nich - nebeneinander schon.',
+    },
+};
+const s = strings[getLocale(Astro.url)];
 ---
 
 <div class="not-prose my-6 demo-compare overflow-hidden rounded-xl border border-(--color-border)">
     <div class="flex flex-wrap items-center gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-3 py-2">
         <button type="button" class="demo-cmp-tab rounded-md px-3 py-1 text-xs font-medium" data-mode="issue" data-active="true">
-            Issue ↔ Plan
+            {s.tabIssue}
         </button>
         <button type="button" class="demo-cmp-tab rounded-md px-3 py-1 text-xs font-medium" data-mode="state">
-            Behauptung ↔ System-State
+            {s.tabState}
         </button>
     </div>
 
     <!-- Mode: issue <-> plan -->
     <div class="demo-cmp-panel grid grid-cols-1 gap-px bg-(--color-border) sm:grid-cols-2" data-mode="issue">
         <div class="bg-(--color-bg) p-4">
-            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Issue · Anforderung</div>
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">{s.issueHead}</div>
             <ul class="space-y-1.5 text-sm text-(--color-text)">
-                <li class="rounded px-1.5 py-1">Login per E-Mail + Passwort</li>
-                <li class="rounded px-1.5 py-1">MFA über TOTP</li>
-                <li class="rounded bg-red-500/10 px-1.5 py-1 text-red-700 dark:bg-red-400/12 dark:text-red-300">Rate-Limiting für Fehlversuche</li>
+                <li class="rounded px-1.5 py-1">{s.req1}</li>
+                <li class="rounded px-1.5 py-1">{s.req2}</li>
+                <li class="rounded bg-red-500/10 px-1.5 py-1 text-red-700 dark:bg-red-400/12 dark:text-red-300">{s.req3}</li>
             </ul>
         </div>
         <div class="bg-(--color-bg) p-4">
-            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Generierter Plan</div>
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">{s.planHead}</div>
             <ul class="space-y-1.5 text-sm text-(--color-text)">
-                <li class="rounded px-1.5 py-1">Schritt: E-Mail/Passwort-Flow</li>
-                <li class="rounded px-1.5 py-1">Schritt: TOTP-Setup + Verify</li>
-                <li class="rounded border border-dashed border-red-500/30 px-1.5 py-1 text-(--color-text-muted)">— nicht im Plan —</li>
+                <li class="rounded px-1.5 py-1">{s.plan1}</li>
+                <li class="rounded px-1.5 py-1">{s.plan2}</li>
+                <li class="rounded border border-dashed border-red-500/30 px-1.5 py-1 text-(--color-text-muted)">{s.missing}</li>
             </ul>
         </div>
     </div>
@@ -36,21 +167,21 @@
     <!-- Mode: claim <-> state -->
     <div class="demo-cmp-panel grid grid-cols-1 gap-px bg-(--color-border) sm:grid-cols-2" style="display:none" data-mode="state">
         <div class="bg-(--color-bg) p-4">
-            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Agent · Behauptung</div>
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">{s.claimHead}</div>
             <div class="rounded bg-emerald-500/8 px-2 py-2 text-sm text-(--color-text)">
-                „Rückerstattung veranlasst, der Betrag ist in wenigen Tagen zurück." <span class="text-emerald-600 dark:text-emerald-400">✓ success</span>
+                {s.claim} <span class="text-emerald-600 dark:text-emerald-400">✓ success</span>
             </div>
         </div>
         <div class="bg-(--color-bg) p-4">
-            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Ledger · System-State</div>
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">{s.stateHead}</div>
             <div class="rounded bg-red-500/10 px-2 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-300">
-                Keine Transaktion zu <code class="text-xs">order_8842</code> gefunden. Saldo unverändert.
+                {s.stateBefore} <code class="text-xs">order_8842</code>{s.stateAfter}
             </div>
         </div>
     </div>
 
     <div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
-        Links der Anspruch, rechts die Wirkung. Die Differenz fällt im Fließtext nicht auf - nebeneinander schon.
+        {s.footer}
     </div>
 </div>
 

@@ -1,4 +1,7 @@
 ---
+import { getLocale, useTranslations } from '../../lib/i18n';
+
+const t = useTranslations(getLocale(Astro.url));
 ---
 
 <div id="search-overlay" class="fixed inset-0 z-[100] hidden">
@@ -8,7 +11,7 @@
   <!-- Modal -->
   <div id="search-modal" class="search-modal">
     <div class="search-modal-inner">
-      <div id="search-container" class="p-4"></div>
+      <div id="search-container" class="p-4" data-error={t('search.error')}></div>
     </div>
   </div>
 </div>
@@ -39,7 +42,7 @@
           });
           pagefindLoaded = true;
         } catch {
-          container.textContent = 'Suche konnte nicht geladen werden. Im Dev-Modus bitte erst builden.';
+          container.textContent = container.dataset.error;
         }
       }
 

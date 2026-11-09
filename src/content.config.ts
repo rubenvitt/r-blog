@@ -1,31 +1,40 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection, z, type SchemaContext } from 'astro:content';
 import { glob } from 'astro/loaders';
+
+const postSchema = ({ image }: SchemaContext) =>
+  z.object({
+    title: z.string(),
+    description: z.string(),
+    date: z.coerce.date(),
+    updatedDate: z.coerce.date().optional(),
+    tags: z.array(z.string()).default([]),
+    aliases: z.array(z.string()).default([]),
+    image: image().optional(),
+    draft: z.boolean().default(false),
+    // Transparenzhinweis nach Art. 50 Abs. 4 KI-VO.
+    // 'generated' = Text/Bilder von einem Modell erzeugt (Default, weil das hier der Normalfall ist)
+    // 'assisted'  = selbst geschrieben, KI nur fuer Lektorat/Recherche
+    // 'none'      = ohne generative KI entstanden
+    ai: z.enum(['generated', 'assisted', 'none']).default('generated'),
+    podcast: z
+      .object({
+        audioFile: z.string(),
+        transcript: z.string().optional(),
+        duration: z.string().optional(),
+      })
+      .optional(),
+  });
 
 const blog = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
-  schema: ({ image }) =>
-    z.object({
-      title: z.string(),
-      description: z.string(),
-      date: z.coerce.date(),
-      updatedDate: z.coerce.date().optional(),
-      tags: z.array(z.string()).default([]),
-      aliases: z.array(z.string()).default([]),
-      image: image().optional(),
-      draft: z.boolean().default(false),
-      // Transparenzhinweis nach Art. 50 Abs. 4 KI-VO.
-      // 'generated' = Text/Bilder von einem Modell erzeugt (Default, weil das hier der Normalfall ist)
-      // 'assisted'  = selbst geschrieben, KI nur fuer Lektorat/Recherche
-      // 'none'      = ohne generative KI entstanden
-      ai: z.enum(['generated', 'assisted', 'none']).default('generated'),
-      podcast: z
-        .object({
-          audioFile: z.string(),
-          transcript: z.string().optional(),
-          duration: z.string().optional(),
-        })
-        .optional(),
-    }),
+  schema: postSchema,
+});
+
+// Übersetzungen der Posts: translations/<sprache>/<slug>.mdx, Slug wie im Original.
+// Pfade darin schreibt scripts/localize-translations.mjs um.
+const translations = defineCollection({
+  loader: glob({ pattern: '*/*.{md,mdx}', base: './src/content/translations' }),
+  schema: postSchema,
 });
 
 // Projekte: eine Datei pro Repository. Prozess und Kriterien: docs/projekte.md
@@ -104,4 +113,4 @@ const talks = defineCollection({
   }),
 });
 
-export const collections = { blog, projects, extern, talks };
+export const collections = { blog, translations, projects, extern, talks };

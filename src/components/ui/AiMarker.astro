@@ -1,6 +1,8 @@
 ---
 // Kurzer KI-Hinweis in der Metazeile oben (Art. 50 Abs. 5 KI-VO: spätestens bei erster
 // Wahrnehmung). Er verweist auf den ausführlichen Hinweis am Ende der Seite (AiDisclosure).
+import { getLocale, useTranslations } from '../../lib/i18n';
+
 interface Props {
     level: 'generated' | 'assisted' | 'none';
     /** Für Metazeilen auf dem dunklen Hero-Bild. */
@@ -8,7 +10,8 @@ interface Props {
 }
 
 const {level, variant = 'default'} = Astro.props;
-const label = {generated: 'Mit KI erstellt', assisted: 'Mit KI-Unterstützung', none: null}[level];
+const t = useTranslations(getLocale(Astro.url));
+const label = {generated: t('ai.generated'), assisted: t('ai.assisted'), none: null}[level];
 ---
 
 {label && (

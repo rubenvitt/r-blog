@@ -1,30 +1,5 @@
 ---
-import {getCollection} from 'astro:content';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import TagBadge from '../../components/ui/TagBadge.astro';
-
-const posts = await getCollection('blog', ({data}) => import.meta.env.DEV || !data.draft);
-const tagCounts = new Map<string, number>();
-
-for (const post of posts) {
-    for (const tag of post.data.tags) {
-        tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-    }
-}
-
-const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
+import TagsPage from '../../components/pages/TagsPage.astro';
 ---
 
-<BaseLayout title="Tags — rubeen.dev">
-    <div class="mx-auto max-w-(--content-width) px-6 py-16">
-        <h1 class="mb-8 text-[2.75rem] leading-[1.1] font-bold tracking-[-0.03em]" style="font-variation-settings: 'opsz' 72">Tags</h1>
-        <div class="flex flex-wrap gap-2">
-            {sortedTags.map(([tag, count]) => (
-                    <TagBadge tag={tag} count={count}/>
-            ))}
-        </div>
-        {sortedTags.length === 0 && (
-                <p class="text-(--color-text-muted)">Noch keine Tags vorhanden.</p>
-        )}
-    </div>
-</BaseLayout>
+<TagsPage/>

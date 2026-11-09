@@ -19,7 +19,8 @@ export default defineConfig({
       destination: '/blog/ai-systems-architecture',
     },
   },
-  integrations: [mdx(), sitemap(), pagefind()],
+  // Die Ruhrpott-Fassung ist noindex und gehört nicht in die Sitemap.
+  integrations: [mdx(), sitemap({ filter: (page) => !page.includes('/pott/') }), pagefind()],
   markdown: {
     shikiConfig: {
       themes: {
