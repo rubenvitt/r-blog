@@ -7,7 +7,7 @@ status: aktiv
 repo: rubenvitt/sudoku
 stack: [Swift, SwiftUI, XcodeGen, fastlane]
 license: MIT
-lastActivity: 2026-10-29
+lastActivity: 2026-11-08
 ---
 
 Auf dem iPad schreibt man Ziffern und Notizen mit dem Apple Pencil direkt ins Feld, wie auf Papier. Auf dem iPhone geht es über eine Zifferntastatur, die zeigt, wie oft jede Ziffer noch fehlt. Fehler markiert die App erst, wenn man „Prüfen“ tippt.

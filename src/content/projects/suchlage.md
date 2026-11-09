@@ -9,7 +9,7 @@ stack: [Rust, axum, SQLite, MQTT, MediaMTX, React, MapLibre]
 screenshot: ./_images/suchlage/screenshot.webp
 screenshotAlt: "Suchlage im Vorschau-Modus: Lagekarte mit Suchgebiet, Flugspur und Fernsteuerung, rechts das Livebild-Feld und die Flugdaten, unten die Telemetrie"
 posts: [ehrenamt-software-betreiben]
-lastActivity: 2026-10-31
+lastActivity: 2026-11-08
 ---
 
 Wenn wir bei einer Personensuche die Drohne starten, sieht das Bild bisher nur, wer die Fernsteuerung in der Hand hat. Suchlage soll das ändern. Livebild, Position und Flugspur erscheinen im Browser, am Arbeitsplatz im Einsatzleitwagen, als Großbild und mobil auf dem Handy. Ohne Lizenzkosten und ohne Cloud-Dienst des Herstellers.
