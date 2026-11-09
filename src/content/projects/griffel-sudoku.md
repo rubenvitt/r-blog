@@ -6,6 +6,8 @@ kind: ios
 status: aktiv
 repo: rubenvitt/sudoku
 stack: [Swift, SwiftUI, XcodeGen, fastlane]
+screenshot: ./_images/griffel-sudoku/screenshot.webp
+screenshotAlt: "Griffel Sudoku auf dem iPad: ein leichtes Rätsel, teils gelöst, mit Notizen in den Zellen, markierten Fünfen und der Zifferntastatur darunter"
 license: MIT
 lastActivity: 2026-11-08
 ---

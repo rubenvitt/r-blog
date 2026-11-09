@@ -6,6 +6,8 @@ kind: ios
 status: aktiv
 repo: rubenvitt/malen-nach-zahlen
 stack: [Swift, SwiftUI, UIKit, StoreKit, XcodeGen, fastlane]
+screenshot: ./_images/griffel-malen/screenshot.webp
+screenshotAlt: "Griffel Malen nach Zahlen auf dem iPad: Vorlage „Fuchs im Herbstwald“ mit nummerierten Feldern, darunter die zehn Farben und Regler für Farben und Details"
 license: MIT
 lastActivity: 2026-11-08
 ---
