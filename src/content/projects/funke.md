@@ -3,7 +3,7 @@ title: Funke
 tagline: Capture-App für iPhone und Apple Watch, die Gedanken per Text oder Sprache in Sekunden nach ClickUp schreibt.
 area: alltag
 kind: ios
-status: aktiv
+status: archiviert
 repo: rubenvitt/funke
 stack: [Swift, SwiftUI, watchOS, Apple Intelligence, ClickUp API]
 screenshot: ./_images/funke/screenshot.webp
