@@ -34,7 +34,7 @@ const navLinks = [
         </a>
 
         <div class="flex min-w-0 flex-1 items-center justify-end gap-0 sm:gap-2">
-            <div id="nav-links" class="flex h-9 min-w-0 flex-wrap justify-end overflow-clip [overflow-clip-margin:4px] sm:gap-2">
+            <div id="nav-links" class="flex min-w-0 flex-wrap justify-end data-fit:h-9 data-fit:overflow-clip data-fit:[overflow-clip-margin:4px] sm:gap-2">
             {navLinks.map((link) => {
                 const isActive = link.href === '/'
                     ? currentPath === '/' || currentPath.startsWith('/blog')
@@ -107,6 +107,7 @@ const navLinks = [
 <script>
 // Linkleiste: Links, die in die zweite Zeile umbrechen oder seitlich nicht passen, sind abgeschnitten.
 // Unsichtbar machen, damit sie auch nicht per Tastatur oder Screenreader erreichbar sind.
+// Abgeschnitten wird erst mit data-fit, also nur mit JS; ohne JS bricht die Leiste sichtbar in eine zweite Zeile um.
 const navLinksBox = document.getElementById('nav-links');
 
 function fitNavLinks() {
@@ -120,6 +121,7 @@ function fitNavLinks() {
 }
 
 if (navLinksBox) {
+    navLinksBox.dataset.fit = '';
     new ResizeObserver(fitNavLinks).observe(navLinksBox);
     document.fonts?.ready.then(fitNavLinks);
 }
