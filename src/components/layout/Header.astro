@@ -15,9 +15,11 @@ const currentPath = stripLocale(Astro.url.pathname);
 
 // Projekte und Talks gibt es nur auf Deutsch, die Links führen in jeder Sprache dorthin.
 const navLinks = [
-    {href: '/', label: t('nav.blog')},
+    // Ganz schmal führt das Logo zur Startseite, dort reicht der Platz nicht für „Blog“.
+    {href: '/', label: t('nav.blog'), hide: 'max-[380px]:hidden'},
     {href: '/projekte', label: t('nav.projects'), german: true},
     // Auf schmalen Displays fehlt der Platz für alle Links: Talks, Tags und Über mich bleiben über Startseite und Posts erreichbar.
+    // Die Linkleiste bricht zusätzlich um: Was in keiner Sprache mehr in die Zeile passt, rutscht von hinten weg (siehe Skript).
     {href: '/talks', label: t('nav.talks'), hide: 'max-sm:hidden', german: true},
     {href: '/tags', label: t('nav.tags'), hide: 'max-sm:hidden'},
     {href: '/about', label: t('nav.about'), hide: 'max-[400px]:hidden'},
@@ -31,7 +33,8 @@ const navLinks = [
             <span>rubeen<span class="hidden font-medium text-(--color-text-secondary) min-[420px]:inline">.dev</span></span>
         </a>
 
-        <div class="flex items-center gap-0 sm:gap-2">
+        <div class="flex min-w-0 flex-1 items-center justify-end gap-0 sm:gap-2">
+            <div id="nav-links" class="flex h-9 min-w-0 flex-wrap justify-end overflow-clip [overflow-clip-margin:4px] sm:gap-2">
             {navLinks.map((link) => {
                 const isActive = link.href === '/'
                     ? currentPath === '/' || currentPath.startsWith('/blog')
@@ -43,7 +46,7 @@ const navLinks = [
                             aria-current={isActive ? 'page' : undefined}
                             class:list={[
                                 link.hide,
-                                'whitespace-nowrap px-1.5 py-2 text-sm font-semibold transition-colors sm:px-3 sm:text-[0.9375rem]',
+                                'whitespace-nowrap px-1.5 py-2 text-sm leading-5 font-semibold transition-colors sm:px-3 sm:text-[0.9375rem]',
                                 isActive
                                     ? 'text-(--color-accent) shadow-[inset_0_-2px_0_var(--color-accent)]'
                                     : 'rounded-md text-(--color-text-secondary) hover:bg-(--color-bg-sunken) hover:text-(--color-text)',
@@ -53,6 +56,7 @@ const navLinks = [
                     </a>
                 );
             })}
+            </div>
 
             <button
                     id="search-trigger"
@@ -101,6 +105,25 @@ const navLinks = [
 </header>
 
 <script>
+// Linkleiste: Links, die in die zweite Zeile umbrechen oder seitlich nicht passen, sind abgeschnitten.
+// Unsichtbar machen, damit sie auch nicht per Tastatur oder Screenreader erreichbar sind.
+const navLinksBox = document.getElementById('nav-links');
+
+function fitNavLinks() {
+    if (!navLinksBox) return;
+    const box = navLinksBox.getBoundingClientRect();
+    for (const link of navLinksBox.children) {
+        const r = link.getBoundingClientRect();
+        const clipped = r.top >= box.bottom - 1 || r.left < box.left - 0.5 || r.right > box.right + 0.5;
+        link.classList.toggle('invisible', clipped);
+    }
+}
+
+if (navLinksBox) {
+    new ResizeObserver(fitNavLinks).observe(navLinksBox);
+    document.fonts?.ready.then(fitNavLinks);
+}
+
 const toggle = document.getElementById('theme-toggle');
 
 function getStoredTheme() {
