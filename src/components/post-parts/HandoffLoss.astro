@@ -1,0 +1,100 @@
+---
+// Konstruiertes Beispiel: Ein Orchestrator delegiert eine Erstattung an einen Subagent.
+// Pro Station sieht man, welche Details der jeweilige Agent kennt bzw. zurückmeldet.
+// shortcut: nur deutsche Texte, bei einer Übersetzung des Posts strings pro Locale ergänzen.
+const facts = ['Bestellung 8842', 'Nur die Kaffeemühle erstatten', 'Betrag 49,90 €', 'Zurück auf die Kreditkarte'];
+// known[i] = steht dieses Detail auf dieser Station im Kontext des Agents?
+const stages = [
+	{
+		tab: 'Orchestrator kennt',
+		head: 'Kundenmail · liegt komplett beim Orchestrator',
+		text: '„Hallo, in Bestellung 8842 kam die Kaffeemühle kaputt an. Bitte nur die Mühle erstatten (49,90 €), den Rest behalte ich. Und bitte zurück auf die Kreditkarte, keinen Gutschein.“',
+		known: [true, true, true, true],
+	},
+	{
+		tab: 'Auftrag ↓',
+		head: 'Orchestrator → Refund-Agent · Auftrag',
+		text: 'Bestellung 8842: Kaffeemühle beschädigt angekommen. Bitte die Mühle erstatten (49,90 €) und kurz Bescheid geben.',
+		known: [true, true, true, false],
+	},
+	{
+		tab: 'Rückmeldung ↑',
+		head: 'Refund-Agent → Orchestrator · Tool-Call und Rückmeldung',
+		code: 'refund_order(order_id="8842", item="kaffeemuehle",\n             amount=49.90, method="voucher")  # Shop-Default',
+		text: '„Erstattung über 49,90 € für die Kaffeemühle aus Bestellung 8842 ausgelöst.“',
+		known: [true, true, true, false],
+	},
+	{
+		tab: 'Antwort an Kundin',
+		head: 'Orchestrator → Kundin',
+		text: '„Gute Nachricht: Die Erstattung über 49,90 € für Ihre Kaffeemühle ist veranlasst.“',
+		known: [true, true, true, false],
+	},
+];
+---
+
+<div class="not-prose my-6 handoff-loss overflow-hidden rounded-xl border border-(--color-border)">
+	<div class="flex flex-wrap items-center gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-3 py-2" role="tablist" aria-label="Stationen der Delegation">
+		{stages.map((st, i) => (
+			<button type="button" role="tab" class="hl-tab rounded-md px-3 py-1 text-xs font-medium" data-step={i} aria-selected={i === 0 ? 'true' : 'false'}>
+				{st.tab}
+			</button>
+		))}
+	</div>
+
+	{stages.map((st, i) => (
+		<div class="hl-panel grid grid-cols-1 gap-px bg-(--color-border)" data-step={i} style={i === 0 ? '' : 'display:none'} role="tabpanel">
+			<div class="bg-(--color-bg) p-4">
+				<div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">{st.head}</div>
+				{st.code && <pre class="mb-2 overflow-x-auto rounded bg-(--color-code-bg) p-2 text-xs text-(--color-text)">{st.code}</pre>}
+				<p class="text-sm text-(--color-text)">{st.text}</p>
+			</div>
+			<div class="bg-(--color-bg) p-4">
+				<div class="mb-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">
+					Steht drin · {st.known.filter(Boolean).length} von {facts.length}
+				</div>
+				<ul class="m-0 flex list-none flex-wrap gap-2 p-0 text-sm">
+					{facts.map((f, j) => st.known[j]
+						? <li class="m-0 rounded border border-(--color-border) px-2 py-1 text-(--color-text)"><span aria-hidden="true">✓ </span>{f}</li>
+						: <li class="m-0 rounded border border-(--color-danger) bg-(--color-danger-soft) px-2 py-1 text-(--color-danger) line-through"><span aria-hidden="true">✗ </span><span class="sr-only">fehlt: </span>{f}</li>)}
+				</ul>
+			</div>
+		</div>
+	))}
+
+	<div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
+		Konstruiertes Beispiel. Kein Agent macht einen groben Fehler. Ein Detail fehlt im Auftrag, der Refund-Agent nimmt den Shop-Default, und die Rückmeldung klingt nach Erfolg. Die Kundin bekommt einen Gutschein.
+	</div>
+</div>
+
+<style>
+	.handoff-loss li::before,
+	.handoff-loss li::marker {
+		content: none;
+	}
+	.hl-tab {
+		color: var(--color-text-muted);
+	}
+	.hl-tab[aria-selected='true'] {
+		color: var(--color-accent);
+		background: var(--color-bg);
+	}
+</style>
+
+<script is:inline>
+	document.querySelectorAll('.handoff-loss').forEach(function (root) {
+		var tabs = root.querySelectorAll('.hl-tab');
+		var panels = root.querySelectorAll('.hl-panel');
+		tabs.forEach(function (tab) {
+			tab.addEventListener('click', function () {
+				var step = tab.getAttribute('data-step');
+				tabs.forEach(function (t) {
+					t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+				});
+				panels.forEach(function (p) {
+					p.style.display = p.getAttribute('data-step') === step ? '' : 'none';
+				});
+			});
+		});
+	});
+</script>

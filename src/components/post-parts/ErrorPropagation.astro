@@ -1,0 +1,150 @@
+---
+// Vereinfachte Illustration zu Kim et al. (2026): Independent vs. Centralized.
+// Worker anklicken = Fehler unterschieben; Umschalter wechselt die Architektur.
+// shortcut: nur deutsche Texte, bei einer Übersetzung des Posts strings pro Locale ergänzen.
+const workers = ['Worker A', 'Worker B', 'Worker C', 'Worker D'];
+---
+
+<div class="not-prose my-6 error-prop overflow-hidden rounded-xl border border-(--color-border)" data-mode="independent">
+	<div class="flex flex-wrap items-center gap-2 border-b border-(--color-border) bg-(--color-bg-secondary) px-3 py-2">
+		<button type="button" class="ep-mode rounded-md px-3 py-1 text-xs font-medium" data-mode="independent" aria-pressed="true">Independent · ohne Prüfstelle</button>
+		<button type="button" class="ep-mode rounded-md px-3 py-1 text-xs font-medium" data-mode="centralized" aria-pressed="false">Centralized · Orchestrator prüft</button>
+		<button type="button" class="ep-reset ml-auto rounded-md px-2 py-1 text-xs text-(--color-text-muted)">Zurücksetzen</button>
+	</div>
+
+	<div class="space-y-3 bg-(--color-bg) p-4 text-sm">
+		<div class="ep-node rounded-lg border border-(--color-border) px-3 py-2 text-center text-(--color-text)">Aufgabe: Quartalsbericht aus vier Datenquellen</div>
+		<div class="text-center text-(--color-text-muted)" aria-hidden="true">↓</div>
+
+		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+			{workers.map((w) => (
+				<button type="button" class="ep-worker rounded-lg border border-(--color-border) px-2 py-2 text-xs text-(--color-text)" aria-pressed="false">
+					<span class="block font-medium">{w}</span>
+					<span class="ep-worker-state block text-(--color-text-muted)">ok · klick für Fehler</span>
+				</button>
+			))}
+		</div>
+		<div class="text-center text-(--color-text-muted)" aria-hidden="true">↓</div>
+
+		<div class="ep-hub rounded-lg border border-(--color-border) px-3 py-2 text-center">
+			<span class="ep-hub-label block font-medium text-(--color-text)"></span>
+			<span class="ep-hub-state block text-xs text-(--color-text-muted)"></span>
+		</div>
+		<div class="text-center text-(--color-text-muted)" aria-hidden="true">↓</div>
+
+		<div class="ep-result rounded-lg border px-3 py-2 text-center" aria-live="polite"></div>
+	</div>
+
+	<div class="border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] text-(--color-text-muted)">
+		Vereinfachte Darstellung. Gemessen hat das die Google-Studie aus dem Text: Ohne Prüfstelle schaukelten sich Fehler um den Faktor 17,2 auf, mit Orchestrator um 4,4. Die Prüfstelle fängt viel, aber nicht alles. Probier es mit zwei kaputten Workern.
+	</div>
+</div>
+
+<style>
+	.ep-mode {
+		color: var(--color-text-muted);
+	}
+	.ep-mode[aria-pressed='true'] {
+		color: var(--color-accent);
+		background: var(--color-bg);
+	}
+	.ep-worker[aria-pressed='true'] {
+		border-color: var(--color-danger);
+		background: var(--color-danger-soft);
+	}
+	.ep-worker[aria-pressed='true'] .ep-worker-state {
+		color: var(--color-danger);
+	}
+	.ep-result[data-state='ok'] {
+		border-color: var(--color-moss);
+		background: var(--color-moss-soft);
+		color: var(--color-text);
+	}
+	.ep-result[data-state='bad'] {
+		border-color: var(--color-danger);
+		background: var(--color-danger-soft);
+		color: var(--color-danger);
+	}
+	.ep-hub[data-state='caught'] {
+		border-color: var(--color-amber);
+		background: var(--color-amber-soft);
+	}
+</style>
+
+<script is:inline>
+	document.querySelectorAll('.error-prop').forEach(function (root) {
+		var modes = root.querySelectorAll('.ep-mode');
+		var workers = root.querySelectorAll('.ep-worker');
+		var hub = root.querySelector('.ep-hub');
+		var hubLabel = root.querySelector('.ep-hub-label');
+		var hubState = root.querySelector('.ep-hub-state');
+		var result = root.querySelector('.ep-result');
+
+		function names(list) {
+			return list.length > 1 ? list.slice(0, -1).join(', ') + ' und ' + list[list.length - 1] : list[0];
+		}
+
+		function render() {
+			var central = root.getAttribute('data-mode') === 'centralized';
+			var broken = [];
+			workers.forEach(function (w) {
+				if (w.getAttribute('aria-pressed') === 'true') broken.push(w.querySelector('.font-medium').textContent);
+			});
+			hub.removeAttribute('data-state');
+			if (!central) {
+				hubLabel.textContent = 'Zusammenführen';
+				hubState.textContent = 'fügt alles zusammen, prüft nichts';
+			} else {
+				hubLabel.textContent = 'Orchestrator';
+				hubState.textContent = 'prüft jedes Teilergebnis gegen die Aufgabe';
+			}
+			if (broken.length === 0) {
+				result.setAttribute('data-state', 'ok');
+				result.textContent = 'Ergebnis: stimmt';
+				return;
+			}
+			if (central) {
+				hub.setAttribute('data-state', 'caught');
+				// ab zwei Fehlern rutscht der letzte durch: Die Prüfstelle fängt viel, nicht alles
+				var caught = broken.length > 1 ? broken.slice(0, -1) : broken;
+				var missed = broken.length > 1 ? broken[broken.length - 1] : null;
+				hubState.textContent = 'Abweichung bei ' + names(caught) + ' gefunden, neu beauftragt' + (missed ? '. ' + missed + ' liefert einen plausiblen, aber falschen Wert' : '');
+				result.setAttribute('data-state', missed ? 'bad' : 'ok');
+				result.textContent = missed
+					? 'Ergebnis: falsch, obwohl geprüft wurde. Der Fehler aus ' + missed + ' ist durchgerutscht'
+					: 'Ergebnis: stimmt diesmal, kostet aber eine Runde mehr';
+			} else {
+				result.setAttribute('data-state', 'bad');
+				result.textContent = broken.length > 1
+					? 'Ergebnis: falsch. Die Fehler aus ' + names(broken) + ' stehen im Bericht, und niemand hat es gemerkt'
+					: 'Ergebnis: falsch. Der Fehler aus ' + broken[0] + ' steht im Bericht, und niemand hat es gemerkt';
+			}
+		}
+
+		modes.forEach(function (m) {
+			m.addEventListener('click', function () {
+				root.setAttribute('data-mode', m.getAttribute('data-mode'));
+				modes.forEach(function (x) {
+					x.setAttribute('aria-pressed', x === m ? 'true' : 'false');
+				});
+				render();
+			});
+		});
+		workers.forEach(function (w) {
+			w.addEventListener('click', function () {
+				var on = w.getAttribute('aria-pressed') !== 'true';
+				w.setAttribute('aria-pressed', on ? 'true' : 'false');
+				w.querySelector('.ep-worker-state').textContent = on ? 'liefert falsche Zahl' : 'ok · klick für Fehler';
+				render();
+			});
+		});
+		root.querySelector('.ep-reset').addEventListener('click', function () {
+			workers.forEach(function (w) {
+				w.setAttribute('aria-pressed', 'false');
+				w.querySelector('.ep-worker-state').textContent = 'ok · klick für Fehler';
+			});
+			render();
+		});
+		render();
+	});
+</script>
