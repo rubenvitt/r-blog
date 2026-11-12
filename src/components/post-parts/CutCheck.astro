@@ -1,0 +1,96 @@
+---
+// Schnitt-Check: Ja/Nein-Fragen, daraus eine Empfehlung für oder gegen einen zweiten Agent.
+// shortcut: nur deutsche Texte, bei einer Übersetzung des Posts strings pro Locale ergänzen.
+const questions = [
+	{ id: 'single', q: 'Würde ein einzelner Agent mit besseren Tools oder einem besseren Prompt die Aufgabe schaffen?' },
+	{ id: 'fixed', q: 'Lässt sich der Ablauf vorher als feste Schritte aufschreiben?' },
+	{ id: 'trifecta', q: 'Sieht ein Agent nicht vertrauenswürdigen Input (Mails, Webseiten, Uploads) und hat gleichzeitig ein Tool mit Wirkung (Geld, Daten nach außen)?' },
+	{ id: 'context', q: 'Füllt sich das Context Window mit Zwischenkram, den am Ende niemand mehr braucht?' },
+	{ id: 'parallel', q: 'Sind die Teilaufgaben wirklich unabhängig, sodass keine auf das Ergebnis einer anderen wartet?' },
+	{ id: 'measured', q: 'Hast du eine Messung gegen einen einzelnen Agent als Baseline, mit vergleichbarem Budget?' },
+];
+---
+
+<div class="not-prose my-6 cut-check overflow-hidden rounded-xl border border-(--color-border)">
+	<div class="border-b border-(--color-border) bg-(--color-bg-secondary) px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">
+		Schnitt-Check · brauche ich einen zweiten Agent?
+	</div>
+
+	<ol class="divide-y divide-(--color-border) bg-(--color-bg)">
+		{questions.map((x, i) => (
+			<li class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" data-q={x.id}>
+				<span class="text-sm text-(--color-text)"><span class="text-(--color-text-muted)">{i + 1}. </span>{x.q}</span>
+				<span class="flex shrink-0 gap-1" role="group" aria-label={`Antwort auf Frage ${i + 1}`}>
+					<button type="button" class="cc-btn rounded-md border border-(--color-border) px-3 py-1 text-xs" data-v="yes" aria-pressed="false">Ja</button>
+					<button type="button" class="cc-btn rounded-md border border-(--color-border) px-3 py-1 text-xs" data-v="no" aria-pressed="false">Nein</button>
+				</span>
+			</li>
+		))}
+	</ol>
+
+	<div class="cc-result border-t border-(--color-border) bg-(--color-bg-secondary) px-4 py-3 text-sm text-(--color-text)" aria-live="polite"></div>
+</div>
+
+<style>
+	.cc-btn {
+		color: var(--color-text-muted);
+	}
+	.cc-btn[aria-pressed='true'] {
+		color: var(--color-on-accent);
+		background: var(--color-accent);
+		border-color: var(--color-accent);
+	}
+</style>
+
+<script is:inline>
+	document.querySelectorAll('.cut-check').forEach(function (root) {
+		var answers = {};
+		var out = root.querySelector('.cc-result');
+
+		var TEXT = {
+			trifecta: '<strong>Tools trennen.</strong> Der Agent, der den fremden Text liest, bekommt das wirksame Tool nicht. Ein zweiter Agent mit dem Tool erhält nur ein strukturiertes Objekt mit festen Feldern. Diesen Schnitt lohnt es sich auch ohne Qualitätsgewinn zu machen. Injection-Fälle gehören dann in die Eval-Suite.',
+			single: '<strong>Bleib bei einem Agent.</strong> Investiere in Tools, Tool-Beschreibungen und Prompt. Ein zweiter Agent bringt hier vor allem Koordinationskosten.',
+			singleExceptTool: '<strong>Sonst bleib bei einem Agent.</strong> Abgesehen vom Sicherheitsschnitt bringen bessere Tools, Tool-Beschreibungen und ein besserer Prompt mehr als ein weiterer Agent.',
+			fixed: '<strong>Workflow statt Agents.</strong> Die feste Reihenfolge gehört in normalen Code. Das Modell wird nur an den Stellen gefragt, an denen wirklich etwas entschieden werden muss.',
+			context: '<strong>Ein Subagent für den Zwischenkram.</strong> Er liest, sucht und verdichtet in seinem eigenen Context Window und gibt nur das Ergebnis zurück.',
+			parallel: '<strong>Parallele Subagents mit Prüfstelle.</strong> Ein Orchestrator verteilt die Teile und prüft jedes Ergebnis, bevor es zusammengeführt wird.',
+			none: '<strong>Ein Agent reicht.</strong> Keiner der Gründe für einen Schnitt trifft zu.',
+			measure: '<strong>Vorher messen.</strong> Ohne Baseline weißt du nicht, ob der zweite Agent hilft oder nur mehr Tokens verbraucht.',
+		};
+
+		function render() {
+			var n = Object.keys(answers).length;
+			if (n < 6) {
+				out.innerHTML = '<span class="text-(--color-text-muted)">Noch ' + (6 - n) + ' von 6 Fragen offen.</span>';
+				return;
+			}
+			var recs = [];
+			var multi = false;
+			if (answers.trifecta === 'yes') recs.push(TEXT.trifecta);
+			if (answers.single === 'yes') {
+				recs.push(answers.trifecta === 'yes' ? TEXT.singleExceptTool : TEXT.single);
+			} else {
+				if (answers.fixed === 'yes') recs.push(TEXT.fixed);
+				if (answers.context === 'yes') { recs.push(TEXT.context); multi = true; }
+				if (answers.parallel === 'yes') { recs.push(TEXT.parallel); multi = true; }
+			}
+			if (recs.length === 0) recs.push(TEXT.none);
+			if (multi && answers.measured === 'no') recs.push(TEXT.measure);
+			out.innerHTML = '<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-(--color-text-muted)">Empfehlung</div><ul class="list-disc space-y-1 pl-5">' +
+				recs.map(function (r) { return '<li>' + r + '</li>'; }).join('') + '</ul>';
+		}
+
+		root.querySelectorAll('[data-q]').forEach(function (row) {
+			var id = row.getAttribute('data-q');
+			var btns = row.querySelectorAll('.cc-btn');
+			btns.forEach(function (b) {
+				b.addEventListener('click', function () {
+					answers[id] = b.getAttribute('data-v');
+					btns.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+					render();
+				});
+			});
+		});
+		render();
+	});
+</script>
