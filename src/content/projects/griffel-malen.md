@@ -9,7 +9,7 @@ stack: [Swift, SwiftUI, UIKit, StoreKit, XcodeGen, fastlane]
 screenshot: ./_images/griffel-malen/screenshot.webp
 screenshotAlt: "Griffel Malen nach Zahlen auf dem iPad: Vorlage „Fuchs im Herbstwald“ mit nummerierten Feldern, darunter die zehn Farben und Regler für Farben und Details"
 license: MIT
-lastActivity: 2026-11-08
+lastActivity: 2026-11-16
 ---
 
 Aus einem Foto entsteht eine Vorlage aus Feldern mit dünnem schwarzem Rand und Nummern. Wie viele Farben und wie fein die Felder werden, stellt man beim Erstellen mit einer Live-Vorschau ein. Dann malt man mit dem Apple Pencil, richtig mit Strichen statt durch Antippen. Der Übermalschutz hält einen Strich in dem Feld, in dem er ansetzt, und lässt sich im Spiel abschalten.

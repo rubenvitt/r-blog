@@ -107,4 +107,6 @@ Noch nicht entschieden, ob und wie sie rein sollen: `lichtung` (laut README im A
 `simple-todo-app` (letzter Commit 2025-06, README größtenteils NestJS-Vorlage),
 `rubeen-email` (nur die Standard-README von create-next-app),
 `r-worktime`, `r-times`, `docker-update-dashboard`, `cv-hub`, `momentchen-app`, `airport-db`,
-`bookmark-manager`, `reiseplaner`, `naehrwert-tracker`, `r-rezepte`.
+`bookmark-manager`, `reiseplaner`, `naehrwert-tracker`, `r-rezepte`,
+`witterung` (persönliche Wetter-App für genau eine angemeldete Person, läuft nur auf dem Homelab, Image privat, ohne Lizenzdatei),
+`typo3-drk-dienstabende` (TYPO3-Extension, Name, Paket und Screenshots tragen „DRK“, das auf der Website nicht vorkommen darf).
