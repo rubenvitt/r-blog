@@ -69,7 +69,7 @@ export const fr: Dict = {
     'Le développement logiciel rencontre la protection civile – deux mondes que je relie',
   'about.body': `J’écris ici pour mettre de l’ordre dans mes idées, garder une trace de ce que je vis et présenter les choses de façon à ce qu’elles servent aussi à d’autres.
 
-Je m’appelle Ruben et je suis consultant chez <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Ce qui m’intéresse, ce sont les bonnes solutions techniques, une communication claire et la manière dont les équipes parviennent à des décisions raisonnables dans des situations complexes.
+Je m’appelle Ruben et je suis consultant chez <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Ce qui m’intéresse, ce sont les bonnes solutions techniques, une communication claire et la manière dont les équipes parviennent à des décisions raisonnables dans des situations complexes. Avec Michael Seel, j’y ai développé le thème <a href="https://ai-product-engineering.com/en/">AI Product Engineering</a> : comment des fonctionnalités d’IA tiennent en production en tant que partie du logiciel.
 
 En parallèle du développement logiciel, je m’engage dans un groupe spécialisé Information et Communication de la protection civile allemande. Je relie déjà ces deux mondes dans des projets comme <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a> – et c’est précisément ce lien qui reviendra régulièrement sur ce blog.
 
@@ -176,7 +176,7 @@ export const nl: Dict = {
   'about.heroAlt': 'Softwareontwikkeling ontmoet rampenbestrijding – twee werelden die ik verbind',
   'about.body': `Ik schrijf hier om mijn gedachten te ordenen, ervaringen vast te leggen en dingen zo uit te werken dat ze ook voor anderen nuttig zijn.
 
-Ik ben Ruben en ik werk als consultant bij <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Ik ben geïnteresseerd in goede technische oplossingen, heldere communicatie en de vraag hoe teams in complexe situaties tot verstandige beslissingen komen.
+Ik ben Ruben en ik werk als consultant bij <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Ik ben geïnteresseerd in goede technische oplossingen, heldere communicatie en de vraag hoe teams in complexe situaties tot verstandige beslissingen komen. Samen met Michael Seel heb ik daar het thema <a href="https://ai-product-engineering.com/en/">AI Product Engineering</a> opgezet: hoe AI-features als onderdeel van de software standhouden in productie.
 
 Naast mijn werk in de softwareontwikkeling zet ik me in voor een vakgroep Informatie en Communicatie binnen de Duitse rampenbestrijding. Die twee werelden verbind ik al in projecten als <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a> – en juist die verbinding komt op deze blog steeds weer terug.
 
@@ -283,7 +283,7 @@ export const sv: Dict = {
   'about.heroAlt': 'Mjukvaruutveckling möter krisberedskap – två världar som jag förenar',
   'about.body': `Jag skriver här för att sortera mina tankar, ta vara på erfarenheter och formulera saker så att de blir användbara även för andra.
 
-Jag heter Ruben och arbetar som konsult på <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Jag intresserar mig för bra tekniska lösningar, tydlig kommunikation och frågan om hur team kommer fram till förnuftiga beslut i komplexa situationer.
+Jag heter Ruben och arbetar som konsult på <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Jag intresserar mig för bra tekniska lösningar, tydlig kommunikation och frågan om hur team kommer fram till förnuftiga beslut i komplexa situationer. Tillsammans med Michael Seel har jag byggt upp ämnet <a href="https://ai-product-engineering.com/en/">AI Product Engineering</a> där: hur AI-funktioner håller i produktion som en del av mjukvaran.
 
 Vid sidan av mjukvaruutvecklingen engagerar jag mig i en fackgrupp för information och kommunikation inom den tyska krisberedskapen. De två världarna förenar jag redan i projekt som <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a> – och just den kopplingen kommer att dyka upp gång på gång här i bloggen.
 
@@ -389,7 +389,7 @@ export const nb: Dict = {
   'about.heroAlt': 'Programvareutvikling møter beredskap – to verdener jeg knytter sammen',
   'about.body': `Jeg skriver her for å sortere tankene mine, ta vare på erfaringer og bearbeide ting slik at de også er nyttige for andre.
 
-Jeg heter Ruben og jobber som konsulent i <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Jeg er opptatt av gode tekniske løsninger, tydelig kommunikasjon og hvordan team kommer fram til fornuftige beslutninger i komplekse situasjoner.
+Jeg heter Ruben og jobber som konsulent i <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. Jeg er opptatt av gode tekniske løsninger, tydelig kommunikasjon og hvordan team kommer fram til fornuftige beslutninger i komplekse situasjoner. Sammen med Michael Seel har jeg bygget opp temaet <a href="https://ai-product-engineering.com/en/">AI Product Engineering</a> der: hvordan AI-funksjoner holder i produksjon som en del av programvaren.
 
 Ved siden av jobben med programvareutvikling engasjerer jeg meg i en faggruppe for informasjon og kommunikasjon i den tyske beredskapen. De to verdenene knytter jeg allerede sammen i prosjekter som <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a> – og akkurat den forbindelsen kommer til å dukke opp igjen og igjen i denne bloggen.
 
@@ -498,7 +498,7 @@ export const pott: Dict = {
     'Softwareentwicklung trifft Katastrophenschutz – zwei Welten, die ich zusammenbring',
   'about.body': `Ich schreib hier, um meine Gedanken zu sortieren, Erfahrungen festzuhalten und Sachen so aufzubereiten, dat die auch für andere wat bringen.
 
-Ich bin Ruben und arbeite als Consultant bei <a href="https://www.innoq.com/de/staff/ruben-vitt/">INNOQ</a>. Mich interessieren gute technische Lösungen, klare Ansagen und die Frage, wie Teams in komplizierten Lagen zu vernünftigen Entscheidungen kommen.
+Ich bin Ruben und arbeite als Consultant bei <a href="https://www.innoq.com/de/staff/ruben-vitt/">INNOQ</a>. Mich interessieren gute technische Lösungen, klare Ansagen und die Frage, wie Teams in komplizierten Lagen zu vernünftigen Entscheidungen kommen. Mit Michael Seel hab ich da dat Thema <a href="https://ai-product-engineering.com/">AI Product Engineering</a> aufgezogen: wie KI-Features als Teil vonne Software in Produktion halten.
 
 Neben der Softwareentwicklung bin ich in der Fachgruppe Information und Kommunikation im Katastrophenschutz dabei. Die beiden Welten bring ich schon in Projekten wie <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a> zusammen – und genau dat wird hier im Blog auch immer wieder ’ne Rolle spielen.
 

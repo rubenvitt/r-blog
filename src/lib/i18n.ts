@@ -131,7 +131,7 @@ const de = {
   // HTML erlaubt, Absätze getrennt durch Leerzeile.
   'about.body': `Ich schreibe hier, um Gedanken zu sortieren, Erfahrungen festzuhalten und Dinge so aufzubereiten, dass sie auch für andere nützlich sind.
 
-Ich bin Ruben und arbeite als Consultant bei <a href="https://www.innoq.com/de/staff/ruben-vitt/">INNOQ</a>. Mich interessieren gute technische Lösungen, klare Kommunikation und die Frage, wie Teams in komplexen Situationen zu vernünftigen Entscheidungen kommen.
+Ich bin Ruben und arbeite als Consultant bei <a href="https://www.innoq.com/de/staff/ruben-vitt/">INNOQ</a>. Mich interessieren gute technische Lösungen, klare Kommunikation und die Frage, wie Teams in komplexen Situationen zu vernünftigen Entscheidungen kommen. Gemeinsam mit Michael Seel habe ich dort das Thema <a href="https://ai-product-engineering.com/">AI Product Engineering</a> aufgebaut: wie KI-Features als Teil der Software in Produktion tragen.
 
 Neben meiner Arbeit in der Softwareentwicklung engagiere ich mich in der Fachgruppe Information und Kommunikation im Katastrophenschutz. Diese beiden Welten verbinde ich bereits in Projekten wie <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a> – und genau diese Verbindung wird auch in diesem Blog immer wieder eine Rolle spielen.
 
@@ -240,7 +240,7 @@ const en: Record<UiKey, string> = {
   'about.heroAlt': 'Software development meets civil protection – two worlds I bring together',
   'about.body': `I write here to sort my thoughts, hold on to what I’ve learned, and put things in a shape that’s useful to other people too.
 
-I’m Ruben, and I work as a consultant at <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. I care about good technical solutions, clear communication, and how teams reach sensible decisions when things get complicated.
+I’m Ruben, and I work as a consultant at <a href="https://www.innoq.com/en/staff/ruben-vitt/">INNOQ</a>. I care about good technical solutions, clear communication, and how teams reach sensible decisions when things get complicated. Together with Michael Seel I built up our topic <a href="https://ai-product-engineering.com/en/">AI Product Engineering</a> there: how AI features hold up in production as part of the software.
 
 Outside of software development, I volunteer in an information and communications unit in German civil protection. I already bring those two worlds together in projects like <a href="https://uav.iuk-ue.de">uav.iuk-ue.de</a>, and that connection will keep showing up on this blog.
 
