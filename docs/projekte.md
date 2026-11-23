@@ -109,4 +109,6 @@ Noch nicht entschieden, ob und wie sie rein sollen: `lichtung` (laut README im A
 `r-worktime`, `r-times`, `docker-update-dashboard`, `cv-hub`, `momentchen-app`, `airport-db`,
 `bookmark-manager`, `reiseplaner`, `naehrwert-tracker`, `r-rezepte`,
 `witterung` (persönliche Wetter-App für genau eine angemeldete Person, läuft nur auf dem Homelab, Image privat, ohne Lizenzdatei),
-`typo3-drk-dienstabende` (TYPO3-Extension, Name, Paket und Screenshots tragen „DRK“, das auf der Website nicht vorkommen darf).
+`typo3-drk-dienstabende` (TYPO3-Extension, Name, Paket und Screenshots tragen „DRK“, das auf der Website nicht vorkommen darf),
+`drk-kalender` (Terminkalender für die Vereinsseite, Name und Inhalt tragen „DRK“, teils noch Beispieldaten),
+`freiraum` (Finanz-Cockpit für Paare, Repo seit 2026-11-17, noch im Aufbau).

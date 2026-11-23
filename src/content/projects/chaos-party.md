@@ -8,7 +8,7 @@ repo: rubenvitt/chaos-party
 stack: [TypeScript, Babylon.js, React, Vite, WebSocket, Playwright]
 screenshot: ./_images/chaos-party/screenshot.webp
 screenshotAlt: "Chaos Party: das Brett Wackelwald in 3D mit Feldern, Abzweigen wie Pilzpfad und Sumpfabkürzung, vier Figuren und unten die Karten der Spieler mit Trophäen, Münzen und Items"
-lastActivity: 2026-11-17
+lastActivity: 2026-11-22
 ---
 
 Ein Brettspiel für den Spieleabend: Das Spiel läuft am PC im Browser, jede Person tritt per QR-Code mit dem iPhone bei, oder mehrere teilen sich ein iPad mit eigenen Touch-Zonen. Gamepads oder App-Installationen braucht es nicht. Ein Befehl (`pnpm play`) installiert, baut und startet den Server, danach läuft alles offline im lokalen Netz.
