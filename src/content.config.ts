@@ -64,6 +64,8 @@ const projects = defineCollection({
       // Slugs von Blogposts, die das Projekt behandeln.
       posts: z.array(z.string()).default([]),
       featured: z.boolean().default(false),
+      // Reihenfolge innerhalb des Bereichs: höhere Werte stehen weiter unten, gleiche nach lastActivity.
+      order: z.number().int().default(0),
       // Letzter Push laut GitHub, wird von der Projekte-Routine nachgezogen.
       lastActivity: z.coerce.date(),
       draft: z.boolean().default(false),
