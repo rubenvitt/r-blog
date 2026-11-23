@@ -10,6 +10,13 @@ const sections = [
     { key: 'demnaechst', label: 'Demnächst', talks: upcoming },
     { key: 'gehalten', label: 'Gehalten', talks: past },
 ].filter((s) => s.talks.length > 0);
+
+// Angebote von ai-product-engineering.com (gemeinsam mit Michael Seel, über INNOQ buchbar).
+const OFFERS = [
+    { duration: '45 min', kind: 'Talk', text: 'was AI-Features produktionstauglich macht' },
+    { duration: '8 h', kind: 'Workshop', text: 'ein Agent Contract wächst an einem durchgehenden Beispiel, im gehosteten Lab ohne Installation' },
+    { duration: '3 Tage', kind: 'Inhouse-Training', text: 'AI Product Engineering für das eigene Team' },
+];
 ---
 
 <BaseLayout title={TALKS_PAGE.title} description={TALKS_PAGE.description}>
@@ -36,5 +43,25 @@ const sections = [
                 </div>
             </section>
         ))}
+
+        <section id="auf-anfrage" class="scroll-mt-20 pb-16">
+            <h2 class="mb-2 text-[1.875rem] leading-tight font-semibold tracking-[-0.02em]" style="font-variation-settings: 'opsz' 48">
+                Auf Anfrage
+            </h2>
+            <p class="max-w-[62ch] text-base leading-relaxed text-(--color-text-secondary)">
+                Hinter den meisten Terminen steht dasselbe Thema: AI Product Engineering, also wie ein KI-Feature als Teil der Software in Produktion trägt, mit Agent Contract, Evals, Freigabestufen und Observability. Michael Seel und ich haben es gemeinsam entwickelt und bieten es über INNOQ auch für Teams an.
+            </p>
+            <div class="mt-4 border-b border-(--color-border)">
+                {OFFERS.map((offer) => (
+                    <div class="grid gap-x-6 gap-y-1 border-t border-(--color-border) py-4 sm:grid-cols-[7rem_1fr]">
+                        <span class="font-mono text-[0.8125rem] leading-[1.75rem] tracking-[0.02em] text-(--color-text-secondary) tabular-nums">{offer.duration}</span>
+                        <p class="text-base leading-relaxed"><span class="font-semibold text-(--color-text)">{offer.kind}</span> <span class="text-(--color-text-secondary)">· {offer.text}</span></p>
+                    </div>
+                ))}
+            </div>
+            <p class="mt-4 font-mono text-[0.8125rem] tracking-[0.02em]">
+                <a href="https://ai-product-engineering.com/" class="text-(--color-accent) hover:text-(--color-accent-hover)">↗ ai-product-engineering.com</a>
+            </p>
+        </section>
     </div>
 </BaseLayout>

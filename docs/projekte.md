@@ -22,6 +22,7 @@ screenshotIllustration: false   # true, wenn das Bild kein echter Screenshot ist
 license: MIT                # optional, so wie im Repo
 posts: [papier-fliegt-nicht]        # optional, Slugs von Blogposts zum Projekt
 featured: true              # optional, Karte oben auf /projekte (höchstens vier)
+order: 1                    # optional, Default 0; höhere Werte stehen im Bereich weiter unten
 lastActivity: 2026-10-03    # letzter Push laut GitHub
 ---
 

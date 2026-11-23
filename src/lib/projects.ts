@@ -55,7 +55,9 @@ export async function getProjects(): Promise<Project[]> {
     'projects',
     ({ data }) => import.meta.env.DEV || !data.draft,
   );
-  return projects.sort((a, b) => b.data.lastActivity.valueOf() - a.data.lastActivity.valueOf());
+  return projects.sort(
+    (a, b) => a.data.order - b.data.order || b.data.lastActivity.valueOf() - a.data.lastActivity.valueOf(),
+  );
 }
 
 export function repoUrl(repo: string): string {

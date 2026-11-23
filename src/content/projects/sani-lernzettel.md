@@ -5,9 +5,11 @@ area: bevoelkerungsschutz
 kind: web
 status: aktiv
 repo: rubenvitt/san-website
+app: https://san-website-chi.vercel.app/
 stack: [Next.js, React, TypeScript, Tailwind CSS]
 screenshot: ./_images/sani-lernzettel/screenshot.webp
 screenshotAlt: "Sani-Lernzettel: Startseite mit dem (c)ABCDE-Schema in großen Buchstaben, den Normalwerten für Erwachsene und der Themenliste"
+order: 1
 lastActivity: 2026-11-23
 ---
 
